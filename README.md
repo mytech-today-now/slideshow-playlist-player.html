@@ -1,6 +1,6 @@
 # Blend Player
 
-Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src/player.html` app with no build step and no server-side media processing.
+Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src/slideshow-playlist-player.html` app with no build step and no server-side media processing.
 
 The app is designed for desktop curation sessions, events, screenings, and experiments where privacy matters: media files stay on your machine, file handles and library metadata are stored in IndexedDB, and exports are human-readable JSON.
 
@@ -179,7 +179,7 @@ The selected Media Library sort key and direction are persisted in IndexedDB and
 
 ## Development
 
-This project intentionally avoids framework and build-system overhead. Edit `src/player.html` directly, then reload the browser.
+This project intentionally avoids framework and build-system overhead. Edit `src/slideshow-playlist-player.html` directly, then reload the browser.
 
 Useful helper commands:
 
@@ -200,7 +200,7 @@ Recommended manual checks:
 
 ## Repository Layout
 
-- `src/player.html` - the self-contained Blend Player app.
+- `src/slideshow-playlist-player.html` - the self-contained Blend Player app.
 - `scripts/Start-PlayerDev.ps1` - local static-server and test-helper script.
 - `samples/` - sample import lists.
 - `videos/` - optional local media/testing folder.

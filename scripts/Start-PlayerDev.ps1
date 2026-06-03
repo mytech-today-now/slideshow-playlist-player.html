@@ -56,7 +56,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $repoRoot) { $repoRoot = Get-Location }
 
-$playerUrl = "http://localhost:$Port/src/player.html"
+$playerUrl = "http://localhost:$Port/src/slideshow-playlist-player.html"
 $weddingTestList = Join-Path $repoRoot 'samples\wedding-playlist.txt'
 
 function New-WeddingTestList {
