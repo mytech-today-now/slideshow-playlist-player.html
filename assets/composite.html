@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>player.html composite</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0" name="viewport" />
+    <style>
+        * {
+            box-sizing: border-box;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        html {
+            font-size: 16px;
+            font-family: Calibri, sans-serif;
+            position: relative;
+            height: 1300px;
+            overflow: auto;
+        }
+
+        body {
+        }
+
+        iframe {
+            z-index: 10;
+        }
+
+        img {
+            z-index: 20;
+        }
+
+        .devices {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .devices > * {
+            position: relative;
+            -webkit-box-reflect: below 0px -webkit-gradient(linear, right top, right bottom, from(transparent), to(rgba(255, 255, 255, 0.3)));
+            filter: drop-shadow(0px 3px 2px #999);
+        }
+
+        .devices img  {
+            position: relative;
+            display: block;
+        }
+
+        .devices iframe {
+            top: 0;
+            left: 0;
+            position: absolute;
+            border: 0 none;
+            background: #0a0a0a; /* match app bg so file: open (blank iframes) still looks decent through template alphas */
+        }
+
+        .pc {
+            z-index: 10;
+            transform: scale(0.75) translate(0, -93px);
+            filter: none;
+            top: -58px;
+        }
+        .pc iframe {
+            width: 1932px;
+            height: 855px;
+            border-top: 1rem solid #000;
+            margin-left: 25px;
+            margin-top: 10px;
+            /* transform: perspective(6300px) rotateX(12deg) scale(0.98); */
+        }
+        .pc img {
+          width: 1980px;
+        }
+
+        .iphone {
+            z-index: 15;
+            transform: scale(0.35) translate(57px,360px);
+            left: 0;
+        }
+        .iphone iframe {
+            width: 469px;
+            height: 1016px; 
+            margin-left: 35px;
+            border-top: 3rem solid black;
+            margin-top: 30px;
+        }
+
+        .pixel {
+            z-index: 35;
+            transform: scale(0.3) translate(0px,1610px);
+        }
+        .pixel iframe {
+            width: 916px;
+            height: 510px;
+            margin-left: 105px;
+            margin-top: 32px;
+        }
+
+        .ipad {
+            z-index: 30;
+            transform: scale(0.4) translate(580px,-228px);
+            height: 1352px;
+            right: 0;
+        }
+        .ipad iframe {
+            bottom: 0;
+            right: 0;
+            width: 955px;
+            height: 1274px;
+            margin-top: 40px;
+            margin-left: 36px;
+        }
+
+        .pc, .iphone, .pixel, .ipad {
+            /* display:none !important; */
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div class="devices">
+        <div class="pc">
+          <iframe></iframe>
+          <img src="dell-monitor-template.png">            
+        </div>
+        <div class="iphone">
+          <iframe></iframe>
+          <img src="iphone-x-template.png">  
+        </div>
+        <div class="pixel">
+          <iframe></iframe>
+          <img src="pixel-2-xl-template.png">
+        </div>
+        <div class="ipad">
+            <iframe></iframe>
+            <img src="ipad-pro-template.png">            
+        </div>
+    </div>
+    </div>
+    <script>
+        (function () {
+            const isFile = location.protocol === 'file:';
+
+            if (isFile) {
+                console.log('%c[Composite] Live player iframes disabled on file: protocol to prevent "Unsafe attempt to load URL ...player.html from frame with URL ...player.html" warnings and cross-origin errors. Run the dev server (scripts/Start-PlayerDev.ps1) then open this page via http://localhost:5173/assets/composite.html to see interactive device previews.', 'color:#888');
+                // Iframes have no src (about:blank); device template images still render for layout reference.
+                // The old demo automation targets v1 DOM selectors (.links etc) which no longer exist in v2.
+                return;
+            }
+
+            // Only set srcs (and thus load the player) when served over http(s) — same-origin, no warnings.
+            document.querySelectorAll('.devices iframe').forEach(f => {
+                f.src = '../src/player.html';
+            });
+
+            function run() {
+                const frames = [...document.querySelectorAll('iframe')];
+                frames.forEach((iframe) => {
+                    try {
+                        const doc = iframe.contentDocument;
+                        if (!doc) return;
+                        // Note: v1-specific selectors below; will no-op or error on v2 player.
+                        const firstLink = doc.querySelector('.links a:nth-child(1)');
+                        if (firstLink) firstLink.click();
+
+                        setTimeout(() => {
+                            const fourth = doc.querySelector('.links a:nth-child(4)');
+                            if (fourth) fourth.click();
+                        }, 4000);
+
+                        setTimeout(() => {
+                            const second = doc.querySelector('.links a:nth-child(2)');
+                            if (second) second.click();
+                        }, 10000);
+
+                        setTimeout(() => {
+                            const player = doc.querySelector('.player');
+                            if (player) {
+                                player.pause();
+                                player.style.filter = '';
+                            }
+                            const overlay = doc.querySelector('.pauseOverlay');
+                            if (overlay) overlay.style.opacity = 0;
+                            const html = doc.querySelector('html');
+                            if (html) html.style.overflow = 'hidden';
+                        }, 15000);
+                    } catch (e) {
+                        // Cross-origin or missing elements — expected if not matching player version
+                    }
+                });
+            }
+
+            window.onload = () => setTimeout(run, 4500);  // extra time for http loads
+
+            document.body.addEventListener('dblclick', run, false);
+        })();
+    </script>
+</body>
+</html>

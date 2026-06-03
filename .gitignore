@@ -1,0 +1,100 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and workspace state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# Environment and local-only config
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+
+# Logs and diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+tmp/
+temp/
+.cache/
+
+# JavaScript tooling and build artifacts
+node_modules/
+dist/
+build/
+coverage/
+.parcel-cache/
+.vite/
+.turbo/
+.next/
+.nuxt/
+.eslintcache
+
+# Python helper artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Browser/test artifacts
+playwright-report/
+test-results/
+screenshots/tmp/
+
+# Generated player exports and local session artifacts
+exports/
+*.local.json
+*.local.txt
+*.local.m3u
+blend-export-*.json
+blend-*.download
+
+# Media caches and thumbnail caches
+media-cache/
+thumb-cache/
+thumbnail-cache/
+.blend-cache/
+.thumbs/
+
+# Large local media libraries
+*.mp4
+*.m4v
+*.mov
+*.mkv
+*.webm
+*.avi
+*.ogv
+*.mp3
+*.m4a
+*.wav
+*.flac
+*.aac
+*.ogg
+
+# Keep repository assets and docs screenshots trackable by default.
+!assets/
+!assets/**
+!README.md
+
+# Local scratch copies
+src/player-copy*.html
+src/*.bak.html
+src/slideshow-playlist-player-*.html

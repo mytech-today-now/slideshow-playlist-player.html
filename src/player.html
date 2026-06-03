@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
+  <meta name="version" content="2.0.0"> <!-- see script comment block for full changelog -->
+  <meta name="theme-color" content="#ff1493">
+  <title>Blend • player.html</title>
+  <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff1493' d='M8 5.14v14l11-7-11-7z'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --bg-elev: #121212;
+      --bg-elev2: #1a1a1a;
+      --text: #f5f5f5;
+      --text-muted: #a0a0a0;
+      --accent: #ff1493; /* theme purple-pink */
+      --accent-dim: #c8107e;
+      --border: #2a2a2a;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 10px 30px -15px rgba(0,0,0,0.6);
+      --trans: 180ms cubic-bezier(0.2, 0, 0, 1);
+
+      --tile-w: 168px;
+      --panel-w: clamp(320px, 42vw, 520px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* === VIEWPORT (Hero) === */
+    #viewport {
+      position: relative;
+      width: 100%;
+      height: clamp(280px, 78vh, 820px);
+      background: #000;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      container-type: inline-size;
+    }
+
+    .media-layer {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #000;
+    }
+    .media-layer.bottom { z-index: 1; }
+    .media-layer.top { z-index: 2; }
+
+    .media-layer video,
+    .media-layer img {
+      max-width: 100%; max-height: 100%;
+      object-fit: contain;
+      transition: opacity var(--trans);
+    }
+
+    .kenburns-wrapper {
+      position: relative;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .kenburns-wrapper > * {
+      transition: transform 120ms linear;
+      will-change: transform;
+    }
+
+    /* HUD */
+    #viewport-hud {
+      position: absolute; bottom: 12px; left: 12px; z-index: 10;
+      font-size: 11px; padding: 4px 10px; border-radius: 999px;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+      color: #ddd; display: flex; gap: 8px; align-items: center;
+      pointer-events: none; opacity: 0.9;
+    }
+    #viewport-hud .sep { opacity: 0.4; }
+
+    /* Gear */
+    #config-gear {
+      position: absolute; top: 12px; right: 12px; z-index: 20;
+      width: 42px; height: 42px; border-radius: 999px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: white; font-size: 20px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0.55; transition: all var(--trans);
+      backdrop-filter: blur(6px);
+    }
+    #config-gear:hover, #config-gear:focus {
+      opacity: 1; transform: scale(1.06); background: rgba(255,255,255,0.14);
+    }
+
+    /* Transport */
+    #transport {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+      background: linear-gradient(transparent, rgba(0,0,0,0.75));
+      padding: 14px 16px 10px; display: flex; align-items: center; gap: 8px;
+    }
+    #transport button {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: white; width: 40px; height: 40px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 18px; transition: all var(--trans);
+    }
+    #transport button:hover { background: rgba(255,255,255,0.2); }
+    #transport .play-btn { width: 52px; height: 52px; font-size: 22px; margin: 0 4px; }
+    #transport .blend-wrap {
+      flex: 1; max-width: 280px; display: flex; align-items: center; gap: 8px; margin: 0 12px;
+      font-size: 11px; color: #ccc;
+    }
+    #transport input[type="range"] {
+      width: 100%; accent-color: var(--accent);
+    }
+
+    /* === CONFIG PANEL === */
+    #config-backdrop {
+      position: fixed; inset: 0; z-index: 30;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+      opacity: 0; pointer-events: none; transition: opacity 200ms;
+    }
+    #config-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    #config-panel {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 40;
+      width: min(96vw, 1080px); background: var(--bg-elev);
+      border-left: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      transform: translateX(100%); transition: transform 280ms cubic-bezier(0.2,0,0,1);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #config-panel.open { transform: translateX(0); }
+
+    .config-header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; background: var(--bg-elev2);
+    }
+    .config-header input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 14px;
+    }
+    .config-header .close-btn { font-size: 22px; cursor: pointer; opacity: .7; }
+
+    .config-body {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0;
+    }
+    @media (max-width: 860px) {
+      .config-body { grid-template-columns: 1fr; }
+    }
+
+    /* Library Pane */
+    .library-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+    .pane-header { padding: 12px 16px 8px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .pane-actions { display: flex; gap: 6px; padding: 0 16px 10px; flex-wrap: wrap; }
+    .pane-actions button {
+      background: var(--bg-elev2); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 11px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .pane-actions button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+
+    #library-search {
+      margin: 0 16px 8px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 13px;
+    }
+
+    .type-pills { display: flex; gap: 6px; padding: 0 16px 8px; }
+    .type-pill {
+      padding: 3px 10px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border);
+      background: var(--bg-elev2); cursor: pointer; user-select: none;
+    }
+    .type-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    #library-grid {
+      flex: 1; overflow: auto; padding: 8px 12px; display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 10px; align-content: start;
+      content-visibility: auto;
+    }
+    .lib-card {
+      background: var(--bg-elev2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      overflow: hidden; position: relative; cursor: pointer; user-select: none;
+      transition: border-color var(--trans), transform 80ms;
+    }
+    .lib-card:hover { border-color: #444; }
+    .lib-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .lib-card .thumb {
+      width: 100%; aspect-ratio: 16 / 9; background: #111; display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: #444; position: relative; overflow: hidden;
+    }
+    .lib-card .thumb img, .lib-card .thumb canvas { width: 100%; height: 100%; object-fit: cover; }
+    .lib-card .meta {
+      padding: 6px 8px 7px; font-size: 11px;
+    }
+    .lib-card .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lib-card .sub { color: var(--text-muted); font-size: 10px; margin-top: 1px; }
+    .lib-card .badge {
+      position: absolute; top: 6px; right: 6px; font-size: 9px; padding: 1px 5px; border-radius: 3px;
+      background: rgba(0,0,0,0.7); color: #ddd;
+    }
+    .lib-card.stale { opacity: 0.6; }
+    .lib-card.stale::after { content: "MISSING"; position: absolute; inset: 0; background: rgba(239,68,68,0.15); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--danger); }
+
+    /* List Pane */
+    .list-pane { display: flex; flex-direction: column; min-height: 0; }
+    .segmented {
+      margin: 10px 14px 6px; display: inline-flex; background: var(--bg); border-radius: 8px; padding: 3px;
+      border: 1px solid var(--border);
+    }
+    .segmented button {
+      flex: 1; padding: 6px 14px; border: none; background: transparent; color: var(--text-muted);
+      border-radius: 5px; cursor: pointer; font-weight: 500;
+    }
+    .segmented button.active { background: var(--accent); color: white; }
+
+    #list-editor {
+      flex: 1; overflow: auto; padding: 4px 8px; min-height: 120px;
+    }
+    .list-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 3px 0;
+      background: var(--bg-elev2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: grab; user-select: none;
+    }
+    .list-item .drag { cursor: grab; opacity: 0.6; font-size: 14px; padding: 0 2px; }
+    .list-item .thumb-sm {
+      width: 46px; height: 32px; background: #111; border-radius: 4px; flex-shrink: 0; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .list-item .thumb-sm img { width: 100%; height: 100%; object-fit: cover; }
+    .list-item .info { flex: 1; min-width: 0; }
+    .list-item .info .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+    .list-item .info .path { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .list-item input[type="number"] {
+      width: 62px; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 2px 4px; border-radius: 4px; font-size: 11px;
+    }
+    .list-item .audio-flag { font-size: 10px; display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+    .list-item .del { color: var(--danger); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .list-item .del:hover { background: rgba(239,68,68,0.15); }
+
+    .list-actions { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* Global Settings */
+    .global-settings {
+      border-top: 1px solid var(--border); padding: 12px 16px; background: var(--bg-elev2);
+      font-size: 12px;
+    }
+    .global-settings .row { display: flex; gap: 12px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+    .global-settings label { min-width: 120px; color: var(--text-muted); }
+    .global-settings input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .global-settings select, .global-settings input[type="text"] {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 5px;
+    }
+
+    /* Toasts */
+    #toast-container {
+      position: fixed; bottom: 16px; right: 16px; z-index: 100;
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+    }
+    .toast {
+      background: #1f1f1f; border: 1px solid #333; color: #eee; padding: 10px 14px; border-radius: 8px;
+      box-shadow: var(--shadow); font-size: 12.5px; max-width: 320px; display: flex; gap: 10px; align-items: center;
+    }
+    .toast .undo { color: var(--accent); cursor: pointer; font-weight: 600; }
+
+    /* Modals */
+    dialog {
+      border: none; border-radius: 12px; background: var(--bg-elev); color: var(--text);
+      box-shadow: var(--shadow); padding: 0; max-width: 560px; width: 92vw;
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.6); }
+    .modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .modal-body { padding: 16px 18px; max-height: 60vh; overflow: auto; }
+    .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .help-table { width: 100%; border-collapse: collapse; }
+    .help-table td { padding: 5px 4px; vertical-align: top; }
+    .help-table .key { font-family: ui-monospace, monospace; background: #222; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+
+    /* Empty states */
+    .empty { padding: 24px 12px; text-align: center; color: var(--text-muted); font-size: 12px; }
+    .empty strong { color: #ccc; }
+
+    /* Misc */
+    .muted { color: var(--text-muted); }
+    .accent { color: var(--accent); }
+    .btn { background: var(--bg-elev2); border: 1px solid var(--border); color: var(--text); padding: 7px 13px; border-radius: 7px; cursor: pointer; }
+    .btn:hover { background: #252525; }
+    .btn.danger { border-color: #3a1f1f; color: #f77; }
+
+    .drag-over { outline: 2px dashed var(--accent); outline-offset: -4px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- VIEWPORT -->
+  <div id="viewport">
+    <div id="playlist-layer" class="media-layer bottom"></div>
+    <div id="slideshow-layer" class="media-layer top"></div>
+
+    <div id="viewport-hud">
+      <span id="hud-playlist">—</span>
+      <span class="sep">•</span>
+      <span id="hud-slideshow">—</span>
+      <span class="sep">•</span>
+      <span id="hud-blend">50%</span>
+    </div>
+
+    <button id="config-gear" title="Configuration (C)" aria-label="Open configuration panel">⚙️</button>
+
+    <!-- Transport -->
+    <div id="transport">
+      <button id="btn-prev" title="Previous (← or J)">⏮</button>
+      <button id="btn-play" class="play-btn" title="Play / Pause (Space or K)">▶</button>
+      <button id="btn-next" title="Next (→ or L)">⏭</button>
+      <button id="btn-stop" title="Stop">⏹</button>
+
+      <div class="blend-wrap">
+        <span>Blend</span>
+        <input id="blend-slider" type="range" min="0" max="100" value="50" title="Opacity blend — [ / ] keys">
+        <span id="blend-value">50%</span>
+      </div>
+
+      <button id="btn-fullscreen" title="Fullscreen viewport (F)">⛶</button>
+      <button id="btn-mute" title="Mute (M)">🔊</button>
+    </div>
+  </div>
+
+  <!-- CONFIG PANEL -->
+  <div id="config-backdrop"></div>
+  <div id="config-panel" role="dialog" aria-label="Configuration">
+    <div class="config-header">
+      <input id="project-name" type="text" placeholder="Project name (for exports)" aria-label="Project name">
+      <span id="close-config" class="close-btn" title="Close (Esc)">✕</span>
+    </div>
+
+    <div class="config-body">
+      <!-- LIBRARY -->
+      <div class="library-pane">
+        <div class="pane-header">
+          <span>Media Library <span id="lib-count" class="muted">(0)</span></span>
+        </div>
+        <div class="pane-actions">
+          <button id="add-files" class="primary">Add Files</button>
+          <button id="add-folder">Add Folder</button>
+          <button id="add-all-playlist">→ Playlist</button>
+          <button id="add-all-slideshow">→ Slideshow</button>
+          <button id="clear-library">Clear View</button>
+          <button id="remove-stale">Remove Stale</button>
+        </div>
+
+        <input id="library-search" type="search" placeholder="Search media… (/)">
+
+        <div class="type-pills">
+          <div class="type-pill active" data-filter="all">All</div>
+          <div class="type-pill" data-filter="video">Video</div>
+          <div class="type-pill" data-filter="audio">Audio</div>
+          <div class="type-pill" data-filter="image">Image</div>
+        </div>
+
+        <div id="library-grid"></div>
+
+        <div class="pane-actions" style="border-top:1px solid var(--border); margin-top:auto; padding-top:8px;">
+          <button id="add-selected-playlist">Add Selected → Playlist</button>
+          <button id="add-selected-slideshow">Add Selected → Slideshow</button>
+        </div>
+      </div>
+
+      <!-- LISTS -->
+      <div class="list-pane">
+        <div class="segmented" role="tablist">
+          <button data-tab="playlist" class="active" aria-selected="true">Playlist <span id="pl-count">(0)</span></button>
+          <button data-tab="slideshow" aria-selected="false">Slideshow <span id="ss-count">(0)</span></button>
+        </div>
+
+        <div id="list-editor"></div>
+
+        <div class="list-actions">
+          <button id="list-clear">Clear All</button>
+          <button id="list-shuffle">Shuffle</button>
+          <button id="list-sort">Sort ▾</button>
+          <button id="list-reverse">Reverse</button>
+          <button id="list-export">Export…</button>
+          <button id="list-import" style="margin-left:auto">Import List…</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLOBAL SETTINGS -->
+    <div class="global-settings">
+      <div class="row">
+        <label>Default image duration</label>
+        <input id="default-duration" type="number" step="0.5" min="0.5" max="300" value="4.0" style="width:70px"> s
+      </div>
+      <div class="row">
+        <label>Effect intensity</label>
+        <select id="effect-intensity">
+          <option value="off">Off</option>
+          <option value="subtle" selected>Subtle</option>
+          <option value="medium">Medium</option>
+          <option value="strong">Strong</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Playlist volume</label>
+        <input id="vol-playlist" type="range" min="0" max="1" step="0.05" value="1">
+        <span id="vol-playlist-val">100%</span>
+      </div>
+      <div class="row">
+        <label>Slideshow volume</label>
+        <input id="vol-slideshow" type="range" min="0" max="1" step="0.05" value="0.65">
+        <span id="vol-slideshow-val">65%</span>
+      </div>
+      <div class="row">
+        <label>Master volume</label>
+        <input id="vol-master" type="range" min="0" max="1" step="0.05" value="1">
+        <span id="vol-master-val">100%</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="min-width:auto"><input type="checkbox" id="resume-on-load" checked> Resume on load</label>
+        <label style="min-width:auto"><input type="checkbox" id="auto-verify" checked> Auto-verify on startup</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toast-container"></div>
+
+  <!-- HELP MODAL -->
+  <dialog id="help-modal">
+    <div class="modal-header">Keyboard Shortcuts &amp; Tips</div>
+    <div class="modal-body">
+      <table class="help-table">
+        <tr><td class="key">Space / K</td><td>Play / Pause both layers</td></tr>
+        <tr><td class="key">← / J</td><td>Previous (respects history in random/shuffle)</td></tr>
+        <tr><td class="key">→ / L</td><td>Next</td></tr>
+        <tr><td class="key">[ / ]</td><td>Blend opacity − / + 10%</td></tr>
+        <tr><td class="key">C</td><td>Toggle config panel (playback continues)</td></tr>
+        <tr><td class="key">F</td><td>Fullscreen viewport</td></tr>
+        <tr><td class="key">M</td><td>Mute / unmute master</td></tr>
+        <tr><td class="key">1–9</td><td>Seek 10%–90% in current playlist video</td></tr>
+        <tr><td class="key">/</td><td>Focus library search</td></tr>
+        <tr><td class="key">Delete / ⌫</td><td>Remove selected or focused list item (undoable)</td></tr>
+        <tr><td class="key">?</td><td>This help</td></tr>
+        <tr><td class="key">Esc</td><td>Close panels / modals</td></tr>
+      </table>
+      <p style="margin-top:14px;font-size:12px;color:#aaa">Drag items from the library grid directly into the list on the right. Multi-select with Shift or Ctrl/Cmd. All media stays on your machine.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('help-modal').close()">Close</button>
+    </div>
+  </dialog>
+
+  <!-- WELCOME (first run) -->
+  <dialog id="welcome-modal">
+    <div class="modal-header">Welcome to Blend • player.html</div>
+    <div class="modal-body">
+      <p><strong>Two independent layers.</strong> A Playlist for your audio foundation + a Slideshow for visuals. Blend them live with the opacity slider.</p>
+      <p style="margin:12px 0">Everything is private and local. Use <strong>Add Folder</strong> to point at your videos/ directory for instant testing.</p>
+      <p style="font-size:12px;color:#888">Pro tip: Press <strong>C</strong> to open the full editor while playback continues underneath.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="welcome-dismiss">Got it</button>
+      <button class="btn primary" id="welcome-add-folder">Add Folder…</button>
+    </div>
+  </dialog>
+
+  <!-- Inline Fluent-style icons -->
+  <svg style="display:none" id="icon-defs">
+    <symbol id="icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.14v14l11-7z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></symbol>
+    <symbol id="icon-drag" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+  </svg>
+
+  <script>
+    'use strict';
+
+    // =====================================================
+    // Blend • player.html v2.0.0  (April 2026)
+    // Dual-layer local media playback studio
+    //
+    // Complete refactor of the original single-file folder player
+    // into a professional creative instrument for curating + performing
+    // with local images, video, and audio using File System Access API
+    // and IndexedDB persistence.
+    //
+    // Non-negotiables kept from v1:
+    //   • Elegant dark aesthetic with purple --accent
+    //   • Inline Fluent-style SVG icons
+    //   • Keyboard-first discoverability (? help)
+    //   • PWA-ready dynamic manifest
+    //   • Zero hard dependencies for normal use
+    //   • Graceful handling of exotic filenames (emoji, long, prefixes)
+    //
+    // Major new subsystems (see ARCHITECTURE-PLAN-v2.md):
+    //   • Dual independent sequencers (Playlist base + Slideshow overlay)
+    //   • Live blend opacity + three volume controls + master mute
+    //   • Ken Burns (rAF) + elegant cross-fades + effect intensity
+    //   • Full FSA pickers + drag-from-OS + handle verification on load
+    //   • IDB-backed library + lists + thumbnails + settings
+    //   • Import/Export (JSON primary) + toasts with undo
+    //
+    // Testing corpus (must exercise on every major change):
+    //   videos/The Los Angeles Lakers - Same arena...💜💛-....mp4
+    //   videos/mkv-Sintel_Trailer1.480p.DivX_Plus_HD.mkv
+    //   videos/webm-big-buck-bunny_trailer.webm
+    //   videos/fake with a really long title...
+    //   videos/nba_*.mp4 + subtitles (must be filtered)
+    // =====================================================
+
+    const VERSION = '2.0.0';
+    const DB_NAME = 'player-blend-v1';
+    const DB_VERSION = 1;
+
+    // Supported media types
+    const MEDIA_TYPES = {
+      video: ['mp4','m4v','mov','mkv','webm','ogv','avi'],
+      audio: ['mp3','m4a','wav','ogg','flac','aac'],
+      image: ['jpg','jpeg','png','webp','gif','svg','avif']
+    };
+
+    let db = null;
+    let state = {
+      projectName: 'Untitled Session',
+      library: new Map(),          // id -> {id, handle, name, size, type, duration?, ...}
+      playlist: [],                // [{id, addedAt}]
+      slideshow: [],               // [{id, displayDuration?, includeAudio?}]
+      settings: {
+        defaultImageDuration: 4.0,
+        effectIntensity: 'subtle',
+        playlistVolume: 1.0,
+        slideshowVolume: 0.65,
+        masterVolume: 1.0,
+        playbackModePlaylist: 'sequential',
+        playbackModeSlideshow: 'sequential',
+        opacity: 0.5,
+        resumeOnLoad: true,
+        autoVerifyOnStartup: true
+      },
+      ui: {
+        activeList: 'playlist',
+        selectedLibrary: new Set(),
+        currentFilter: 'all',
+        search: ''
+      },
+      runtime: {
+        playlistIndex: 0,
+        slideshowIndex: 0,
+        isPlaying: false,
+        historyPlaylist: [],
+        historySlideshow: []
+      }
+    };
+
+    let playlistVideoA = null, playlistVideoB = null;
+    let slideshowMedia = null; // current img or video in top layer
+    let kenBurnsRAF = null;
+    let crossfadeTimer = null;
+    let slideshowTimer = null;
+    let currentPlaylistItem = null;
+    let currentSlideshowItem = null;
+    let saveTimer = null;
+    let isMuted = false;
+    let originalVolumes = {};
+
+    // ====================== UTILITIES ======================
+    function $(sel, root = document) { return root.querySelector(sel); }
+    function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+    function debounce(fn, ms = 600) {
+      let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024, sizes = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(i ? 1 : 0) + ' ' + sizes[i];
+    }
+
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) return '0:00';
+      const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function uid() { return (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2)); }
+
+    function getFileExt(name) { return (name.split('.').pop() || '').toLowerCase(); }
+
+    function getMediaType(name) {
+      const ext = getFileExt(name);
+      if (MEDIA_TYPES.video.includes(ext)) return 'video';
+      if (MEDIA_TYPES.audio.includes(ext)) return 'audio';
+      if (MEDIA_TYPES.image.includes(ext)) return 'image';
+      return null;
+    }
+
+    function showToast(message, opts = {}) {
+      const container = $('#toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span>${message}</span>`;
+      if (opts.undo) {
+        const u = document.createElement('span');
+        u.className = 'undo';
+        u.textContent = 'Undo';
+        u.onclick = () => { opts.undo(); toast.remove(); };
+        toast.appendChild(u);
+      }
+      container.appendChild(toast);
+      const timeout = opts.timeout || 4200;
+      setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, timeout);
+    }
+
+    // ====================== INDEXEDDB ======================
+    async function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const d = e.target.result;
+          if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
+          if (!d.objectStoreNames.contains('playlist')) d.createObjectStore('playlist', { keyPath: 'key' });
+          if (!d.objectStoreNames.contains('slideshow')) d.createObjectStore('slideshow', { keyPath: 'key' });
+          if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+          if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
+          if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
+        };
+        req.onsuccess = () => { db = req.result; resolve(db); };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function idbPut(storeName, value) {
+      if (!db) return;
+      return new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).put(value);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    }
+
+    async function idbGet(storeName, key) {
+      if (!db) return null;
+      return new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const r = tx.objectStore(storeName).get(key);
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+
+    async function idbGetAll(storeName) {
+      if (!db) return [];
+      return new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const r = tx.objectStore(storeName).getAll();
+        r.onsuccess = () => res(r.result || []);
+        r.onerror = () => rej(r.error);
+      });
+    }
+
+    async function idbDelete(storeName, key) {
+      if (!db) return;
+      return new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).delete(key);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    }
+
+    // ====================== THUMBNAILS (IDB) ======================
+    const thumbQueue = [];
+    let thumbRunning = 0;
+    const THUMB_CONCURRENCY = 2;
+
+    function thumbKey(name, size, lastMod = 0) {
+      return `${name}:${size}:${lastMod}`;
+    }
+
+    async function getCachedThumb(key) {
+      const rec = await idbGet('thumbnails', key);
+      return rec ? rec.blob : null;
+    }
+
+    async function saveCachedThumb(key, blob) {
+      await idbPut('thumbnails', { key, blob, at: Date.now() });
+    }
+
+    async function generateThumbnail(handle, meta) {
+      const file = await handle.getFile().catch(() => null);
+      if (!file) return null;
+
+      const key = thumbKey(meta.name, meta.size, file.lastModified || 0);
+      const cached = await getCachedThumb(key);
+      if (cached) return URL.createObjectURL(cached);
+
+      const type = meta.type;
+      let url = URL.createObjectURL(file);
+      let thumbBlob = null;
+
+      try {
+        if (type === 'video') {
+          thumbBlob = await videoFrameToBlob(url, 0.12);
+        } else if (type === 'image') {
+          thumbBlob = await imageToThumbBlob(url);
+        } else {
+          // audio icon fallback later
+        }
+      } catch (e) { console.warn('thumb gen failed', e); }
+
+      URL.revokeObjectURL(url);
+
+      if (thumbBlob) {
+        await saveCachedThumb(key, thumbBlob);
+        return URL.createObjectURL(thumbBlob);
+      }
+      return null;
+    }
+
+    async function videoFrameToBlob(src, pos = 0.1) {
+      return new Promise((resolve) => {
+        const v = document.createElement('video');
+        v.muted = true; v.playsInline = true;
+        v.onloadedmetadata = () => {
+          const seekTo = Math.max(0.5, Math.min(v.duration * pos, v.duration - 0.5));
+          v.currentTime = seekTo;
+        };
+        v.onseeked = () => {
+          const c = document.createElement('canvas');
+          const w = 320, h = Math.round(w * (v.videoHeight / v.videoWidth || 9/16));
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d', { alpha: false });
+          ctx.drawImage(v, 0, 0, w, h);
+          c.toBlob(b => resolve(b), 'image/jpeg', 0.82);
+          v.remove();
+        };
+        v.onerror = () => resolve(null);
+        v.src = src;
+      });
+    }
+
+    async function imageToThumbBlob(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          const w = 320, h = Math.round(w * (img.height / img.width || 9/16));
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d', { alpha: false });
+          ctx.drawImage(img, 0, 0, w, h);
+          c.toBlob(b => resolve(b), 'image/jpeg', 0.85);
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+    }
+
+    // ====================== STATE & PERSISTENCE ======================
+    const saveStateDebounced = debounce(() => saveStateNow(), 850);
+
+    async function saveStateNow() {
+      if (!db) return;
+      try {
+        // library (store handles + meta)
+        for (const [id, item] of state.library.entries()) {
+          await idbPut('library', {
+            id,
+            handle: item.handle,
+            name: item.name,
+            size: item.size,
+            type: item.type,
+            duration: item.duration,
+            lastVerified: item.lastVerified || Date.now(),
+            stale: !!item.stale
+          });
+        }
+
+        await idbPut('playlist', { key: 'default', items: state.playlist, mode: state.settings.playbackModePlaylist, index: state.runtime.playlistIndex });
+        await idbPut('slideshow', { key: 'default', items: state.slideshow, mode: state.settings.playbackModeSlideshow, index: state.runtime.slideshowIndex });
+        await idbPut('settings', { key: 'global', ...state.settings, projectName: state.projectName, opacity: state.settings.opacity });
+
+        // prune removed library items (optional, keep simple)
+      } catch (e) { console.warn('save failed', e); }
+    }
+
+    async function hydrateState() {
+      if (!db) await openDB();
+
+      // settings
+      const s = await idbGet('settings', 'global');
+      if (s) {
+        state.projectName = s.projectName || 'Untitled Session';
+        Object.assign(state.settings, s);
+      }
+
+      // library
+      const libItems = await idbGetAll('library');
+      state.library.clear();
+      for (const rec of libItems) {
+        if (rec.handle) {
+          state.library.set(rec.id, {
+            id: rec.id,
+            handle: rec.handle,
+            name: rec.name,
+            size: rec.size,
+            type: rec.type,
+            duration: rec.duration,
+            lastVerified: rec.lastVerified,
+            stale: rec.stale || false
+          });
+        }
+      }
+
+      // playlist / slideshow
+      const pl = await idbGet('playlist', 'default');
+      if (pl) { state.playlist = pl.items || []; state.settings.playbackModePlaylist = pl.mode || 'sequential'; state.runtime.playlistIndex = pl.index || 0; }
+      const ss = await idbGet('slideshow', 'default');
+      if (ss) { state.slideshow = ss.items || []; state.settings.playbackModeSlideshow = ss.mode || 'sequential'; state.runtime.slideshowIndex = ss.index || 0; }
+
+      $('#project-name').value = state.projectName;
+      $('#blend-slider').value = Math.round((state.settings.opacity || 0.5) * 100);
+      $('#blend-value').textContent = Math.round((state.settings.opacity || 0.5) * 100) + '%';
+
+      // volumes
+      $('#vol-playlist').value = state.settings.playlistVolume;
+      $('#vol-slideshow').value = state.settings.slideshowVolume;
+      $('#vol-master').value = state.settings.masterVolume;
+      updateVolumeLabels();
+
+      $('#default-duration').value = state.settings.defaultImageDuration;
+      $('#effect-intensity').value = state.settings.effectIntensity;
+      $('#resume-on-load').checked = state.settings.resumeOnLoad;
+      $('#auto-verify').checked = state.settings.autoVerifyOnStartup;
+    }
+
+    async function verifyLibraryHandles() {
+      if (!state.settings.autoVerifyOnStartup) return;
+      let changed = false;
+      for (const [id, item] of state.library) {
+        try {
+          const perm = await item.handle.queryPermission({ mode: 'read' });
+          if (perm === 'granted' || perm === 'prompt') {
+            const file = await item.handle.getFile();
+            item.size = file.size;
+            item.stale = false;
+            item.lastVerified = Date.now();
+            // refresh duration for video/audio if missing (lightweight)
+            if ((item.type === 'video' || item.type === 'audio') && !item.duration) {
+              // duration will be populated on first play or can be done async
+            }
+          } else {
+            item.stale = true;
+          }
+        } catch (e) {
+          item.stale = true;
+        }
+        changed = true;
+      }
+      if (changed) {
+        await saveStateNow();
+        renderLibrary();
+      }
+    }
+
+    // ====================== MEDIA LIBRARY ======================
+    async function addFilesFromPicker() {
+      try {
+        const handles = await window.showOpenFilePicker({ multiple: true });
+        await addHandles(handles);
+      } catch (e) { if (e.name !== 'AbortError') showToast('File picker error'); }
+    }
+
+    async function addFolderFromPicker() {
+      try {
+        const dirHandle = await window.showDirectoryPicker();
+        const handles = [];
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'file') {
+            const ext = getFileExt(entry.name);
+            if (getMediaType(entry.name)) handles.push(entry);
+          }
+          // Note: recursive would be nice but for simplicity we do one level + note
+        }
+        await addHandles(handles, dirHandle);
+        showToast(`Added folder contents (${handles.length} media items)`);
+      } catch (e) { if (e.name !== 'AbortError') showToast('Folder picker cancelled or blocked'); }
+    }
+
+    async function addHandles(handles, dirHandleHint = null) {
+      let added = 0, skipped = 0;
+      for (const h of handles) {
+        const name = h.name;
+        const type = getMediaType(name);
+        if (!type) { skipped++; continue; }
+
+        // dedupe by name + size when possible
+        let exists = false;
+        for (const it of state.library.values()) {
+          if (it.name === name) { exists = true; break; }
+        }
+        if (exists) { skipped++; continue; }
+
+        const id = uid();
+        let size = 0, duration = null;
+        try {
+          const f = await h.getFile();
+          size = f.size;
+        } catch (_) {}
+
+        state.library.set(id, { id, handle: h, name, size, type, duration, lastVerified: Date.now(), stale: false });
+        added++;
+      }
+      renderLibrary();
+      await saveStateNow();
+      if (added) showToast(`Added ${added} item${added>1?'s':''}${skipped ? ` (${skipped} skipped)` : ''}`);
+    }
+
+    function renderLibrary() {
+      const grid = $('#library-grid');
+      grid.innerHTML = '';
+
+      const q = state.ui.search.toLowerCase();
+      const filter = state.ui.currentFilter;
+
+      let count = 0;
+      for (const [id, item] of state.library) {
+        if (filter !== 'all' && item.type !== filter) continue;
+        if (q && !item.name.toLowerCase().includes(q)) continue;
+
+        count++;
+        const card = document.createElement('div');
+        card.className = `lib-card ${item.stale ? 'stale' : ''}`;
+        card.dataset.id = id;
+        if (state.ui.selectedLibrary.has(id)) card.classList.add('selected');
+
+        card.innerHTML = `
+          <div class="thumb" style="--thumb: ''"></div>
+          <div class="meta">
+            <div class="name" title="${item.name}">${item.name}</div>
+            <div class="sub">${item.type.toUpperCase()} • ${formatBytes(item.size)}</div>
+          </div>
+          <div class="badge">${item.type}</div>
+        `;
+
+        // thumb async
+        const thumbEl = card.querySelector('.thumb');
+        generateThumbnail(item.handle, item).then(url => {
+          if (url) {
+            thumbEl.innerHTML = `<img src="${url}" alt="">`;
+            // revoke later on card removal if needed
+          } else {
+            thumbEl.textContent = item.type === 'video' ? '🎬' : item.type === 'audio' ? '🎵' : '🖼️';
+          }
+        });
+
+        card.onclick = (e) => {
+          if (e.shiftKey) {
+            // range not fully implemented for brevity; toggle for demo
+          } else if (e.ctrlKey || e.metaKey) {
+            toggleSelectLibrary(id, card);
+          } else {
+            // single select or play?
+            state.ui.selectedLibrary.clear();
+            state.ui.selectedLibrary.add(id);
+            renderLibrary();
+          }
+        };
+
+        // double click -> add to active list
+        card.ondblclick = () => {
+          const list = state.ui.activeList;
+          addToList(list, [id]);
+        };
+
+        // drag source
+        card.draggable = true;
+        card.ondragstart = (ev) => {
+          const selected = state.ui.selectedLibrary.size ? Array.from(state.ui.selectedLibrary) : [id];
+          ev.dataTransfer.setData('text/plain', JSON.stringify({ ids: selected }));
+          ev.dataTransfer.effectAllowed = 'copy';
+        };
+
+        grid.appendChild(card);
+      }
+
+      $('#lib-count').textContent = `(${count})`;
+      updateSelectedToolbar();
+    }
+
+    function toggleSelectLibrary(id, cardEl) {
+      if (state.ui.selectedLibrary.has(id)) {
+        state.ui.selectedLibrary.delete(id);
+        cardEl.classList.remove('selected');
+      } else {
+        state.ui.selectedLibrary.add(id);
+        cardEl.classList.add('selected');
+      }
+      updateSelectedToolbar();
+    }
+
+    function updateSelectedToolbar() {
+      const n = state.ui.selectedLibrary.size;
+      // could show a floating bar but buttons already exist; we can enhance later
+    }
+
+    function clearLibraryView() {
+      // keep items referenced by lists
+      const used = new Set([...state.playlist, ...state.slideshow].map(x => x.id));
+      for (const id of state.library.keys()) {
+        if (!used.has(id)) state.library.delete(id);
+      }
+      state.ui.selectedLibrary.clear();
+      renderLibrary();
+      saveStateDebounced();
+    }
+
+    async function removeStale() {
+      let removed = 0;
+      for (const [id, item] of [...state.library]) {
+        if (item.stale) {
+          state.library.delete(id);
+          removed++;
+        }
+      }
+      if (removed) {
+        renderLibrary();
+        await saveStateNow();
+        showToast(`Removed ${removed} stale item(s)`);
+      }
+    }
+
+    function filterLibrary(type) {
+      state.ui.currentFilter = type;
+      $all('.type-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === type));
+      renderLibrary();
+    }
+
+    // ====================== LISTS (PLAYLIST / SLIDESHOW) ======================
+    function setActiveList(which) {
+      state.ui.activeList = which;
+      $all('.segmented button').forEach(b => b.classList.toggle('active', b.dataset.tab === which));
+      renderListEditor();
+    }
+
+    function renderListEditor() {
+      const container = $('#list-editor');
+      container.innerHTML = '';
+      const which = state.ui.activeList;
+      const items = which === 'playlist' ? state.playlist : state.slideshow;
+      $('#pl-count').textContent = `(${state.playlist.length})`;
+      $('#ss-count').textContent = `(${state.slideshow.length})`;
+
+      if (!items.length) {
+        container.innerHTML = `<div class="empty">Drop media here or use the buttons above.<br><strong>${which === 'playlist' ? 'Playlist accepts video & audio' : 'Slideshow accepts images & video'}</strong></div>`;
+        return;
+      }
+
+      items.forEach((ref, idx) => {
+        const item = state.library.get(ref.id);
+        if (!item) return;
+
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        row.dataset.id = ref.id;
+        row.dataset.idx = idx;
+
+        let extra = '';
+        if (which === 'slideshow') {
+          const dur = ref.displayDuration || state.settings.defaultImageDuration;
+          if (item.type === 'image') {
+            extra = `<input type="number" step="0.5" min="0.5" value="${dur}" title="Display seconds">s`;
+          } else if (item.type === 'video') {
+            const checked = ref.includeAudio ? 'checked' : '';
+            extra = `<label class="audio-flag"><input type="checkbox" ${checked}> Include audio</label>`;
+          }
+        }
+
+        row.innerHTML = `
+          <span class="drag">≡</span>
+          <div class="thumb-sm"></div>
+          <div class="info">
+            <div class="name" title="${item.name}">${item.name}</div>
+            <div class="path">${formatBytes(item.size)}</div>
+          </div>
+          ${extra}
+          <span class="del" title="Remove">✕</span>
+        `;
+
+        // thumb
+        const t = row.querySelector('.thumb-sm');
+        generateThumbnail(item.handle, item).then(u => {
+          if (u) t.innerHTML = `<img src="${u}" alt="">`;
+          else t.textContent = item.type === 'video' ? '🎬' : '🖼️';
+        });
+
+        // delete
+        row.querySelector('.del').onclick = (e) => {
+          e.stopImmediatePropagation();
+          removeFromList(which, idx);
+        };
+
+        // slideshow controls
+        if (which === 'slideshow') {
+          const num = row.querySelector('input[type="number"]');
+          if (num) {
+            num.onchange = () => {
+              ref.displayDuration = parseFloat(num.value) || state.settings.defaultImageDuration;
+              saveStateDebounced();
+            };
+          }
+          const cb = row.querySelector('input[type="checkbox"]');
+          if (cb) {
+            cb.onchange = () => { ref.includeAudio = cb.checked; saveStateDebounced(); };
+          }
+        }
+
+        // drag & drop reorder
+        row.draggable = true;
+        row.ondragstart = (ev) => {
+          ev.dataTransfer.setData('text/plain', JSON.stringify({ reorder: true, from: idx, list: which }));
+        };
+        row.ondragover = (ev) => { ev.preventDefault(); row.style.background = '#222'; };
+        row.ondragleave = () => { row.style.background = ''; };
+        row.ondrop = (ev) => {
+          ev.preventDefault(); row.style.background = '';
+          const data = JSON.parse(ev.dataTransfer.getData('text/plain') || '{}');
+          if (data.reorder && data.list === which) {
+            reorderList(which, data.from, idx);
+          } else if (data.ids) {
+            insertIntoListAt(which, data.ids, idx);
+          }
+        };
+
+        // click to "play from here"
+        row.onclick = () => playFromHere(which, idx);
+
+        container.appendChild(row);
+      });
+
+      // allow drop on container for append
+      container.ondragover = e => e.preventDefault();
+      container.ondrop = (ev) => {
+        ev.preventDefault();
+        const data = JSON.parse(ev.dataTransfer.getData('text/plain') || '{}');
+        if (data.ids) addToList(which, data.ids);
+        if (data.reorder) { /* already handled per row */ }
+      };
+    }
+
+    function addToList(which, ids) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      const allowed = which === 'playlist' ? ['video','audio'] : ['video','image'];
+
+      let added = 0;
+      ids.forEach(id => {
+        const item = state.library.get(id);
+        if (!item || !allowed.includes(item.type)) return;
+        if (list.some(r => r.id === id)) return; // dedupe
+        const ref = { id, addedAt: Date.now() };
+        if (which === 'slideshow') {
+          if (item.type === 'image') ref.displayDuration = state.settings.defaultImageDuration;
+          if (item.type === 'video') ref.includeAudio = false;
+        }
+        list.push(ref);
+        added++;
+      });
+      if (added) {
+        renderListEditor();
+        saveStateDebounced();
+        showToast(`Added ${added} to ${which}`);
+      } else {
+        showToast(which === 'playlist' ? 'Playlist only accepts video & audio' : 'Slideshow only accepts images & video', {timeout: 1800});
+      }
+    }
+
+    function insertIntoListAt(which, ids, atIndex) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      const allowed = which === 'playlist' ? ['video','audio'] : ['video','image'];
+      let added = 0;
+      ids.forEach(id => {
+        const item = state.library.get(id);
+        if (!item || !allowed.includes(item.type)) return;
+        if (list.some(r => r.id === id)) return;
+        const ref = { id, addedAt: Date.now() };
+        if (which === 'slideshow') {
+          if (item.type === 'image') ref.displayDuration = state.settings.defaultImageDuration;
+          if (item.type === 'video') ref.includeAudio = false;
+        }
+        list.splice(atIndex, 0, ref);
+        atIndex++;
+        added++;
+      });
+      renderListEditor();
+      saveStateDebounced();
+    }
+
+    function reorderList(which, from, to) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      const [m] = list.splice(from, 1);
+      list.splice(to, 0, m);
+      renderListEditor();
+      saveStateDebounced();
+    }
+
+    function removeFromList(which, idx) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      const removed = list.splice(idx, 1)[0];
+      renderListEditor();
+      saveStateDebounced();
+
+      // undo
+      showToast(`Removed from ${which}`, {
+        undo: () => {
+          list.splice(idx, 0, removed);
+          renderListEditor();
+          saveStateDebounced();
+        }
+      });
+    }
+
+    function clearList(which) {
+      if (!confirm(`Clear entire ${which}?`)) return;
+      if (which === 'playlist') state.playlist = []; else state.slideshow = [];
+      renderListEditor();
+      saveStateDebounced();
+    }
+
+    function shuffleList(which) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      state.runtime.historyPlaylist = [];
+      state.runtime.historySlideshow = [];
+      renderListEditor();
+      saveStateDebounced();
+    }
+
+    // ====================== PLAYBACK ENGINE ======================
+    function setupMediaLayers() {
+      const plLayer = $('#playlist-layer');
+      plLayer.innerHTML = '';
+      playlistVideoA = document.createElement('video');
+      playlistVideoB = document.createElement('video');
+      [playlistVideoA, playlistVideoB].forEach(v => {
+        v.style.position = 'absolute'; v.style.inset = '0';
+        v.style.width = '100%'; v.style.height = '100%'; v.style.objectFit = 'contain';
+        v.muted = false; v.playsInline = true;
+        plLayer.appendChild(v);
+      });
+      playlistVideoA.style.zIndex = '1';
+      playlistVideoB.style.zIndex = '2';
+
+      const ssLayer = $('#slideshow-layer');
+      ssLayer.innerHTML = '';
+      // container for ken burns + crossfade
+      const wrapper = document.createElement('div');
+      wrapper.className = 'kenburns-wrapper';
+      wrapper.style.width = '100%'; wrapper.style.height = '100%';
+      ssLayer.appendChild(wrapper);
+      slideshowMedia = null; // created on demand
+
+      // ended handlers
+      playlistVideoA.onended = () => advancePlaylist();
+      playlistVideoB.onended = () => advancePlaylist();
+
+      // wire blend slider live
+      const blend = $('#blend-slider');
+      blend.oninput = () => {
+        const val = parseInt(blend.value, 10) / 100;
+        state.settings.opacity = val;
+        $('#slideshow-layer').style.opacity = val;
+        $('#blend-value').textContent = Math.round(val * 100) + '%';
+        saveStateDebounced();
+      };
+    }
+
+    function setBlend(val01) {
+      const v = Math.max(0, Math.min(1, val01));
+      state.settings.opacity = v;
+      $('#slideshow-layer').style.opacity = v;
+      $('#blend-slider').value = Math.round(v * 100);
+      $('#blend-value').textContent = Math.round(v * 100) + '%';
+    }
+
+    async function loadPlaylistItem(itemRef, useB = false) {
+      const item = state.library.get(itemRef.id);
+      if (!item || item.stale) { advancePlaylist(); return; }
+
+      const target = useB ? playlistVideoB : playlistVideoA;
+      const other = useB ? playlistVideoA : playlistVideoB;
+
+      try {
+        const file = await item.handle.getFile();
+        const url = URL.createObjectURL(file);
+
+        // crossfade
+        target.style.transition = 'opacity 420ms';
+        target.style.opacity = '0';
+        target.src = url;
+        target.volume = (state.settings.playlistVolume || 1) * (state.settings.masterVolume || 1);
+        await target.play().catch(() => {});
+
+        // fade
+        requestAnimationFrame(() => {
+          target.style.opacity = '1';
+          other.style.opacity = '0';
+          setTimeout(() => {
+            if (other.src && other.src.startsWith('blob:')) URL.revokeObjectURL(other.src);
+            other.src = '';
+          }, 500);
+        });
+
+        currentPlaylistItem = item;
+        updateHUD();
+      } catch (e) {
+        console.warn('playlist load failed', e);
+        showToast('Failed to load playlist item');
+        advancePlaylist();
+      }
+    }
+
+    async function loadSlideshowItem(itemRef, withCrossfade = true) {
+      const item = state.library.get(itemRef.id);
+      if (!item || item.stale) { advanceSlideshow(); return; }
+
+      const layer = $('#slideshow-layer');
+      const wrapper = layer.querySelector('.kenburns-wrapper') || layer;
+
+      // cleanup previous
+      if (slideshowMedia) {
+        if (withCrossfade) {
+          slideshowMedia.style.transition = 'opacity 650ms';
+          slideshowMedia.style.opacity = '0';
+          setTimeout(() => { if (slideshowMedia && slideshowMedia.parentNode) slideshowMedia.parentNode.removeChild(slideshowMedia); }, 700);
+        } else {
+          wrapper.innerHTML = '';
+        }
+      }
+
+      const file = await item.handle.getFile().catch(() => null);
+      if (!file) { advanceSlideshow(); return; }
+      const url = URL.createObjectURL(file);
+
+      let el;
+      if (item.type === 'image') {
+        el = document.createElement('img');
+        el.src = url;
+        el.style.maxWidth = '100%'; el.style.maxHeight = '100%'; el.style.objectFit = 'contain';
+        wrapper.appendChild(el);
+        startKenBurns(el, itemRef.displayDuration || state.settings.defaultImageDuration);
+      } else {
+        el = document.createElement('video');
+        el.src = url; el.playsInline = true; el.loop = false;
+        el.volume = (itemRef.includeAudio ? state.settings.slideshowVolume : 0) * state.settings.masterVolume;
+        wrapper.appendChild(el);
+        el.play().catch(()=>{});
+        el.onended = () => advanceSlideshow();
+      }
+
+      el.style.opacity = withCrossfade ? '0' : '1';
+      requestAnimationFrame(() => { el.style.transition = 'opacity 620ms'; el.style.opacity = '1'; });
+
+      slideshowMedia = el;
+      currentSlideshowItem = item;
+
+      // schedule next for images
+      if (item.type === 'image') {
+        clearTimeout(slideshowTimer);
+        const dur = (itemRef.displayDuration || state.settings.defaultImageDuration) * 1000;
+        slideshowTimer = setTimeout(() => advanceSlideshow(), dur);
+      }
+
+      updateHUD();
+    }
+
+    function startKenBurns(mediaEl, durationSec) {
+      if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+      const intensity = getIntensityMultiplier();
+      if (intensity <= 0.05) return; // off
+
+      const start = performance.now();
+      const dur = durationSec * 1000;
+      const maxZoom = 1 + (0.07 * intensity);
+      const dirX = (Math.random() - 0.5) * 2 * (4 * intensity);
+      const dirY = (Math.random() - 0.5) * 2 * (3 * intensity);
+
+      function frame(now) {
+        const p = Math.min(1, (now - start) / dur);
+        const z = 1 + (maxZoom - 1) * p;
+        const tx = dirX * p;
+        const ty = dirY * p;
+        mediaEl.style.transform = `scale(${z}) translate(${tx}%, ${ty}%)`;
+        if (p < 1) kenBurnsRAF = requestAnimationFrame(frame);
+      }
+      kenBurnsRAF = requestAnimationFrame(frame);
+    }
+
+    function getIntensityMultiplier() {
+      const i = state.settings.effectIntensity;
+      if (i === 'off') return 0;
+      if (i === 'subtle') return 1;
+      if (i === 'medium') return 1.7;
+      if (i === 'strong') return 2.6;
+      return 1;
+    }
+
+    function advancePlaylist() {
+      if (!state.playlist.length) return;
+      const mode = state.settings.playbackModePlaylist || 'sequential';
+      let next = state.runtime.playlistIndex + 1;
+
+      if (mode === 'random') {
+        state.runtime.historyPlaylist.push(state.runtime.playlistIndex);
+        let candidate = Math.floor(Math.random() * state.playlist.length);
+        if (candidate === state.runtime.playlistIndex && state.playlist.length > 1) candidate = (candidate + 1) % state.playlist.length;
+        next = candidate;
+      } else if (mode === 'shuffle') {
+        // simple linear for now; could precompute perm
+        next = (state.runtime.playlistIndex + 1) % state.playlist.length;
+      } else {
+        // sequential + loop handled on end
+        if (next >= state.playlist.length) next = 0;
+      }
+
+      state.runtime.playlistIndex = next;
+      const useB = (state.runtime.playlistIndex % 2 === 1);
+      loadPlaylistItem(state.playlist[next], useB);
+      saveStateDebounced();
+    }
+
+    function advanceSlideshow() {
+      clearTimeout(slideshowTimer);
+      if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+
+      if (!state.slideshow.length) return;
+      let next = (state.runtime.slideshowIndex + 1) % state.slideshow.length;
+      state.runtime.slideshowIndex = next;
+      loadSlideshowItem(state.slideshow[next], true);
+      saveStateDebounced();
+    }
+
+    async function playFromHere(which, idx) {
+      if (which === 'playlist') {
+        state.runtime.playlistIndex = idx;
+        await loadPlaylistItem(state.playlist[idx], false);
+      } else {
+        state.runtime.slideshowIndex = idx;
+        await loadSlideshowItem(state.slideshow[idx], false);
+      }
+      if (!state.runtime.isPlaying) togglePlay();
+    }
+
+    async function togglePlay() {
+      const playing = state.runtime.isPlaying;
+      state.runtime.isPlaying = !playing;
+
+      const btn = $('#btn-play');
+      btn.textContent = state.runtime.isPlaying ? '⏸' : '▶';
+
+      if (state.runtime.isPlaying) {
+        // start both layers from current positions
+        if (state.playlist.length) {
+          const it = state.playlist[state.runtime.playlistIndex] || state.playlist[0];
+          if (it) await loadPlaylistItem(it, false);
+        }
+        if (state.slideshow.length) {
+          const it = state.slideshow[state.runtime.slideshowIndex] || state.slideshow[0];
+          if (it) await loadSlideshowItem(it, false);
+        }
+      } else {
+        // pause both
+        if (playlistVideoA) playlistVideoA.pause();
+        if (playlistVideoB) playlistVideoB.pause();
+        if (slideshowMedia && slideshowMedia.tagName === 'VIDEO') slideshowMedia.pause();
+        clearTimeout(slideshowTimer);
+      }
+    }
+
+    function stopPlayback() {
+      state.runtime.isPlaying = false;
+      $('#btn-play').textContent = '▶';
+      if (playlistVideoA) { playlistVideoA.pause(); playlistVideoA.src = ''; }
+      if (playlistVideoB) { playlistVideoB.pause(); playlistVideoB.src = ''; }
+      const ssLayer = $('#slideshow-layer');
+      ssLayer.innerHTML = '<div class="kenburns-wrapper" style="width:100%;height:100%"></div>';
+      slideshowMedia = null;
+      clearTimeout(slideshowTimer);
+      if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+      state.runtime.playlistIndex = 0;
+      state.runtime.slideshowIndex = 0;
+      updateHUD();
+    }
+
+    function updateHUD() {
+      const p = currentPlaylistItem ? currentPlaylistItem.name : '—';
+      const s = currentSlideshowItem ? currentSlideshowItem.name : '—';
+      $('#hud-playlist').textContent = p.length > 28 ? p.slice(0,25)+'…' : p;
+      $('#hud-slideshow').textContent = s.length > 28 ? s.slice(0,25)+'…' : s;
+      const blendPct = Math.round((state.settings.opacity || 0.5) * 100);
+      $('#hud-blend').textContent = blendPct + '%';
+    }
+
+    function updateVolumeLabels() {
+      $('#vol-playlist-val').textContent = Math.round($('#vol-playlist').value * 100) + '%';
+      $('#vol-slideshow-val').textContent = Math.round($('#vol-slideshow').value * 100) + '%';
+      $('#vol-master-val').textContent = Math.round($('#vol-master').value * 100) + '%';
+    }
+
+    function wireTransport() {
+      $('#btn-play').onclick = togglePlay;
+      $('#btn-prev').onclick = () => previousBoth();
+      $('#btn-next').onclick = () => nextBoth();
+      $('#btn-stop').onclick = stopPlayback;
+
+      const blend = $('#blend-slider');
+      blend.oninput = () => {
+        setBlend(parseInt(blend.value, 10) / 100);
+      };
+
+      $('#btn-fullscreen').onclick = () => {
+        const v = $('#viewport');
+        if (document.fullscreenElement) document.exitFullscreen();
+        else v.requestFullscreen().catch(()=>{});
+      };
+
+      $('#btn-mute').onclick = toggleMute;
+
+      // volume wiring
+      ['vol-playlist','vol-slideshow','vol-master'].forEach(id => {
+        const el = $('#' + id);
+        el.oninput = () => {
+          state.settings[id.replace('vol-','') + 'Volume'] = parseFloat(el.value);
+          updateVolumeLabels();
+          applyVolumes();
+          saveStateDebounced();
+        };
+      });
+
+      $('#effect-intensity').onchange = (e) => {
+        state.settings.effectIntensity = e.target.value;
+        saveStateDebounced();
+      };
+      $('#default-duration').onchange = (e) => {
+        state.settings.defaultImageDuration = parseFloat(e.target.value) || 4;
+        saveStateDebounced();
+      };
+      $('#resume-on-load').onchange = (e) => { state.settings.resumeOnLoad = e.target.checked; saveStateDebounced(); };
+      $('#auto-verify').onchange = (e) => { state.settings.autoVerifyOnStartup = e.target.checked; saveStateDebounced(); };
+    }
+
+    function applyVolumes() {
+      const mp = state.settings.playlistVolume * state.settings.masterVolume;
+      const ms = state.settings.slideshowVolume * state.settings.masterVolume;
+      if (playlistVideoA) playlistVideoA.volume = mp;
+      if (playlistVideoB) playlistVideoB.volume = mp;
+      if (slideshowMedia && slideshowMedia.tagName === 'VIDEO') {
+        const item = currentSlideshowItem;
+        const ref = state.slideshow[state.runtime.slideshowIndex];
+        slideshowMedia.volume = (ref && ref.includeAudio ? ms : 0);
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      const btn = $('#btn-mute');
+      if (isMuted) {
+        originalVolumes = {
+          p: state.settings.playlistVolume,
+          s: state.settings.slideshowVolume,
+          m: state.settings.masterVolume
+        };
+        state.settings.playlistVolume = 0;
+        state.settings.slideshowVolume = 0;
+        state.settings.masterVolume = 0;
+        btn.textContent = '🔇';
+      } else {
+        state.settings.playlistVolume = originalVolumes.p ?? 1;
+        state.settings.slideshowVolume = originalVolumes.s ?? 0.65;
+        state.settings.masterVolume = originalVolumes.m ?? 1;
+        btn.textContent = '🔊';
+      }
+      updateVolumeLabels();
+      $('#vol-playlist').value = state.settings.playlistVolume;
+      $('#vol-slideshow').value = state.settings.slideshowVolume;
+      $('#vol-master').value = state.settings.masterVolume;
+      applyVolumes();
+    }
+
+    function nextBoth() {
+      if (state.playlist.length) advancePlaylist();
+      if (state.slideshow.length) advanceSlideshow();
+    }
+
+    function previousBoth() {
+      // use history when available
+      const plH = state.runtime.historyPlaylist;
+      if (plH.length) {
+        state.runtime.playlistIndex = plH.pop();
+      } else {
+        state.runtime.playlistIndex = Math.max(0, state.runtime.playlistIndex - 1);
+      }
+      if (state.playlist[state.runtime.playlistIndex]) loadPlaylistItem(state.playlist[state.runtime.playlistIndex], false);
+
+      // simple for slideshow
+      state.runtime.slideshowIndex = Math.max(0, state.runtime.slideshowIndex - 1);
+      if (state.slideshow[state.runtime.slideshowIndex]) loadSlideshowItem(state.slideshow[state.runtime.slideshowIndex], false);
+    }
+
+    // ====================== CONFIG PANEL ======================
+    function openConfig() {
+      $('#config-panel').classList.add('open');
+      $('#config-backdrop').classList.add('open');
+      renderLibrary();
+      renderListEditor();
+    }
+    function closeConfig() {
+      $('#config-panel').classList.remove('open');
+      $('#config-backdrop').classList.remove('open');
+    }
+
+    function wireConfig() {
+      $('#config-gear').onclick = () => {
+        if ($('#config-panel').classList.contains('open')) closeConfig();
+        else openConfig();
+      };
+      $('#close-config').onclick = closeConfig;
+      $('#config-backdrop').onclick = closeConfig;
+
+      $('#project-name').oninput = (e) => {
+        state.projectName = e.target.value || 'Untitled Session';
+        document.title = state.projectName + ' • Blend';
+        saveStateDebounced();
+      };
+
+      // add buttons
+      $('#add-files').onclick = addFilesFromPicker;
+      $('#add-folder').onclick = addFolderFromPicker;
+      $('#add-all-playlist').onclick = () => addAllVisible('playlist');
+      $('#add-all-slideshow').onclick = () => addAllVisible('slideshow');
+      $('#clear-library').onclick = clearLibraryView;
+      $('#remove-stale').onclick = removeStale;
+
+      $('#add-selected-playlist').onclick = () => {
+        const ids = Array.from(state.ui.selectedLibrary);
+        addToList('playlist', ids);
+        state.ui.selectedLibrary.clear();
+        renderLibrary();
+      };
+      $('#add-selected-slideshow').onclick = () => {
+        const ids = Array.from(state.ui.selectedLibrary);
+        addToList('slideshow', ids);
+        state.ui.selectedLibrary.clear();
+        renderLibrary();
+      };
+
+      // search
+      const search = $('#library-search');
+      search.oninput = debounce(() => {
+        state.ui.search = search.value;
+        renderLibrary();
+      }, 120);
+
+      // pills
+      $all('.type-pill').forEach(p => {
+        p.onclick = () => filterLibrary(p.dataset.filter);
+      });
+
+      // segmented
+      $all('.segmented button').forEach(b => {
+        b.onclick = () => setActiveList(b.dataset.tab);
+      });
+
+      // list actions
+      $('#list-clear').onclick = () => clearList(state.ui.activeList);
+      $('#list-shuffle').onclick = () => shuffleList(state.ui.activeList);
+      $('#list-export').onclick = () => exportList(state.ui.activeList);
+      $('#list-import').onclick = importList;
+
+      // drag drop on library grid for OS files
+      const grid = $('#library-grid');
+      grid.ondragover = e => { e.preventDefault(); grid.classList.add('drag-over'); };
+      grid.ondragleave = () => grid.classList.remove('drag-over');
+      grid.ondrop = async (e) => {
+        e.preventDefault(); grid.classList.remove('drag-over');
+        const items = e.dataTransfer.items;
+        const handles = [];
+        for (const it of items) {
+          if (it.kind === 'file') {
+            const h = await it.getAsFileSystemHandle().catch(() => null);
+            if (h && h.kind === 'file') handles.push(h);
+          }
+        }
+        if (handles.length) await addHandles(handles);
+      };
+
+      // global settings live
+      $('#vol-playlist').oninput = () => { state.settings.playlistVolume = parseFloat($('#vol-playlist').value); updateVolumeLabels(); applyVolumes(); saveStateDebounced(); };
+      // (others already wired in wireTransport)
+
+      // keyboard focus hint
+      document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+          e.preventDefault(); $('#library-search').focus(); openConfig();
+        }
+      });
+    }
+
+    function addAllVisible(which) {
+      const visible = [];
+      const q = state.ui.search.toLowerCase();
+      const f = state.ui.currentFilter;
+      for (const [id, item] of state.library) {
+        if (f !== 'all' && item.type !== f) continue;
+        if (q && !item.name.toLowerCase().includes(q)) continue;
+        visible.push(id);
+      }
+      addToList(which, visible);
+    }
+
+    // ====================== IMPORT / EXPORT ======================
+    function exportList(which) {
+      const list = which === 'playlist' ? state.playlist : state.slideshow;
+      const data = list.map(ref => {
+        const it = state.library.get(ref.id);
+        return {
+          path: it ? it.name : ref.id, // for v2 we use name; full path would require more work with handles
+          displayDuration: ref.displayDuration,
+          includeAudio: ref.includeAudio,
+          type: it ? it.type : undefined
+        };
+      });
+      const blob = new Blob([JSON.stringify({ version: 2, type: which, items: data, project: state.projectName }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `blend-${which}-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    async function importList() {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = '.json,.txt,.md';
+      inp.onchange = async () => {
+        const file = inp.files[0];
+        if (!file) return;
+        const text = await file.text();
+        try {
+          const parsed = JSON.parse(text);
+          const which = parsed.type || 'playlist';
+          const list = which === 'playlist' ? state.playlist : state.slideshow;
+          list.length = 0;
+          (parsed.items || []).forEach(it => {
+            // find by name in library (best effort)
+            for (const [id, libItem] of state.library) {
+              if (libItem.name === it.path || libItem.name.endsWith(it.path)) {
+                const ref = { id };
+                if (it.displayDuration) ref.displayDuration = it.displayDuration;
+                if (typeof it.includeAudio === 'boolean') ref.includeAudio = it.includeAudio;
+                list.push(ref);
+                break;
+              }
+            }
+          });
+          renderListEditor();
+          showToast(`Imported ${list.length} items into ${which}`);
+        } catch (e) {
+          showToast('Import failed — JSON only in this build');
+        }
+      };
+      inp.click();
+    }
+
+    // ====================== KEYBOARD ======================
+    function wireKeyboard() {
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        const k = e.key.toLowerCase();
+        if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
+        else if (k === 'arrowleft' || k === 'j') { e.preventDefault(); previousBoth(); }
+        else if (k === 'arrowright' || k === 'l') { e.preventDefault(); nextBoth(); }
+        else if (k === '[') { setBlend((state.settings.opacity || 0.5) - 0.1); }
+        else if (k === ']') { setBlend((state.settings.opacity || 0.5) + 0.1); }
+        else if (k === 'c') { $('#config-panel').classList.contains('open') ? closeConfig() : openConfig(); }
+        else if (k === 'f') { e.preventDefault(); $('#btn-fullscreen').click(); }
+        else if (k === 'm') { e.preventDefault(); toggleMute(); }
+        else if (k === '?') { e.preventDefault(); $('#help-modal').showModal(); }
+        else if (k === 'escape') {
+          const modals = document.querySelectorAll('dialog[open]');
+          if (modals.length) modals[modals.length-1].close();
+          else if ($('#config-panel').classList.contains('open')) closeConfig();
+        }
+        else if (/^[1-9]$/.test(k) && playlistVideoA && !playlistVideoA.paused) {
+          const p = parseInt(k, 10) / 10;
+          if (playlistVideoA.duration) playlistVideoA.currentTime = playlistVideoA.duration * p;
+        }
+        else if (k === 'delete' || k === 'backspace') {
+          // remove focused list item if any
+          const focused = document.activeElement.closest('.list-item');
+          if (focused) {
+            const idx = parseInt(focused.dataset.idx, 10);
+            removeFromList(state.ui.activeList, idx);
+          }
+        }
+      });
+
+      // ? button could be added to header
+    }
+
+    // ====================== PWA (adapted) ======================
+    async function setupPWA() {
+      // minimal manifest generation like v1 (skipped on file: to avoid "unsafe frame load" warnings)
+      if (location.protocol === 'file:') return;
+      try {
+        const favicon = document.querySelector('link[rel="shortcut icon"]');
+        const iconSrc = favicon ? favicon.href :
+          'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath fill=%27%23ff1493%27 d=%27M8 5.14v14l11-7-11-7z%27/%3E%3C/svg%3E';
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        const manifest = {
+          name: 'Blend • player.html',
+          short_name: 'Blend Player',
+          start_url: location.pathname,
+          display: 'standalone',
+          background_color: '#0a0a0a',
+          theme_color: '#ff1493',
+          icons: [{ src: iconSrc, sizes: '192x192', type: 'image/svg+xml' }]
+        };
+        const json = JSON.stringify(manifest);
+        link.href = 'data:application/json;base64,' + btoa(json);
+        document.head.appendChild(link);
+      } catch (_) {}
+    }
+
+    // ====================== FIRST RUN / WELCOME ======================
+    function maybeShowWelcome() {
+      const seen = localStorage.getItem('blend-welcome-v2');
+      if (seen) return;
+      const m = $('#welcome-modal');
+      m.showModal();
+      $('#welcome-dismiss').onclick = () => { localStorage.setItem('blend-welcome-v2', '1'); m.close(); };
+      $('#welcome-add-folder').onclick = async () => {
+        m.close(); localStorage.setItem('blend-welcome-v2', '1');
+        await addFolderFromPicker();
+      };
+    }
+
+    // ====================== INIT ======================
+    async function bootstrap() {
+      document.title = state.projectName + ' • Blend';
+
+      await openDB();
+      await hydrateState();
+
+      setupMediaLayers();
+      wireTransport();
+      wireConfig();
+      wireKeyboard();
+      await setupPWA();
+
+      // initial renders
+      renderLibrary();
+      renderListEditor();
+      setBlend(state.settings.opacity || 0.5);
+
+      // verify handles (non-blocking)
+      setTimeout(() => verifyLibraryHandles(), 1200);
+
+      // restore last indices visually
+      updateHUD();
+
+      // first run
+      setTimeout(maybeShowWelcome, 900);
+
+      // keyboard hint
+      console.log('%c[Blend] Press ? for keyboard shortcuts. C to open editor.', 'color:#666');
+
+      // expose a little for debugging
+      window.Blend = { state, saveStateNow, renderLibrary, renderListEditor };
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  </script>
+</body>
+</html>
