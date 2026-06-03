@@ -1,5 +1,7 @@
 # Blend Player
 
+Fork from `https://github.com/pseudosavant/player.html`. Git dropped and re-started new because this is such a different application. `slideshow-playlist-player.html\src\player.html` kept for reference.
+
 Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src/slideshow-playlist-player.html` app with no build step and no server-side media processing.
 
 The app is designed for desktop curation sessions, events, screenings, and experiments where privacy matters: media files stay on your machine, file handles and library metadata are stored in IndexedDB, and exports are human-readable JSON.

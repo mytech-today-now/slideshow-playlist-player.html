@@ -98,3 +98,4 @@ thumbnail-cache/
 src/player-copy*.html
 src/*.bak.html
 src/slideshow-playlist-player-*.html
+src/player.v1.html
