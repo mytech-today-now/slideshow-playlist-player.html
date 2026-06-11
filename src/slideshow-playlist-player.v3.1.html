@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
+  <meta name="version" content="2.5.0"> <!-- see script comment block for full changelog -->
+  <meta id="theme-color-meta" name="theme-color" content="#ff1493">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Blend Player">
+  <title>Blend • player.html</title>
+  <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff1493' d='M8 5.14v14l11-7-11-7z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js"></script>
+</head>
+<body>
+  <!-- VIEWPORT -->
+  <div id="viewport">
+    <div id="playlist-layer" class="media-layer bottom"></div>
+    <div id="slideshow-layer" class="media-layer top"></div>
+
+    <div id="viewport-hud">
+      <span id="hud-playlist">—</span>
+      <span class="sep">•</span>
+      <span id="hud-slideshow">—</span>
+      <span class="sep">•</span>
+      <span id="hud-blend">50%</span>
+    </div>
+    <div id="slideshow-loading" class="loading-pill" role="status" aria-live="polite">Loading next slide…</div>
+
+    <button id="config-gear" title="Configuration (C)" aria-label="Open configuration panel">☰</button>
+
+    <!-- Transport -->
+    <div id="transport" role="group" aria-label="Playback controls">
+      <button id="btn-prev" title="Previous (← or J)" aria-label="Previous media">⏮</button>
+      <button id="btn-play" class="play-btn" title="Play / Pause (Space or K)" aria-label="Play or pause">▶</button>
+      <button id="btn-next" title="Next (→ or L)" aria-label="Next media">⏭</button>
+      <button id="btn-stop" title="Stop" aria-label="Stop playback">⏹</button>
+
+      <div class="blend-wrap">
+        <label for="blend-slider">Blend</label>
+        <input id="blend-slider" type="range" min="0" max="100" value="50" title="Opacity blend — [ / ] keys" aria-label="Slideshow blend opacity">
+        <span id="blend-value">50%</span>
+      </div>
+
+      <button id="btn-fullscreen" title="Fullscreen viewport (F)" aria-label="Toggle immersive fullscreen">⛶</button>
+      <button id="btn-mute" title="Mute (M)" aria-label="Mute or unmute">🔊</button>
+    </div>
+  </div>
+
+  <!-- CONFIG PANEL -->
+  <div id="config-backdrop"></div>
+  <div id="config-panel" role="dialog" aria-label="Configuration" aria-modal="false">
+    <div class="config-header">
+      <input id="project-name" type="text" placeholder="Project name (for exports)" aria-label="Project name">
+      <button id="install-app" class="header-icon-btn hidden" type="button" title="Install app">Install</button>
+      <span id="app-version" class="version-badge" title="Application version">v2.5.0</span>
+      <span id="close-config" class="close-btn" title="Close (Esc)" role="button" tabindex="0" aria-label="Close configuration panel">✕</span>
+    </div>
+
+    <div id="mobile-panel-tabs" class="mobile-panel-tabs" role="tablist" aria-label="Configuration sections">
+      <button type="button" data-panel="library" class="active" role="tab" aria-selected="true">Library</button>
+      <button type="button" data-panel="list" role="tab" aria-selected="false">Lists</button>
+    </div>
+
+    <div class="config-body">
+      <!-- LIBRARY -->
+      <div class="library-pane">
+        <div class="pane-header">
+          <span>Media Library <span id="lib-count" class="muted">(0)</span></span>
+        </div>
+        <div class="pane-actions">
+          <button id="add-files" class="primary">Add Files</button>
+          <button id="add-folder">Add Folder</button>
+          <button id="add-all-playlist">→ Playlist</button>
+          <button id="add-all-slideshow">→ Slideshow</button>
+          <button id="library-sort" aria-haspopup="menu" aria-expanded="false">Sort ▾</button>
+          <button id="clear-library">Clear View</button>
+          <button id="remove-stale">Remove Stale</button>
+        </div>
+
+        <p id="picker-guidance" class="mobile-note">On phones and tablets, Add Files opens your photo library or file picker. Add Folder uses browser folder access when supported, with file picker fallback.</p>
+
+        <input id="library-search" type="search" placeholder="Search media… (/)">
+
+        <div class="type-pills">
+          <div class="type-pill active" data-filter="all">All</div>
+          <div class="type-pill" data-filter="video">Video</div>
+          <div class="type-pill" data-filter="audio">Audio</div>
+          <div class="type-pill" data-filter="image">Image</div>
+        </div>
+
+        <div id="library-grid" role="listbox" aria-label="Media Library" aria-multiselectable="true"></div>
+
+        <div class="pane-actions" style="border-top:1px solid var(--border); margin-top:auto; padding-top:8px;">
+          <button id="add-selected-playlist">Add Selected → Playlist</button>
+          <button id="add-selected-slideshow">Add Selected → Slideshow</button>
+        </div>
+      </div>
+
+      <!-- LISTS -->
+      <div class="list-pane">
+        <div class="segmented" role="tablist">
+          <button data-tab="playlist" class="active" aria-selected="true">Playlist <span id="pl-count">(0)</span></button>
+          <button data-tab="slideshow" aria-selected="false">Slideshow <span id="ss-count">(0)</span></button>
+        </div>
+
+        <div id="list-editor" role="listbox" aria-label="Playlist editor"></div>
+
+        <div class="list-actions">
+          <div class="list-action-group" aria-label="List organization actions">
+            <button id="list-clear" class="list-action">Clear All</button>
+            <button id="list-shuffle" class="list-action">Shuffle</button>
+            <button id="list-sort" class="list-action" aria-haspopup="menu" aria-expanded="false">Sort ▾</button>
+            <button id="list-reverse" class="list-action">Reverse</button>
+          </div>
+          <div class="list-action-group" aria-label="List import and export actions">
+            <button id="list-export" class="list-action" aria-haspopup="menu" aria-expanded="false">Export…</button>
+            <button id="list-import" class="list-action">Import List…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLOBAL SETTINGS -->
+    <div class="global-settings">
+      <div class="row">
+        <label>Default image duration</label>
+        <input id="default-duration" type="number" step="0.5" min="0.5" max="300" value="4.0" style="width:70px"> s
+      </div>
+      <div class="row">
+        <label>Effect intensity</label>
+        <select id="effect-intensity">
+          <option value="off">Off</option>
+          <option value="subtle" selected>Subtle</option>
+          <option value="medium">Medium</option>
+          <option value="strong">Strong</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Playlist volume</label>
+        <input id="vol-playlist" type="range" min="0" max="1" step="0.05" value="1">
+        <span id="vol-playlist-val">100%</span>
+      </div>
+      <div class="row">
+        <label>Slideshow volume</label>
+        <input id="vol-slideshow" type="range" min="0" max="1" step="0.05" value="0.65">
+        <span id="vol-slideshow-val">65%</span>
+      </div>
+      <div class="row">
+        <label>Master volume</label>
+        <input id="vol-master" type="range" min="0" max="1" step="0.05" value="1">
+        <span id="vol-master-val">100%</span>
+      </div>
+      <div class="row">
+        <label>Import behavior</label>
+        <select id="import-behavior">
+          <option value="append" selected>Append</option>
+          <option value="replace">Replace current list</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Theme</label>
+        <select id="theme-mode" aria-label="Theme">
+          <option value="auto" selected>System</option>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="min-width:auto"><input type="checkbox" id="resume-on-load" checked> Resume on load</label>
+        <label style="min-width:auto"><input type="checkbox" id="auto-verify" checked> Auto-verify on startup</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toast-container"></div>
+
+  <!-- HELP MODAL -->
+  <dialog id="help-modal">
+    <div class="modal-header">Keyboard Shortcuts &amp; Tips</div>
+    <div class="modal-body">
+      <table class="help-table">
+        <tr><td class="key">Space / K</td><td>Play / Pause both layers</td></tr>
+        <tr><td class="key">← / J</td><td>Previous (respects history in random/shuffle)</td></tr>
+        <tr><td class="key">→ / L</td><td>Next</td></tr>
+        <tr><td class="key">[ / ]</td><td>Blend opacity − / + 10%</td></tr>
+        <tr><td class="key">C</td><td>Toggle config panel (playback continues)</td></tr>
+        <tr><td class="key">F</td><td>Fullscreen viewport</td></tr>
+        <tr><td class="key">M</td><td>Mute / unmute master</td></tr>
+        <tr><td class="key">1–9</td><td>Seek 10%–90% in current playlist video</td></tr>
+        <tr><td class="key">/</td><td>Focus library search</td></tr>
+        <tr><td class="key">Alt+S</td><td>Open Media Library sort menu</td></tr>
+        <tr><td class="key">Delete / ⌫</td><td>Remove selected or focused list item (undoable)</td></tr>
+        <tr><td class="key">Swipe ← / →</td><td>Next / previous media on touch screens</td></tr>
+        <tr><td class="key">Swipe ↑ / ↓</td><td>Fine tune slideshow blend opacity</td></tr>
+        <tr><td class="key">?</td><td>This help</td></tr>
+        <tr><td class="key">Esc</td><td>Close panels / modals</td></tr>
+      </table>
+      <p style="margin-top:14px;font-size:12px;color:#aaa">Drag items from the Media Library into the active list, or use the mobile Library/List tabs. Multi-select with Shift or Ctrl/Cmd. All media stays on your machine; installed/offline mode caches the app shell, not your private local media.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('help-modal').close()">Close</button>
+    </div>
+  </dialog>
+
+  <!-- WELCOME (first run) -->
+  <dialog id="welcome-modal">
+    <div class="modal-header">Welcome to Blend • player.html</div>
+    <div class="modal-body">
+      <p><strong>Two independent layers.</strong> A Playlist for your audio foundation + a Slideshow for visuals. Blend them live with the opacity slider.</p>
+      <p style="margin:12px 0">Everything is private and local. Use <strong>Add Files</strong> on mobile, or <strong>Add Folder</strong> on browsers that support folder access.</p>
+      <p style="font-size:12px;color:#888">Pro tip: press <strong>C</strong> or tap ☰ to edit while playback continues. Swipe left/right on the stage to move through media.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="welcome-example-list">Example .txt</button>
+      <button class="btn" id="welcome-dismiss">Got it</button>
+      <button class="btn primary" id="welcome-add-folder">Add Folder…</button>
+    </div>
+  </dialog>
+
+  <!-- Inline Fluent-style icons -->
+  <svg style="display:none" id="icon-defs">
+    <symbol id="icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.14v14l11-7z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></symbol>
+    <symbol id="icon-drag" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+  </svg>
+
+
+</body>
+</html>

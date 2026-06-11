@@ -27,7 +27,7 @@
 
 .EXAMPLE
     .\scripts\Start-PlayerDev.ps1
-    # Starts server on 5173, opens Edge/Chrome to src/player.html
+    # Starts server on 5173, opens Edge/Chrome to src/v/slideshow-playlist-player.html
 
 .EXAMPLE
     .\scripts\Start-PlayerDev.ps1 -Port 8080 -Test
@@ -56,7 +56,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $repoRoot) { $repoRoot = Get-Location }
 
-$playerUrl = "http://localhost:$Port/src/slideshow-playlist-player.html"
+$playerUrl = "http://localhost:$Port/src/v/slideshow-playlist-player.html"
 $weddingTestList = Join-Path $repoRoot 'samples\wedding-playlist.txt'
 
 function New-WeddingTestList {

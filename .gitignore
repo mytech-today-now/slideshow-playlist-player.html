@@ -99,3 +99,7 @@ src/player-copy*.html
 src/*.bak.html
 src/slideshow-playlist-player-*.html
 src/player.v1.html
+v4-bad/
+v3-bad/
+v3/
+v/

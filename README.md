@@ -2,7 +2,7 @@
 
 Fork from `https://github.com/pseudosavant/player.html`. Git dropped and re-started new because this is such a different application. `slideshow-playlist-player.html\src\player.html` kept for reference.
 
-Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src/slideshow-playlist-player.html` app with no build step and no server-side media processing.
+Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src/v/slideshow-playlist-player.html` app with no build step and no server-side media processing.
 
 The app is designed for desktop curation sessions, events, screenings, and experiments where privacy matters: media files stay on your machine, file handles and library metadata are stored in IndexedDB, and exports are human-readable JSON.
 
@@ -40,7 +40,7 @@ Clone or download the repository, then serve the root folder:
 The helper serves the repository at:
 
 ```text
-http://localhost:5173/src/player.html
+http://localhost:5173/src/v/slideshow-playlist-player.html
 ```
 
 You can also use another static server from the repository root:
@@ -52,10 +52,10 @@ python -m http.server 5173
 Then open:
 
 ```text
-http://localhost:5173/src/player.html
+http://localhost:5173/src/v/slideshow-playlist-player.html
 ```
 
-Opening `src/player.html` directly can work for simple sessions, but `localhost` is preferred because browsers expose more file-system capabilities in secure contexts.
+Opening `src/v/slideshow-playlist-player.html` directly can work for simple sessions, but `localhost` is preferred because browsers expose more file-system capabilities in secure contexts.
 
 ## Usage Guide
 
@@ -181,7 +181,7 @@ The selected Media Library sort key and direction are persisted in IndexedDB and
 
 ## Development
 
-This project intentionally avoids framework and build-system overhead. Edit `src/slideshow-playlist-player.html` directly, then reload the browser.
+This project intentionally avoids framework and build-system overhead. Edit `src/v/slideshow-playlist-player.html` directly, then reload the browser.
 
 Useful helper commands:
 
@@ -202,7 +202,7 @@ Recommended manual checks:
 
 ## Repository Layout
 
-- `src/slideshow-playlist-player.html` - the self-contained Blend Player app.
+- `src/v/slideshow-playlist-player.html` - the self-contained Blend Player app.
 - `scripts/Start-PlayerDev.ps1` - local static-server and test-helper script.
 - `samples/` - sample import lists.
 - `videos/` - optional local media/testing folder.
