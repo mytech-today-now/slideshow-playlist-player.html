@@ -2,11 +2,11 @@
 
 Fork from `https://github.com/pseudosavant/player.html`. Git dropped and re-started new because this is such a different application. `slideshow-playlist-player.html\src\player.original\player.html` kept for reference.
 
-Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as a self-contained `src\slideshow-playlist-player.v4.1\index.html` app with no build step and no server-side media processing.
+Blend Player is a local-first HTML5 media player for building an ordered video/audio playlist, building an ordered image/video slideshow, and blending both layers live in the browser. It is delivered as `src\slideshow-playlist-player.v4.2\index.html` app with no build step and no server-side media processing.
 
 The app is designed for desktop curation sessions, events, screenings, and experiments where privacy matters: media files stay on your machine, file handles and library metadata are stored in IndexedDB, and exports are human-readable JSON.
 
-Current version: **4.1.0**
+Current version: **4.2.0**
 
 ## Features
 
@@ -19,6 +19,7 @@ Current version: **4.1.0**
 - JSON order preservation through explicit `order` arrays and per-item `order` indexes.
 - Path-preserving export/import using absolute paths from imports, browser-safe folder-relative paths, or `./filename` relative fallbacks.
 - Import validation for `.json`, `.jsonl`, `.txt`, and `.md` lists, including malformed JSON feedback and missing-file resolution.
+- URL imports in the interface, and as a list in a imported file.
 - Slideshow preloading, cross-fades, and optional Ken Burns-style image motion.
 - Persistent project settings, list state, library metadata, file handles, thumbnails, and sort preferences.
 - Keyboard-friendly UI with accessible labels, visible focus states, toasts, and modals.
@@ -56,6 +57,8 @@ http://localhost:5173/src/v/slideshow-playlist-player.html
 ```
 
 Opening `src/v/slideshow-playlist-player.html` directly can work for simple sessions, but `localhost` is preferred because browsers expose more file-system capabilities in secure contexts.
+
+The live experience lives at: `<a href="https://mytech.today/tools/player/v/index.html" target="_blank">https://mytech.today/tools/player/v/index.html</a>`
 
 ## Usage Guide
 
@@ -202,11 +205,11 @@ Recommended manual checks:
 
 ## Repository Layout
 
-- `src/v/slideshow-playlist-player.html` - the self-contained Blend Player app.
+- `src/v/index.html` - the Blend Player app.
 - `scripts/Start-PlayerDev.ps1` - local static-server and test-helper script.
 - `samples/` - sample import lists.
 - `videos/` - optional local media/testing folder.
-- `assets/` - static artwork and supporting assets.
+- `src/v/assets/` - static artwork and supporting assets.
 - `ai-prompts/` - project planning and validation notes.
 - `VERSION` - semantic version for the current app release.
 

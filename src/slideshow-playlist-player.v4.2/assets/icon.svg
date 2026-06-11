@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Blend Player">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff4da6"/>
+      <stop offset="100%" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0a0a0a"/>
+  <circle cx="256" cy="256" r="162" fill="url(#g)" opacity="0.96"/>
+  <path d="M216 174v164l124-82-124-82z" fill="#ffffff"/>
+</svg>
