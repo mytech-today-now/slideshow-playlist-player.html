@@ -213,6 +213,12 @@ Recommended manual checks:
 - `ai-prompts/` - project planning and validation notes.
 - `VERSION` - semantic version for the current app release.
 
+## Helpers
+
+Use `\scripts\list-gen.ps1` to generate a .txt file list of all of the URLs files in a web directory.
+
+Use `https://github.com/mytech-today-now/professional-video-downloader` for easy PowerShell-based video downloads from the internet.
+
 ## Contributing
 
 - Keep the app local-first and privacy-preserving.
