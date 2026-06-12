@@ -203,6 +203,13 @@ Recommended manual checks:
 - Try malformed JSON and path traversal samples such as `../secret.mp4`.
 - Rename or move an external media file, reload, and verify stale-file feedback.
 
+## How To
+
+- Create a .txt file of URLs similar to `samples\4th.txt` or `samples\AMR.txt`
+- Drag that file into either the playlist or slideshow list, depending on what you want.
+- The .txt file should be either images/video or video/audio, not a different mix.
+- As of version 4.6, the player requires that the URL have an .ext extension, like .mp4 or ,jpg.
+
 ## Repository Layout
 
 - `src/v/index.html` - the Blend Player app.
