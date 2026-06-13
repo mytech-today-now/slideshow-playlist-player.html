@@ -5,7 +5,7 @@
   "id": "exp-7afb1ba8-6e4a-4899-a155-9c16c75dbe1e",
   "name": "New York, New York!",
   "project": "New York, New York!",
-  "exportedAt": "2026-06-13T03:01:46.285Z",
+  "exportedAt": "2026-06-13T03:05:26.423Z",
   "settings": {
     "defaultImageDuration": 2.5,
     "effectIntensity": "subtle",
@@ -22570,12 +22570,10 @@
     "description": "",
     "createdAt": "2026-06-12T22:42:58.688Z",
     "project": "New York, New York!",
-    "exportedAt": "2026-06-13T03:01:46.286Z",
+    "exportedAt": "2026-06-13T03:05:26.428Z",
     "order": [
       "64d0a4ed-c84d-47fc-a76d-317bdf46388c",
-      "d6af9a47-43f9-439f-8e60-29852a445b9d",
-      "09463ce0-5f65-4df3-8c8f-f92c4b9eb539",
-      "5819dc3d-2d66-48da-b3aa-a088324d2d38"
+      "d6af9a47-43f9-439f-8e60-29852a445b9d"
     ],
     "items": [
       {
@@ -22613,42 +22611,6 @@
           "sourceUrl": "https://mytech.today/tools/media/videos/nyc/videos/Billy_Joel_-_New_York_State_of_Mind.mp4",
           "contentType": "video/mp4"
         }
-      },
-      {
-        "order": 2,
-        "id": "09463ce0-5f65-4df3-8c8f-f92c4b9eb539",
-        "path": "https://mytech.today/tools/media/videos/nyc/videos/All_This_Time.mp4",
-        "fullPath": "https://mytech.today/tools/media/videos/nyc/videos/All_This_Time.mp4",
-        "pathKind": "remote",
-        "name": "All_This_Time.mp4",
-        "type": "video",
-        "size": 7883470,
-        "duration": null,
-        "addedAt": 1781319268202,
-        "available": true,
-        "sourceUrl": "https://mytech.today/tools/media/videos/nyc/videos/All_This_Time.mp4",
-        "metadata": {
-          "sourceUrl": "https://mytech.today/tools/media/videos/nyc/videos/All_This_Time.mp4",
-          "contentType": "video/mp4"
-        }
-      },
-      {
-        "order": 3,
-        "id": "5819dc3d-2d66-48da-b3aa-a088324d2d38",
-        "path": "https://mytech.today/tools/media/videos/nyc/videos/I_Can_t_Stop_Thinking_About_You.mp4",
-        "fullPath": "https://mytech.today/tools/media/videos/nyc/videos/I_Can_t_Stop_Thinking_About_You.mp4",
-        "pathKind": "remote",
-        "name": "I_Can_t_Stop_Thinking_About_You.mp4",
-        "type": "video",
-        "size": 10534335,
-        "duration": null,
-        "addedAt": 1781319269608,
-        "available": true,
-        "sourceUrl": "https://mytech.today/tools/media/videos/nyc/videos/I_Can_t_Stop_Thinking_About_You.mp4",
-        "metadata": {
-          "sourceUrl": "https://mytech.today/tools/media/videos/nyc/videos/I_Can_t_Stop_Thinking_About_You.mp4",
-          "contentType": "video/mp4"
-        }
       }
     ]
   },
@@ -22660,7 +22622,7 @@
     "description": "",
     "createdAt": "2026-06-12T22:42:58.688Z",
     "project": "New York, New York!",
-    "exportedAt": "2026-06-13T03:01:46.287Z",
+    "exportedAt": "2026-06-13T03:05:26.428Z",
     "order": [
       "c7d037b0-dde1-48ec-8012-435be8681f4a",
       "81e2cbb7-abfd-49e5-9eff-55a3b63ea7d5",
