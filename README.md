@@ -60,6 +60,12 @@ Opening `src/v/slideshow-playlist-player.html` directly can work for simple sess
 
 The live experience lives at: `<a href="https://mytech.today/tools/player/v/index.html" target="_blank">https://mytech.today/tools/player/v/index.html</a>`
 
+## How to play examples
+
+1. Click on the gear in the top right corner.
+2. Click on 'Import" at the top of the configuration dialog.
+3. Import this file <a href="" target=""></a>
+
 ## Usage Guide
 
 1. Open the app and press `C`, or click the gear button, to open the editor.
