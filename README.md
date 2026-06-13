@@ -64,7 +64,14 @@ The live experience lives at: `<a href="https://mytech.today/tools/player/v/inde
 
 1. Click on the gear in the top right corner.
 2. Click on 'Import" at the top of the configuration dialog.
-3. Import this file <a href="" target=""></a>
+3. Import this file <a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json</a>
+4. Click on the 'X' in the header to close the configuration page.
+5. Press the Play button.
+
+### Add additional 'Experiences'
+
+- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json</a>'
+- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json</a>'
 
 ## Usage Guide
 
