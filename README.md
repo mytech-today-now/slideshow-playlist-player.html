@@ -60,19 +60,6 @@ Opening `src/v/slideshow-playlist-player.html` directly can work for simple sess
 
 The live experience lives at: `<a href="https://mytech.today/tools/player/v/index.html" target="_blank">https://mytech.today/tools/player/v/index.html</a>`
 
-## How to play examples
-
-1. Click on the gear in the top right corner.
-2. Click on 'Import" at the top of the configuration dialog.
-3. Import this file <a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json</a>
-4. Click on the 'X' in the header to close the configuration page.
-5. Press the Play button.
-
-### Add additional 'Experiences'
-
-- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json</a>'
-- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json</a>'
-
 ## Usage Guide
 
 1. Open the app and press `C`, or click the gear button, to open the editor.
@@ -86,6 +73,19 @@ The live experience lives at: `<a href="https://mytech.today/tools/player/v/inde
 ## Import And Export
 
 Open the editor, select the Playlist or Slideshow tab, then use `Export...` or `Import List...`.
+
+## How to play examples
+
+1. Click on the gear in the top right corner.
+2. Click on 'Import" at the top of the configuration dialog.
+3. Import this file <a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/New-York-New-York.json</a>
+4. Click on the 'X' in the header to close the configuration page.
+5. Press the Play button.
+
+### Add additional 'Experiences'
+
+- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/AMR.json</a>'
+- '<a href="https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json" target="_blank">https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/samples/Patriotic.json</a>'
 
 Export options:
 
