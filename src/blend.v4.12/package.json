@@ -1,0 +1,21 @@
+{
+  "type": "module",
+  "scripts": {
+    "build:helia": "esbuild ipfs-helia-provider.source.js --bundle --format=esm --platform=browser --target=es2022 --outfile=ipfs-helia-provider.bundle.js",
+    "build:deploy": "node scripts/build-deploy.mjs",
+    "check": "node --check app.js && node --check ipfs-service.js && node --check ipfs-manifest.js && node --check ipfs-share-warning.js && node --check ipfs-worker-protocol.js && node --check ipfs-worker-client.js && node --check ipfs-worker.js && node --check ipfs-helia-provider.js && node --check ipfs-helia-provider.source.js && node --check ipfs-helia-provider.bundle.js",
+    "test:regression": "node --test tests/regression/*.test.mjs",
+    "test:e2e": "playwright test",
+    "sanity": "npm run check && npm run test:regression && npm run test:e2e",
+    "test": "npm run sanity"
+  },
+  "dependencies": {
+    "@helia/unixfs": "^7.2.1",
+    "helia": "^6.1.4",
+    "multiformats": "^14.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "esbuild": "^0.25.5"
+  }
+}

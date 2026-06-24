@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check app.js && node --check ipfs-service.js && node --check ipfs-manifest.js && node --check ipfs-share-warning.js && node --check ipfs-worker-protocol.js && node --check ipfs-worker-client.js && node --check ipfs-worker.js && node --check ipfs-helia-provider.js"
+  }
+}
