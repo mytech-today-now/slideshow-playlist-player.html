@@ -182,7 +182,7 @@ function createDefaultSettings(overrides = {}) {
 const MEDIA_TYPES = {
   video: ['mp4','m4v','mov','mkv','webm','ogv','avi'],
   audio: ['mp3','m4a','wav','ogg','flac','aac'],
-  image: ['jpg','jpeg','png','webp','gif','svg','avif','heic','heif']
+  image: ['jpg','jpeg','png','gif','svg','webp','bmp','ico','apng','avif','jfif','heic','heif']
 };
 const MEDIA_MIME_BY_EXT = {
   mp4: 'video/mp4',
@@ -202,6 +202,10 @@ const MEDIA_MIME_BY_EXT = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+  apng: 'image/apng',
+  jfif: 'image/jpeg',
   webp: 'image/webp',
   gif: 'image/gif',
   svg: 'image/svg+xml',
@@ -2976,7 +2980,11 @@ function contentTypeToExtension(contentType = '') {
   if (normalized === 'audio/ogg') return 'ogg';
   if (normalized === 'audio/flac') return 'flac';
   if (normalized === 'image/jpeg') return 'jpg';
+  if (normalized === 'image/jfif') return 'jfif';
   if (normalized === 'image/png') return 'png';
+  if (normalized === 'image/bmp' || normalized === 'image/x-ms-bmp') return 'bmp';
+  if (normalized === 'image/apng') return 'apng';
+  if (normalized === 'image/x-icon' || normalized === 'image/vnd.microsoft.icon') return 'ico';
   if (normalized === 'image/webp') return 'webp';
   if (normalized === 'image/gif') return 'gif';
   if (normalized === 'image/svg+xml') return 'svg';
