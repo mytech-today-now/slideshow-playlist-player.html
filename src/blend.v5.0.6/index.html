@@ -5,28 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
   <meta name="robots" content="index,follow">
-  <meta name="version" content="5.0.0"> <!-- see script comment block for full changelog -->
+  <meta name="version" content="5.0.6"> <!-- see script comment block for full changelog -->
   <meta name="theme-color" content="#0a0a0a">
   <meta name="color-scheme" content="dark light">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Blend 5.0.0">
-  <meta property="og:site_name" content="Blend version 5.0.0">
-  <meta property="og:title" content="Blend version 5.0.0">
+  <meta name="apple-mobile-web-app-title" content="Blend 5.0.6">
+  <meta property="og:site_name" content="Blend version 5.0.6">
+  <meta property="og:title" content="Blend version 5.0.6">
   <meta property="og:description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="./index.html">
   <meta property="og:image" content="./icon.svg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Blend version 5.0.0">
+  <meta name="twitter:title" content="Blend version 5.0.6">
   <meta name="twitter:description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
   <meta name="twitter:image" content="./icon.svg">
   <link rel="canonical" href="./index.html">
-  <title>Blend version 5.0.0</title>
+  <title>Blend version 5.0.6</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./styles.css?v=20260622-v5.0.0-supabase-storage">
+  <link rel="stylesheet" href="./styles.css?v=20260625-v5.0.6-player-controls">
 </head>
 <body>
   <a class="skip-link" href="#transport">Skip to controls</a>
@@ -103,7 +103,10 @@
           <button id="clear-browser-storage" type="button" class="list-action danger">Clear Browser Storage</button>
         </div>
       </div>
-      <span id="app-version" class="version-badge" title="Application version">v5.0.0</span>
+      <span id="app-version" class="version-badge" title="Application version">v5.0.6</span>
+      <button id="open-info" type="button" class="config-info-btn" title="Information — About myTech.Today &amp; README" aria-label="Open information dialog" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1.1-11.4a1.1 1.1 0 1 1 2.2 0 1.1 1.1 0 0 1-2.2 0zM11 11h2v6h-2v-6z"/></svg>
+      </button>
       <button id="close-config" type="button" class="close-btn" title="Close (Esc)" aria-label="Close configuration panel">✕</button>
     </div>
 
@@ -283,9 +286,9 @@
         </label>
         <div class="setting setting--wide">
           <label>Supabase session</label>
-          <div class="setting__control" style="display:flex;gap:8px;align-items:center;justify-content:space-between;">
-            <span id="supabase-auth-status" role="status" aria-live="polite">Checking session…</span>
-            <div style="display:flex;gap:8px;">
+          <div class="setting__control" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+            <span id="supabase-auth-status" role="status" aria-live="polite" style="min-width:0;flex:1 1 140px;">Checking session…</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button id="supabase-sign-in" type="button" class="list-action">Use token</button>
               <button id="supabase-sign-out" type="button" class="list-action">Sign out</button>
             </div>
@@ -316,7 +319,8 @@
     <div class="modal-header" id="help-title">Keyboard Shortcuts &amp; Tips</div>
     <div class="modal-body">
       <table class="help-table">
-        <tr><td class="key">Space / K</td><td>Play / Pause both layers</td></tr>
+        <tr><td class="key">Space / K</td><td>Play / Pause both layers (resumes from the exact paused position)</td></tr>
+        <tr><td class="key">S</td><td>Stop — reset to black and rewind to the beginning</td></tr>
         <tr><td class="key">← / J</td><td>Previous (respects history in random/shuffle)</td></tr>
         <tr><td class="key">→ / L</td><td>Next</td></tr>
         <tr><td class="key">[ / ]</td><td>Blend opacity − / + 10%</td></tr>
@@ -341,7 +345,7 @@
 
   <!-- WELCOME (first run) -->
   <dialog id="welcome-modal" aria-labelledby="welcome-title" aria-modal="true">
-    <div class="modal-header" id="welcome-title">Welcome to Blend version 5.0.0</div>
+    <div class="modal-header" id="welcome-title">Welcome to Blend version 5.0.6</div>
     <div class="modal-body">
       <p><strong>Two independent layers.</strong> A Playlist for your audio foundation + a Slideshow for visuals. Blend them live with the opacity slider.</p>
       <p style="margin:12px 0">Everything is private and local. Use <strong>Add Folder</strong> to point at your videos/ directory for instant testing.</p>
@@ -386,6 +390,69 @@
     </form>
   </dialog>
 
+  <!-- INFORMATION MODAL (About + README) -->
+  <dialog id="info-modal" class="info-modal" aria-labelledby="info-modal-title" aria-modal="true">
+    <div class="info-modal__header">
+      <h2 id="info-modal-title" class="info-modal__title">Information</h2>
+      <div class="info-modal__tabs" role="tablist" aria-label="Information sections">
+        <button type="button" class="info-tab active" id="info-tab-about" role="tab" aria-selected="true" aria-controls="info-panel-about" data-tab="about">About myTech.Today</button>
+        <button type="button" class="info-tab" id="info-tab-readme" role="tab" aria-selected="false" aria-controls="info-panel-readme" data-tab="readme" tabindex="-1">README</button>
+      </div>
+      <button type="button" class="close-btn info-modal__close" id="info-close" title="Close (Esc)" aria-label="Close information dialog">✕</button>
+    </div>
+    <div class="info-modal__body">
+      <!-- TAB 1: About myTech.Today -->
+      <section id="info-panel-about" class="info-panel markdown-body active" role="tabpanel" aria-labelledby="info-tab-about" data-tab="about" tabindex="0">
+        <header class="about-hero">
+          <h1>myTech.Today</h1>
+          <p class="about-tagline">Managed IT services &amp; custom technology solutions for small and mid-sized businesses across the Midwest.</p>
+          <p class="about-cta">
+            <a class="about-link-btn" href="https://mytech.today/" target="_blank" rel="noopener noreferrer">Visit mytech.today →</a>
+          </p>
+        </header>
+
+        <h2>Who we are</h2>
+        <p>Founded in 2016 and headquartered in Illinois, <strong>myTech.Today</strong> is a leading IT service provider serving small and mid-sized businesses (SMBs) across multiple industries. We deliver professional, customized solutions — and we never outsource our support.</p>
+
+        <h2>What we do</h2>
+        <ul>
+          <li><strong>Managed IT &amp; help desk</strong> — subscription-based or hourly support, with calls answered in about 15 seconds and returned immediately.</li>
+          <li><strong>Cloud &amp; infrastructure</strong> — AWS, Azure, Microsoft 365, hosted servers, colocation, and mail services.</li>
+          <li><strong>Backup &amp; disaster recovery</strong> — online backup, cloud services, and business-continuity planning.</li>
+          <li><strong>Networking &amp; security</strong> — VPN deployment, DNS web filtering, Active Directory, Wi-Fi enhancements, and internet connectivity.</li>
+          <li><strong>Projects &amp; development</strong> — custom programming, VMware configuration, OS upgrades, database and workflow transformations.</li>
+          <li><strong>Domains &amp; web</strong> — domain registration, DNS, hardware and software solutions.</li>
+        </ul>
+
+        <h2>Why businesses choose us</h2>
+        <ul>
+          <li>9+ years of trusted service to the SMB community.</li>
+          <li>Fast, human support — your call is answered quickly and never offshored.</li>
+          <li>Flexible engagement: subscription plans or pay-as-you-go hourly help.</li>
+          <li>Tailored solutions designed around how your business actually works.</li>
+        </ul>
+
+        <h2>Get in touch</h2>
+        <p>Request a callback and one of our Technology Advisors will reach out — typically within 15 minutes during business hours (Monday–Friday, 8:30&nbsp;am – 5:00&nbsp;pm Central Time).</p>
+        <ul class="about-links">
+          <li><a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a> — home &amp; request a callback</li>
+          <li><a href="https://mytech.today/it-services-and-solutions-mobile/" target="_blank" rel="noopener noreferrer">IT Services &amp; Solutions</a></li>
+          <li><a href="https://www.linkedin.com/in/kylerode/" target="_blank" rel="noopener noreferrer">Kyle Rode — Owner, on LinkedIn</a></li>
+        </ul>
+
+        <hr>
+        <p class="about-footnote">Blend is built and maintained by myTech.Today. This player keeps all of your media on your own machine — private by design.</p>
+      </section>
+
+      <!-- TAB 2: README (rendered Markdown) -->
+      <section id="info-panel-readme" class="info-panel" role="tabpanel" aria-labelledby="info-tab-readme" data-tab="readme" tabindex="0" hidden>
+        <div class="markdown-body" id="info-readme-content">
+          <p class="info-readme-status">Loading README…</p>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
   <!-- Inline Fluent-style icons -->
   <svg style="display:none" id="icon-defs">
     <symbol id="icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.14v14l11-7z"/></symbol>
@@ -395,6 +462,6 @@
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
   <script type="text/javascript" id="google_gtagjs" src="https://www.googletagmanager.com/gtag/js?id=G-5NVWHE6T4V" async="async"></script>
-  <script type="module" src="./app.js?v=20260622-v5.0.0-supabase-storage"></script>
+  <script type="module" src="./app.js?v=20260625-v5.0.6-player-controls"></script>
 </body>
 </html>

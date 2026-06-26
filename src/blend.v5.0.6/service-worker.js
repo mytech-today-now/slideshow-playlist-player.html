@@ -1,16 +1,18 @@
-const CACHE_VERSION = 'blend-player-v5.0.0-20260622-supabase-storage';
+const CACHE_VERSION = 'blend-player-v5.0.6-20260625-player-controls';
 const MEDIA_EXTENSIONS = /\.(?:mp4|m4v|mov|mkv|webm|ogv|avi|mp3|m4a|wav|ogg|flac|aac)(?:$|\?)/i;
 const APP_SHELL = [
   './',
   './index.html',
   './slideshow-playlist-player.html',
-  './styles.css?v=20260622-v5.0.0-supabase-storage',
-  './app.js?v=20260622-v5.0.0-supabase-storage',
-  './logger.js?v=20260622-v5.0.0-supabase-storage',
-  './drag-sort.js?v=20260622-v5.0.0-supabase-storage',
-  './supabase-config.js?v=20260622-v5.0.0-supabase-storage',
-  './supabase-auth.js?v=20260622-v5.0.0-supabase-storage',
-  './storage-url-resolver.js?v=20260622-v5.0.0-supabase-storage',
+  './styles.css?v=20260625-v5.0.6-player-controls',
+  './app.js?v=20260625-v5.0.6-player-controls',
+  './logger.js?v=20260625-v5.0.6-player-controls',
+  './drag-sort.js?v=20260625-v5.0.6-player-controls',
+  './supabase-config.js?v=20260625-v5.0.6-player-controls',
+  './supabase-auth.js?v=20260625-v5.0.6-player-controls',
+  './storage-url-resolver.js?v=20260625-v5.0.6-player-controls',
+  './playback-clock.js',
+  './markdown.js',
   './supabase-config.js',
   './supabase-auth.js',
   './storage-url-resolver.js',
@@ -18,6 +20,7 @@ const APP_SHELL = [
   './sw.js',
   './manifest.json',
   './manifest.webmanifest',
+  './README.md',
   './icon.svg',
   './icon-maskable.svg'
 ];

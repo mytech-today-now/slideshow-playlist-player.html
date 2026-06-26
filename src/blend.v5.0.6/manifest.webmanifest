@@ -1,6 +1,6 @@
 {
-  "name": "Blend version 5.0.0",
-  "short_name": "Blend 5.0.0",
+  "name": "Blend version 5.0.6",
+  "short_name": "Blend 5.0.6",
   "description": "Dual-layer local media playback studio for playlists and slideshows.",
   "start_url": "./index.html",
   "scope": "./",

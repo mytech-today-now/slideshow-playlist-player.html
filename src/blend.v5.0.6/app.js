@@ -1,8 +1,8 @@
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20260622-v5.0.0-supabase-storage';
-import { createPointerReorderFallback } from './drag-sort.js?v=20260622-v5.0.0-supabase-storage';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20260622-v5.0.0-supabase-storage';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20260622-v5.0.0-supabase-storage';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20260622-v5.0.0-supabase-storage';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20260625-v5.0.6-player-controls';
+import { createPointerReorderFallback } from './drag-sort.js?v=20260625-v5.0.6-player-controls';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20260625-v5.0.6-player-controls';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20260625-v5.0.6-player-controls';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20260625-v5.0.6-player-controls';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -11,13 +11,20 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20260622-v5.0.0-supabase-storage';
+} from './storage-url-resolver.js?v=20260625-v5.0.6-player-controls';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20260622-v5.0.0-supabase-storage';
+} from './transition-manager.js?v=20260625-v5.0.6-player-controls';
+import {
+  TRANSPORT,
+  transportToggleAction,
+  ElapsedClock,
+  PausableTimer
+} from './playback-clock.js?v=20260625-v5.0.6-player-controls';
+import { renderMarkdown } from './markdown.js?v=20260625-v5.0.6-player-controls';
 
 const log = createLogger('Blend', {
   storageKey: 'blend-debug-log-v1',
@@ -90,8 +97,8 @@ attachGlobalErrorHandlers(log);
 //   videos/nba_*.mp4 + subtitles (must be filtered)
 // =====================================================
 
-const VERSION = '5.0.0';
-const CACHE_VERSION = 'blend-player-v5.0.0-20260622-supabase-storage';
+const VERSION = '5.0.6';
+const CACHE_VERSION = 'blend-player-v5.0.6-20260625-player-controls';
 const DB_NAME = 'player-blend-v1';
 const DB_VERSION = 4;
 const EXPERIENCE_STORE = 'experiences';
@@ -278,6 +285,7 @@ let state = {
     playlistIndex: 0,
     slideshowIndex: 0,
     isPlaying: false,
+    transport: TRANSPORT.STOPPED,
     historyPlaylist: [],
     historySlideshow: []
   }
@@ -287,7 +295,16 @@ let playlistVideoA = null, playlistVideoB = null;
 let slideshowMedia = null; // current img or video in top layer
 let kenBurnsRAF = null;
 let crossfadeTimer = null;
-let slideshowTimer = null;
+// Transport: 'stopped' | 'playing' | 'paused'. Pause banks positions so Play
+// resumes exactly where it left off; Stop tears everything down so Play
+// restarts from the beginning. See playback-clock.js for the pure helpers.
+let transportMode = TRANSPORT.STOPPED;
+// Image-slide auto-advance that survives a pause (banks remaining time).
+const slideTimer = new PausableTimer();
+// Ken Burns elapsed clock + the parameters needed to keep animating after a
+// pause/resume without restarting or jumping the zoom/pan.
+const kenBurnsClock = new ElapsedClock();
+let kenBurnsState = null; // { el, durationMs, maxZoom, dirX, dirY }
 let currentPlaylistItem = null;
 let currentSlideshowItem = null;
 let saveTimer = null;
@@ -1537,9 +1554,7 @@ async function applyDeepLinkRequest(request) {
     if (request.autoplay) {
       await playFromHere(targetLayer, targetIndex);
     } else {
-      state.runtime.isPlaying = false;
-      const playButton = $('#btn-play');
-      if (playButton) playButton.textContent = '▶';
+      applyTransportMode(TRANSPORT.STOPPED);
     }
     return true;
   }
@@ -3982,10 +3997,8 @@ function clearSlideshowPlayback() {
   }
   slideshowMedia = null;
   currentSlideshowItem = null;
-  clearTimeout(slideshowTimer);
-  slideshowTimer = null;
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
-  kenBurnsRAF = null;
+  slideTimer.cancel();
+  stopKenBurns();
   const fallback = contextFromRuntimeLayer('playlist') || contextFromRuntimeLayer('slideshow') || buildProjectContext();
   activateExperienceContext(fallback, { trackVirtualPage: false, trigger: 'slideshow_clear' });
 }
@@ -4958,9 +4971,9 @@ async function restartExperienceFromBeginning() {
   state.runtime.historyPlaylist = [];
   state.runtime.historySlideshow = [];
   resetLayerCompletionState();
+  applyTransportMode(TRANSPORT.PLAYING);
   const started = await startPlaybackFromCurrentIndices({ save: false });
-  state.runtime.isPlaying = started;
-  $('#btn-play').textContent = started ? '⏸' : '▶';
+  applyTransportMode(started ? TRANSPORT.PLAYING : TRANSPORT.STOPPED);
   if (!started) {
     clearPlaylistPlayback();
     clearSlideshowPlayback();
@@ -4976,11 +4989,9 @@ async function switchToNextExperienceAndPlay() {
   const switched = await switchExperienceById(targetId, { silent: true });
   if (!switched) return false;
   resetLayerCompletionState();
-  state.runtime.isPlaying = true;
-  $('#btn-play').textContent = '⏸';
+  applyTransportMode(TRANSPORT.PLAYING);
   const started = await startPlaybackFromCurrentIndices({ save: false });
-  state.runtime.isPlaying = started;
-  $('#btn-play').textContent = started ? '⏸' : '▶';
+  applyTransportMode(started ? TRANSPORT.PLAYING : TRANSPORT.STOPPED);
   if (started) {
     showToast(`Now playing ${state.projectName}`, { timeout: 2200 });
   }
@@ -4996,8 +5007,7 @@ async function handleExperienceCompletion(reason = 'ended') {
     if (mode === EXPERIENCE_PLAYBACK_MODE_LOOP) {
       const restarted = await restartExperienceFromBeginning();
       if (!restarted) {
-        state.runtime.isPlaying = false;
-        $('#btn-play').textContent = '▶';
+        applyTransportMode(TRANSPORT.STOPPED);
       }
       return;
     }
@@ -5007,15 +5017,12 @@ async function handleExperienceCompletion(reason = 'ended') {
     }
 
     if (guardToken !== experienceTransitionToken) return;
-    state.runtime.isPlaying = false;
-    $('#btn-play').textContent = '▶';
+    applyTransportMode(TRANSPORT.STOPPED);
     if (playlistVideoA) playlistVideoA.pause();
     if (playlistVideoB) playlistVideoB.pause();
     if (slideshowMedia?.tagName === 'VIDEO') slideshowMedia.pause();
-    clearTimeout(slideshowTimer);
-    slideshowTimer = null;
-    if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
-    kenBurnsRAF = null;
+    slideTimer.cancel();
+    stopKenBurns();
     showToast('Experience finished', { timeout: 2000 });
     saveStateDebounced();
   } finally {
@@ -5248,10 +5255,8 @@ async function loadSlideshowItem(itemRef, withCrossfade = true) {
   const item = state.library.get(itemRef.id);
   if (!item || !isPlayableListRef('slideshow', itemRef)) return false;
 
-  clearTimeout(slideshowTimer);
-  slideshowTimer = null;
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
-  kenBurnsRAF = null;
+  slideTimer.cancel();
+  stopKenBurns();
   const layer = $('#slideshow-layer');
   const wrapper = layer.querySelector('.kenburns-wrapper') || layer;
   const previous = slideshowMedia;
@@ -5334,16 +5339,19 @@ async function loadSlideshowItem(itemRef, withCrossfade = true) {
     });
   }
 
-  // schedule next for images
+  // schedule next for images via a pausable timer so a pause banks the
+  // remaining display time and resume continues from there.
   if (item.type === 'image') {
     if (state.runtime.isPlaying) {
       const dur = (itemRef.displayDuration || state.settings.defaultImageDuration) * 1000;
       const delay = Math.max(80, dur - transitionOverlapMs());
-      slideshowTimer = setTimeout(() => {
+      slideTimer.start(() => {
         const completionContext = buildExperienceContext('slideshow', itemRef, state.runtime.slideshowIndex, { trigger: 'slideshow_timer' });
         trackPlaybackEvent('experience_complete', completionContext, { completion_reason: 'duration_elapsed' });
         advanceSlideshow({ reason: delay < dur ? 'overlap' : 'duration_elapsed' });
       }, delay);
+    } else {
+      slideTimer.cancel();
     }
   }
 
@@ -5439,25 +5447,52 @@ function preloadUpcomingSlideshowItems() {
 }
 
 function startKenBurns(mediaEl, durationSec) {
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+  stopKenBurns();
   const intensity = getIntensityMultiplier();
-  if (intensity <= 0.05) return; // off
+  if (intensity <= 0.05) { kenBurnsState = null; return; } // off
 
-  const start = performance.now();
-  const dur = durationSec * 1000;
-  const maxZoom = 1 + (0.07 * intensity);
-  const dirX = (Math.random() - 0.5) * 2 * (4 * intensity);
-  const dirY = (Math.random() - 0.5) * 2 * (3 * intensity);
+  kenBurnsState = {
+    el: mediaEl,
+    durationMs: Math.max(1, (Number(durationSec) || 0) * 1000),
+    maxZoom: 1 + (0.07 * intensity),
+    dirX: (Math.random() - 0.5) * 2 * (4 * intensity),
+    dirY: (Math.random() - 0.5) * 2 * (3 * intensity)
+  };
+  kenBurnsClock.start();
+  kenBurnsRAF = requestAnimationFrame(kenBurnsFrame);
+}
 
-  function frame(now) {
-    const p = Math.min(1, (now - start) / dur);
-    const z = 1 + (maxZoom - 1) * p;
-    const tx = dirX * p;
-    const ty = dirY * p;
-    mediaEl.style.transform = `scale(${z}) translate(${tx}%, ${ty}%)`;
-    if (p < 1) kenBurnsRAF = requestAnimationFrame(frame);
+// Drives the Ken Burns transform off an ElapsedClock so a pause freezes the
+// animation and resume continues from exactly the same offset.
+function kenBurnsFrame() {
+  if (!kenBurnsState || !kenBurnsState.el) { kenBurnsRAF = null; return; }
+  const { el, durationMs, maxZoom, dirX, dirY } = kenBurnsState;
+  const p = Math.min(1, kenBurnsClock.elapsed() / durationMs);
+  const z = 1 + (maxZoom - 1) * p;
+  el.style.transform = `scale(${z}) translate(${dirX * p}%, ${dirY * p}%)`;
+  if (p < 1 && kenBurnsClock.running) {
+    kenBurnsRAF = requestAnimationFrame(kenBurnsFrame);
+  } else {
+    kenBurnsRAF = null;
   }
-  kenBurnsRAF = requestAnimationFrame(frame);
+}
+
+function pauseKenBurns() {
+  kenBurnsClock.pause();
+  if (kenBurnsRAF) { cancelAnimationFrame(kenBurnsRAF); kenBurnsRAF = null; }
+}
+
+function resumeKenBurns() {
+  if (!kenBurnsState) return;
+  if (kenBurnsClock.elapsed() >= kenBurnsState.durationMs) return; // already done
+  kenBurnsClock.resume();
+  if (!kenBurnsRAF) kenBurnsRAF = requestAnimationFrame(kenBurnsFrame);
+}
+
+function stopKenBurns() {
+  if (kenBurnsRAF) { cancelAnimationFrame(kenBurnsRAF); kenBurnsRAF = null; }
+  kenBurnsClock.reset();
+  kenBurnsState = null;
 }
 
 function getIntensityMultiplier() {
@@ -5533,8 +5568,8 @@ function advancePlaylist(opts = {}) {
 
 function advanceSlideshow(opts = {}) {
   if (slideshowAdvanceInFlight) return;
-  clearTimeout(slideshowTimer);
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+  slideTimer.cancel();
+  stopKenBurns();
 
   if (!state.slideshow.length) {
     clearSlideshowPlayback();
@@ -5557,62 +5592,141 @@ function advanceSlideshow(opts = {}) {
   saveStateDebounced();
 }
 
+// ====================== TRANSPORT STATE ======================
+// One place that keeps the transport mode, the persisted isPlaying flag and
+// the play-button UI (label / icon / aria) in lock-step. Every code path that
+// changes playing/paused/stopped goes through here.
+function applyTransportMode(mode) {
+  transportMode = mode;
+  state.runtime.isPlaying = (mode === TRANSPORT.PLAYING);
+  state.runtime.transport = mode;
+  updatePlayButtonUI();
+}
+
+function updatePlayButtonUI() {
+  const btn = $('#btn-play');
+  if (btn) {
+    const playing = transportMode === TRANSPORT.PLAYING;
+    btn.textContent = playing ? '⏸' : '▶';
+    btn.classList.toggle('is-playing', playing);
+    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    btn.setAttribute('aria-label', playing ? 'Pause playback' : 'Play');
+    btn.title = playing ? 'Pause (Space or K)' : 'Play (Space or K)';
+  }
+  const stopBtn = $('#btn-stop');
+  if (stopBtn) stopBtn.disabled = (transportMode === TRANSPORT.STOPPED);
+  if (document.body) document.body.dataset.transport = transportMode;
+}
+
 async function playFromHere(which, idx) {
+  // Clicking an item plays from there. When starting from stopped/paused we
+  // also kick the *other* layer from its current index (matching the original
+  // "click an item → both layers start" behavior).
+  const startOtherLayer = transportMode !== TRANSPORT.PLAYING;
+  applyTransportMode(TRANSPORT.PLAYING);
   resetLayerCompletionState();
+  playlistAdvanceInFlight = false;
+  slideshowAdvanceInFlight = false;
   if (which === 'playlist') {
     await playPlaylistAtIndex(idx, { direction: 1, allowWrap: true });
+    if (startOtherLayer && state.slideshow.length) {
+      await playSlideshowAtIndex(state.runtime.slideshowIndex, { direction: 1, withCrossfade: false, allowWrap: true });
+    }
   } else {
     await playSlideshowAtIndex(idx, { direction: 1, withCrossfade: false, allowWrap: true });
+    if (startOtherLayer && state.playlist.length) {
+      await playPlaylistAtIndex(state.runtime.playlistIndex, { direction: 1, allowWrap: true });
+    }
   }
-  if (!state.runtime.isPlaying) togglePlay();
 }
 
+// Play / Pause toggle. The action is decided purely by the transport mode:
+//   playing -> pause (bank positions), paused -> resume (exact positions),
+//   stopped -> fresh start from the current indices.
 async function togglePlay() {
-  const playing = state.runtime.isPlaying;
-  state.runtime.isPlaying = !playing;
-
-  const btn = $('#btn-play');
-  btn.textContent = state.runtime.isPlaying ? '⏸' : '▶';
-
-  if (state.runtime.isPlaying) {
-    resetLayerCompletionState();
-    playlistAdvanceInFlight = false;
-    slideshowAdvanceInFlight = false;
-    // start both layers from current positions
-    let started = false;
-    if (state.playlist.length) {
-      started = !!(await playPlaylistAtIndex(state.runtime.playlistIndex, { direction: 1, allowWrap: true })) || started;
-    }
-    if (state.slideshow.length) {
-      started = !!(await playSlideshowAtIndex(state.runtime.slideshowIndex, { direction: 1, withCrossfade: false, allowWrap: true })) || started;
-    }
-    if (!started) {
-      state.runtime.isPlaying = false;
-      btn.textContent = '▶';
-      updateHUD();
-    } else {
-      const playContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
-      trackPlaybackEvent('experience_play', playContext, { play_reason: 'transport_toggle' });
-    }
-  } else {
-    // pause both
-    if (playlistVideoA) playlistVideoA.pause();
-    if (playlistVideoB) playlistVideoB.pause();
-    if (slideshowMedia && slideshowMedia.tagName === 'VIDEO') slideshowMedia.pause();
-    clearTimeout(slideshowTimer);
-    const pauseContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
-    trackPlaybackEvent('experience_pause', pauseContext, { pause_reason: 'transport_toggle' });
-  }
+  const action = transportToggleAction(transportMode);
+  if (action === 'pause') { pausePlayback(); return; }
+  if (action === 'resume') { await resumePlayback(); return; }
+  await startPlayback();
 }
 
+async function startPlayback() {
+  applyTransportMode(TRANSPORT.PLAYING);
+  resetLayerCompletionState();
+  playlistAdvanceInFlight = false;
+  slideshowAdvanceInFlight = false;
+  let started = false;
+  if (state.playlist.length) {
+    started = !!(await playPlaylistAtIndex(state.runtime.playlistIndex, { direction: 1, allowWrap: true })) || started;
+  }
+  if (state.slideshow.length) {
+    started = !!(await playSlideshowAtIndex(state.runtime.slideshowIndex, { direction: 1, withCrossfade: false, allowWrap: true })) || started;
+  }
+  if (!started) {
+    applyTransportMode(TRANSPORT.STOPPED);
+    updateHUD();
+    return false;
+  }
+  const playContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
+  trackPlaybackEvent('experience_play', playContext, { play_reason: 'transport_toggle' });
+  return true;
+}
+
+// Pause both layers at their EXACT current positions without unloading them,
+// banking the image-slide timer and Ken Burns progress so resume is seamless.
+function pausePlayback() {
+  if (transportMode !== TRANSPORT.PLAYING) return;
+  applyTransportMode(TRANSPORT.PAUSED);
+  if (playlistVideoA) playlistVideoA.pause();
+  if (playlistVideoB) playlistVideoB.pause();
+  if (slideshowMedia && slideshowMedia.tagName === 'VIDEO') slideshowMedia.pause();
+  slideTimer.pause();
+  pauseKenBurns();
+  const pauseContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
+  trackPlaybackEvent('experience_pause', pauseContext, { pause_reason: 'transport_toggle' });
+  saveStateDebounced();
+}
+
+// Resume both layers from the banked positions. If the live media elements are
+// gone (cleared/reloaded), fall back to a fresh start from the current indices.
+async function resumePlayback() {
+  if (transportMode !== TRANSPORT.PAUSED) return false;
+  const activePlaylistVideo = (state.runtime.playlistIndex % 2 === 1) ? playlistVideoB : playlistVideoA;
+  const hasLivePlaylist = !!(currentPlaylistItem && activePlaylistVideo && activePlaylistVideo.src);
+  const hasLiveSlideshow = !!slideshowMedia;
+  applyTransportMode(TRANSPORT.PLAYING);
+
+  if (!hasLivePlaylist && !hasLiveSlideshow) {
+    const started = await startPlaybackFromCurrentIndices({ save: true });
+    if (!started) applyTransportMode(TRANSPORT.STOPPED);
+    return started;
+  }
+
+  if (hasLivePlaylist) {
+    try { await activePlaylistVideo.play(); } catch (_) {}
+  }
+  if (hasLiveSlideshow && slideshowMedia.tagName === 'VIDEO') {
+    try { await slideshowMedia.play(); } catch (_) {}
+  }
+  // Image slides + Ken Burns continue from exactly where they were banked.
+  resumeKenBurns();
+  slideTimer.resume();
+
+  const playContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
+  trackPlaybackEvent('experience_play', playContext, { play_reason: 'transport_resume' });
+  saveStateDebounced();
+  return true;
+}
+
+// Full stop: tear down both layers, reset to a black/blank screen and rewind
+// to the very beginning so the next Play restarts the whole experience.
 function stopPlayback() {
-  const wasPlaying = !!state.runtime.isPlaying;
+  const wasActive = transportMode !== TRANSPORT.STOPPED;
   const stopContext = activeExperienceContext || contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
   playlistAdvanceInFlight = false;
   slideshowAdvanceInFlight = false;
   resetLayerCompletionState();
-  state.runtime.isPlaying = false;
-  $('#btn-play').textContent = '▶';
+  applyTransportMode(TRANSPORT.STOPPED);
   cleanupVideoUrl(playlistVideoA);
   cleanupVideoUrl(playlistVideoB);
   const ssLayer = $('#slideshow-layer');
@@ -5623,15 +5737,18 @@ function stopPlayback() {
   slideshowMedia = null;
   currentPlaylistItem = null;
   currentSlideshowItem = null;
-  clearTimeout(slideshowTimer);
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+  slideTimer.cancel();
+  stopKenBurns();
   state.runtime.playlistIndex = 0;
   state.runtime.slideshowIndex = 0;
+  state.runtime.historyPlaylist = [];
+  state.runtime.historySlideshow = [];
   updateHUD();
   activateExperienceContext(buildProjectContext(), { trackVirtualPage: false, trigger: 'stop_playback' });
-  if (wasPlaying) {
+  if (wasActive) {
     trackPlaybackEvent('experience_pause', stopContext, { pause_reason: 'stop' });
   }
+  saveStateDebounced();
 }
 
 function clearSlideshowPreloads() {
@@ -5657,8 +5774,8 @@ function cleanupRuntimeResources() {
   playlistAdvanceInFlight = false;
   slideshowAdvanceInFlight = false;
   resetLayerCompletionState();
-  clearTimeout(slideshowTimer);
-  if (kenBurnsRAF) cancelAnimationFrame(kenBurnsRAF);
+  slideTimer.cancel();
+  stopKenBurns();
   cleanupVideoUrl(playlistVideoA);
   cleanupVideoUrl(playlistVideoB);
   clearPlaylistPreloads();
@@ -5742,9 +5859,11 @@ async function clearBrowserStorage() {
       playlistIndex: 0,
       slideshowIndex: 0,
       isPlaying: false,
+      transport: TRANSPORT.STOPPED,
       historyPlaylist: [],
       historySlideshow: []
     };
+    transportMode = TRANSPORT.STOPPED;
     currentPlaylistItem = null;
     currentSlideshowItem = null;
     isMuted = false;
@@ -6091,12 +6210,21 @@ function toggleMute() {
   setMasterVolume(next);
 }
 
+// Manual skip implies "play": engage the PLAYING transport so the newly
+// loaded item actually advances (and the paused/stopped banked state is
+// abandoned in favor of the item the user navigated to).
+function engagePlaybackForNavigation() {
+  if (transportMode !== TRANSPORT.PLAYING) applyTransportMode(TRANSPORT.PLAYING);
+}
+
 function nextBoth() {
+  engagePlaybackForNavigation();
   if (state.playlist.length) advancePlaylist({ reason: 'manual_next' });
   if (state.slideshow.length) advanceSlideshow({ reason: 'manual_next' });
 }
 
 function previousBoth() {
+  engagePlaybackForNavigation();
   // use history when available
   const plH = state.runtime.historyPlaylist;
   if (plH.length) {
@@ -6112,30 +6240,220 @@ function previousBoth() {
 
 function previousSlideshow() {
   if (!state.slideshow.length) return;
+  engagePlaybackForNavigation();
   void playSlideshowAtIndex(state.runtime.slideshowIndex - 1, { direction: -1, withCrossfade: true });
 }
 
 function nextSlideshow() {
   if (!state.slideshow.length) return;
+  engagePlaybackForNavigation();
   void playSlideshowAtIndex(state.runtime.slideshowIndex + 1, { direction: 1, withCrossfade: true, allowWrap: true });
 }
 
 // ====================== CONFIG PANEL ======================
+let configFocusReturn = null;
+let configTrapHandler = null;
+
+// Returns the visible, tabbable elements inside a container, in DOM order.
+function focusableWithin(container) {
+  const selector = [
+    'a[href]', 'button:not([disabled])', 'input:not([disabled])',
+    'select:not([disabled])', 'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(',');
+  return $all(selector, container).filter(el => {
+    if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+    // offsetParent is null for display:none; allow position:fixed elements too.
+    return el.offsetParent !== null || getComputedStyle(el).position === 'fixed';
+  });
+}
+
+// Generic Tab focus trap for a modal container.
+function trapFocusWithin(event, container) {
+  if (event.key !== 'Tab') return;
+  const focusable = focusableWithin(container);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || !container.contains(active))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function openConfig() {
   const panel = $('#config-panel');
+  if (panel.classList.contains('open')) return;
+  configFocusReturn = document.activeElement;
   panel.classList.add('open');
-  panel.style.setProperty('transform', 'none', 'important');
+  panel.style.removeProperty('transform');
+  panel.setAttribute('aria-hidden', 'false');
   $('#config-backdrop').classList.add('open');
+  document.body.classList.add('config-open');
   syncExperienceControls();
   renderExperiencePicker();
   renderLibrary();
   renderListEditor();
+  configTrapHandler = (event) => trapFocusWithin(event, panel);
+  panel.addEventListener('keydown', configTrapHandler);
+  const focusTarget = $('#experience-select') || $('#close-config') || panel;
+  requestAnimationFrame(() => { try { focusTarget.focus(); } catch (_) {} });
 }
+
 function closeConfig() {
   const panel = $('#config-panel');
+  if (!panel.classList.contains('open')) return;
   panel.classList.remove('open');
-  panel.style.setProperty('transform', 'translateX(calc(100% + 24px))', 'important');
+  panel.setAttribute('aria-hidden', 'true');
   $('#config-backdrop').classList.remove('open');
+  document.body.classList.remove('config-open');
+  if (configTrapHandler) {
+    panel.removeEventListener('keydown', configTrapHandler);
+    configTrapHandler = null;
+  }
+  if (configFocusReturn && typeof configFocusReturn.focus === 'function') {
+    try { configFocusReturn.focus(); } catch (_) {}
+  }
+  configFocusReturn = null;
+}
+
+// ====================== INFORMATION DIALOG ======================
+const INFO_SCROLL_KEY = 'blend-info-scroll-v1';
+const INFO_ACTIVE_TAB_KEY = 'blend-info-active-tab-v1';
+let infoReadmeLoaded = false;
+let infoScrollSaveTimer = null;
+
+function wireInfoDialog() {
+  const modal = $('#info-modal');
+  const openBtn = $('#open-info');
+  if (!modal) return;
+  if (openBtn) openBtn.onclick = () => { void openInfoDialog(); };
+  const closeBtn = $('#info-close');
+  if (closeBtn) closeBtn.onclick = () => modal.close();
+
+  $all('.info-tab', modal).forEach(tab => {
+    tab.onclick = () => activateInfoTab(tab.dataset.tab, { focusTab: true });
+    tab.addEventListener('keydown', onInfoTabKeydown);
+  });
+
+  $all('.info-panel', modal).forEach(panel => {
+    panel.addEventListener('scroll', () => {
+      clearTimeout(infoScrollSaveTimer);
+      infoScrollSaveTimer = setTimeout(saveInfoScrollPositions, 200);
+    }, { passive: true });
+  });
+
+  // Dismiss when clicking the backdrop (outside the dialog content box).
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) modal.close();
+  });
+  modal.addEventListener('close', () => {
+    saveInfoScrollPositions();
+    document.body.classList.remove('info-open');
+    try { $('#open-info')?.focus(); } catch (_) {}
+  });
+}
+
+async function openInfoDialog() {
+  const modal = $('#info-modal');
+  if (!modal) return;
+  await ensureReadmeRendered();
+  const activeTab = localStorage.getItem(INFO_ACTIVE_TAB_KEY) || 'about';
+  activateInfoTab(activeTab, { focusTab: false, restoreScroll: false });
+  document.body.classList.add('info-open');
+  if (typeof modal.showModal === 'function') {
+    if (!modal.open) modal.showModal();
+  } else {
+    modal.setAttribute('open', '');
+  }
+  // Restore banked scroll positions after the dialog has laid out.
+  requestAnimationFrame(() => restoreInfoScroll(activeTab));
+}
+
+async function ensureReadmeRendered() {
+  if (infoReadmeLoaded) return;
+  const target = $('#info-readme-content');
+  if (!target) return;
+  try {
+    const res = await fetch('./README.md', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const markdown = await res.text();
+    target.innerHTML = renderMarkdown(markdown);
+    infoReadmeLoaded = true;
+  } catch (error) {
+    log.warn('README load failed', error);
+    target.innerHTML = '<p class="info-readme-status">The README could not be loaded in this context. '
+      + 'Visit <a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a> for documentation.</p>';
+  }
+}
+
+function activateInfoTab(name, { focusTab = false } = {}) {
+  const modal = $('#info-modal');
+  if (!modal) return;
+  // Bank the scroll of the panel we're leaving before switching.
+  saveInfoScrollPositions();
+  const tabName = name === 'readme' ? 'readme' : 'about';
+  $all('.info-tab', modal).forEach(tab => {
+    const active = tab.dataset.tab === tabName;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    tab.tabIndex = active ? 0 : -1;
+    if (active && focusTab) { try { tab.focus(); } catch (_) {} }
+  });
+  $all('.info-panel', modal).forEach(panel => {
+    const active = panel.dataset.tab === tabName;
+    panel.classList.toggle('active', active);
+    panel.hidden = !active;
+  });
+  localStorage.setItem(INFO_ACTIVE_TAB_KEY, tabName);
+  requestAnimationFrame(() => restoreInfoScroll(tabName));
+}
+
+function onInfoTabKeydown(event) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  const tabs = $all('.info-tab', $('#info-modal'));
+  const current = tabs.findIndex(tab => tab.classList.contains('active'));
+  if (current < 0) return;
+  const delta = event.key === 'ArrowRight' ? 1 : -1;
+  const next = tabs[(current + delta + tabs.length) % tabs.length];
+  activateInfoTab(next.dataset.tab, { focusTab: true });
+}
+
+function readInfoScrollStore() {
+  try { return JSON.parse(localStorage.getItem(INFO_SCROLL_KEY)) || {}; }
+  catch (_) { return {}; }
+}
+
+function saveInfoScrollPositions() {
+  const modal = $('#info-modal');
+  if (!modal) return;
+  const store = readInfoScrollStore();
+  let changed = false;
+  $all('.info-panel', modal).forEach(panel => {
+    // Only record panels that are actually laid out (visible). When the dialog
+    // is closed/reopening the panel is display:none with scrollTop 0 — saving
+    // it then would clobber the position we banked while it was open.
+    if (!panel.hidden && panel.clientHeight > 0) {
+      store[panel.dataset.tab] = Math.round(panel.scrollTop);
+      changed = true;
+    }
+  });
+  if (changed) {
+    try { localStorage.setItem(INFO_SCROLL_KEY, JSON.stringify(store)); } catch (_) {}
+  }
+}
+
+function restoreInfoScroll(name) {
+  const modal = $('#info-modal');
+  const panel = modal?.querySelector(`.info-panel[data-tab="${name}"]`);
+  if (!panel) return;
+  const store = readInfoScrollStore();
+  if (typeof store[name] === 'number') panel.scrollTop = store[name];
 }
 
 function wireConfig() {
@@ -7497,6 +7815,7 @@ function wireKeyboard() {
       }
     }
     else if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
+    else if (k === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); stopPlayback(); }
     else if (k === 'arrowleft' || k === 'j') { e.preventDefault(); previousBoth(); }
     else if (k === 'arrowright' || k === 'l') { e.preventDefault(); nextBoth(); }
     else if (k === '[') { setBlend((state.settings.opacity || 0.5) - 0.1); }
@@ -7633,7 +7952,11 @@ async function bootstrap() {
   setupTransitionManager();
   wireTransport();
   wireConfig();
+  wireInfoDialog();
   wireKeyboard();
+  // Sync the play/stop button UI + transport data-attribute with the loaded
+  // (always stopped on boot — playback is never auto-resumed) transport mode.
+  applyTransportMode(transportMode);
   window.addEventListener('focus', () => updateAnalyticsConsentState({ consent: analyticsConsentGranted }), { passive: true });
   await setupPWA();
   window.addEventListener('pagehide', cleanupRuntimeResources, { once: true });
@@ -7670,6 +7993,14 @@ async function bootstrap() {
   window.Blend = {
     state,
     saveStateNow,
+    // Transport controls + introspection (used by e2e specs to assert the
+    // pause-resume / stop-restart contract without poking private state).
+    togglePlay,
+    play: startPlayback,
+    pause: pausePlayback,
+    resume: resumePlayback,
+    stop: stopPlayback,
+    get transport() { return transportMode; },
     renderLibrary,
     renderListEditor,
     switchExperienceById,

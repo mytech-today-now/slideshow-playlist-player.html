@@ -401,40 +401,45 @@ button {
   color: var(--text-muted);
 }
 
-/* === CONFIG PANEL === */
+/* === CONFIG PANEL (centered ~90vw × 90vh scrollable modal) === */
 #config-backdrop {
   position: fixed; inset: 0; z-index: 30;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
   opacity: 0; pointer-events: none; transition: opacity 200ms;
 }
 #config-backdrop.open { opacity: 1; pointer-events: auto; }
 
 #config-panel {
-  position: fixed; top: clamp(8px, 1.6vh, 16px); right: clamp(8px, 1.6vw, 18px); bottom: clamp(8px, 1.6vh, 16px); z-index: 40;
-  width: min(92vw, 1280px); background: var(--bg-elev);
-  border: 1px solid var(--border); border-radius: 10px;
+  position: fixed;
+  top: 50%; left: 50%;
+  width: 90vw; height: 90vh;
+  max-width: 90vw; max-height: 90vh;
+  z-index: 40;
+  background: var(--bg-elev);
+  border: 1px solid var(--border); border-radius: 14px;
   box-shadow: var(--shadow);
-  transform: translateX(calc(100% + 24px)); transition: transform 280ms cubic-bezier(0.2,0,0,1);
-  display: flex; flex-direction: column; overflow: hidden;
+  /* Centered; the only horizontal positioning is this fixed transform, so the
+     internal vertical scroll below never shifts the dialog sideways. Closed
+     state fades + scales out. */
+  transform: translate(-50%, -50%) scale(0.96);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 220ms cubic-bezier(0.2,0,0,1),
+              transform 220ms cubic-bezier(0.2,0,0,1),
+              visibility 0s linear 220ms;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
-#config-panel.open { transform: translateX(0); }
-
-@media (min-width: 721px) {
-  #config-panel {
-    top: 6px;
-    bottom: 6px;
-  }
-  /* Keep every control reachable on short viewports: cap the settings
-     block and let it scroll on its own while the library/list panes
-     above keep their internal scroll. */
-  .global-settings {
-    max-height: 42vh;
-    overflow-y: auto;
-    min-height: 0;
-  }
+#config-panel.open {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity 220ms cubic-bezier(0.2,0,0,1),
+              transform 220ms cubic-bezier(0.2,0,0,1);
 }
 
 .config-header {
+  position: sticky; top: 0; z-index: 5;
   padding: 12px 16px 10px; border-bottom: 1px solid var(--border);
   display: flex; align-items: flex-start; gap: 12px; background: var(--bg-elev2); flex-wrap: wrap;
 }
@@ -483,9 +488,32 @@ button {
   background: var(--bg);
 }
 
-.config-body {
-  flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0;
+/* Information (i-circle) button, top-right of the config header */
+.config-info-btn {
+  flex: 0 0 auto;
+  width: var(--touch);
+  height: var(--touch);
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  opacity: .85;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  transition: opacity var(--trans), background var(--trans), transform var(--trans);
 }
+.config-info-btn:hover { opacity: 1; background: var(--bg); transform: translateY(-1px); }
+.config-info-btn:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+.config-info-btn svg { display: block; }
+
+.config-body {
+  flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr;
+}
+/* Long lists scroll within their pane so the modal stays a sensible height,
+   while the settings below scroll with the modal itself. */
+#library-grid { max-height: min(48vh, 540px); }
+#list-editor { max-height: min(48vh, 540px); }
 @media (max-width: 860px) {
   .config-body { grid-template-columns: 1fr; }
 }
@@ -1290,19 +1318,11 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
   #transport { gap: 6px; padding-inline: 8px; }
   #transport .blend-wrap { order: 2; flex-basis: 100%; max-width: min(92vw, 420px); margin: 0; }
   #config-panel {
-    width: calc(100vw - 12px);
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    width: 96vw; height: 94vh;
+    max-width: 96vw; max-height: 94vh;
+    border-radius: 12px;
   }
-  .config-header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
+  #library-grid, #list-editor { max-height: 60vh; }
   .config-body {
     display: block;
   }
@@ -1342,4 +1362,206 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
   .transition-option {
     grid-template-columns: 1fr;
   }
+}
+
+/* ============================================================
+   INFORMATION MODAL (About myTech.Today + README, tabbed)
+   ============================================================ */
+.info-modal {
+  width: min(90vw, 1100px);
+  max-width: 90vw;
+  height: 90vh;
+  max-height: 90vh;
+  padding: 0;
+  border-radius: 14px;
+  flex-direction: column;
+  overflow: hidden;
+}
+.info-modal[open] { display: flex; }
+.info-modal::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+
+.info-modal__header {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev2);
+  flex-wrap: wrap;
+}
+.info-modal__title {
+  margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; flex: 0 0 auto;
+}
+.info-modal__tabs { display: flex; gap: 6px; flex: 1 1 auto; flex-wrap: wrap; }
+.info-tab {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+  min-height: var(--touch); padding: 7px 14px; border-radius: 999px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: color var(--trans), background var(--trans), border-color var(--trans);
+}
+.info-tab:hover { color: var(--text); border-color: var(--accent); }
+.info-tab.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+.info-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.info-modal__close { flex: 0 0 auto; margin-left: auto; }
+
+.info-modal__body { flex: 1 1 auto; min-height: 0; display: flex; }
+.info-panel {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 20px clamp(16px, 4vw, 40px) 32px;
+}
+.info-panel[hidden] { display: none; }
+.info-panel:focus { outline: none; }
+
+/* About hero: a centered column so the title, tagline and CTA all share one
+   vertical centre axis and stay aligned with each other.
+   Child selectors use .info-panel prefix (specificity 0,0,2,x) to beat the
+   .markdown-body h1 / p rules (0,0,1,x) that appear later in this file. */
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 4px 0 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.info-panel .about-hero h1 {
+  margin: 0;
+  font-size: clamp(26px, 5vw, 40px);
+  line-height: 1.1;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.info-panel .about-tagline {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--text-muted);
+  font-size: clamp(14px, 1.6vw, 16px);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.info-panel .about-cta { margin: 0; }
+.about-link-btn,
+.markdown-body .about-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--touch);
+  padding: 10px 24px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 20px -12px rgba(255, 20, 147, 0.7);
+  transition: filter var(--trans), transform var(--trans), box-shadow var(--trans);
+}
+.about-link-btn:hover,
+.markdown-body .about-link-btn:hover {
+  filter: brightness(1.08);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+.about-link-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.about-links { line-height: 1.9; }
+.about-footnote { color: var(--text-muted); font-size: 13px; }
+
+/* Shared Markdown rendering (README + About) */
+.markdown-body { line-height: 1.65; font-size: 14.5px; color: var(--text); word-wrap: break-word; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3,
+.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  margin: 1.4em 0 0.5em; line-height: 1.25; font-weight: 700; scroll-margin-top: 12px;
+}
+.markdown-body h1 { font-size: 1.7em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.markdown-body h2 { font-size: 1.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.markdown-body h3 { font-size: 1.2em; }
+.markdown-body p { margin: 0.6em 0; }
+.markdown-body a { color: var(--accent); text-decoration: none; }
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body ul, .markdown-body ol { margin: 0.5em 0; padding-left: 1.6em; }
+.markdown-body li { margin: 0.25em 0; }
+.markdown-body code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  padding: 0.1em 0.4em; font-size: 0.88em;
+}
+.markdown-body pre {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; overflow-x: auto; margin: 0.8em 0;
+}
+.markdown-body pre code { background: none; border: 0; padding: 0; font-size: 0.86em; }
+.markdown-body blockquote {
+  margin: 0.8em 0; padding: 0.2em 1em; border-left: 3px solid var(--accent);
+  color: var(--text-muted); background: rgba(255,255,255,0.02);
+}
+.markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 1.4em 0; }
+.markdown-body img { max-width: 100%; height: auto; border-radius: 6px; }
+.markdown-body table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 0.92em; display: block; overflow-x: auto; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+.markdown-body th { background: var(--bg-elev2); }
+.markdown-body .task-list-item { list-style: none; margin-left: -1.2em; }
+.info-readme-status { color: var(--text-muted); }
+
+/* ============================================================
+   RESPONSIVE BREAKPOINTS
+   Desktop HD/UHD/4K/8K · tablet (portrait+landscape) · mobile
+   ============================================================ */
+
+/* Container query: collapse the config body to one column based on the
+   dialog's own width rather than the viewport (more accurate than @media). */
+#config-panel { container-type: inline-size; container-name: configpanel; }
+@container configpanel (max-width: 820px) {
+  .config-body { grid-template-columns: 1fr; }
+}
+
+/* Tablet landscape & small laptops: keep the two-pane body but cap list height. */
+@media (min-width: 861px) and (max-width: 1180px) {
+  #library-grid, #list-editor { max-height: min(42vh, 460px); }
+}
+
+/* Short, wide viewports (mobile landscape, low laptops): use more height. */
+@media (max-height: 560px) and (orientation: landscape) {
+  #config-panel { width: 96vw; height: 96vh; max-width: 96vw; max-height: 96vh; }
+  .info-modal { width: 96vw; height: 96vh; max-width: 96vw; max-height: 96vh; }
+  #library-grid, #list-editor { max-height: 50vh; }
+}
+
+/* HD and up (≥1920px): give the dense settings grid more breathing room. */
+@media (min-width: 1920px) {
+  :root { --touch: 46px; }
+  body { font-size: 16px; }
+  .global-settings__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* QHD / 1440p (≥2560px): scale UI up so it isn't tiny on large panels. */
+@media (min-width: 2560px) {
+  :root { --touch: 52px; }
+  body { font-size: 18px; }
+  #config-panel { max-width: 2000px; }
+  .info-modal { width: min(90vw, 1500px); }
+  #viewport-hud { font-size: 18px; }
+}
+
+/* 4K / UHD (≥3840px) and 8K (≥7680px): cap dialog width and scale type. */
+@media (min-width: 3840px) {
+  :root { --touch: 64px; }
+  body { font-size: 22px; }
+  #config-panel { max-width: 2600px; }
+  .info-modal { width: min(80vw, 1900px); }
+  #transport button { font-size: 26px; }
+}
+@media (min-width: 7680px) {
+  body { font-size: 30px; }
+  #config-panel { max-width: 3400px; }
+  .info-modal { width: min(70vw, 2600px); }
+}
+
+/* Honor reduced motion for the new dialogs too. */
+@media (prefers-reduced-motion: reduce) {
+  #config-panel { transition: opacity 1ms, visibility 0s !important; }
 }

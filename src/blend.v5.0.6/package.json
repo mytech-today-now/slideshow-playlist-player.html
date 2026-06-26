@@ -1,7 +1,9 @@
 {
+  "name": "blend",
+  "version": "5.0.6",
   "type": "module",
   "scripts": {
-    "check": "node --check app.js && node --check transition-manager.js && node --check logger.js && node --check drag-sort.js && node --check list-reorder.js && node --check supabase-config.js && node --check supabase-auth.js && node --check storage-url-resolver.js && node --check service-worker.js && node --check sw.js",
+    "check": "node --check app.js && node --check transition-manager.js && node --check logger.js && node --check drag-sort.js && node --check list-reorder.js && node --check playback-clock.js && node --check markdown.js && node --check supabase-config.js && node --check supabase-auth.js && node --check storage-url-resolver.js && node --check service-worker.js && node --check sw.js",
     "test:regression": "node --test tests/regression/*.test.mjs",
     "test:e2e": "playwright test",
     "sanity": "npm run check && npm run test:regression",
