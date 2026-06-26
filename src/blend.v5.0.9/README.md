@@ -2,7 +2,7 @@
 
 Blend is a local-first, browser-based dual-layer media studio. It lets you run a **Playlist layer** (video/audio) and a **Slideshow layer** (image/video) at the same time, then blend them live with independent controls.
 
-> Source of truth for this README: `src/blend.v5.0.8/`
+> Source of truth for this README: `src/blend.v5.0.6/`
 
 ## Table of Contents
 
@@ -81,16 +81,16 @@ You can play both at once, mix visibility using a blend slider, and control each
 
 ## Current Version Information
 
-- **Recommended implementation directory:** `src/blend.v5.0.8/`
-- **Authoritative app entry:** `src/blend.v5.0.8/index.html`
-- **Compatibility redirect entry:** `src/blend.v5.0.8/slideshow-playlist-player.html`
-- **Runtime app version string in code/UI:** `5.0.8`
-- **Cache/app shell version key:** `blend-player-v5.0.8-20260626-exp-load`
+- **Recommended implementation directory:** `src/blend.v5.0.6/`
+- **Authoritative app entry:** `src/blend.v5.0.6/index.html`
+- **Compatibility redirect entry:** `src/blend.v5.0.6/slideshow-playlist-player.html`
+- **Runtime app version string in code/UI:** `5.0.6`
+- **Cache/app shell version key:** `blend-player-v5.0.6-20260625-player-controls`
 
 Latest source location:
 
 - [Repository root](https://github.com/mytech-today-now/slideshow-playlist-player.html)
-- [Current implementation folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.8)
+- [Current implementation folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.6)
 
 ## Screenshots
 
@@ -103,7 +103,7 @@ Latest source location:
 
 ## Quick Start
 
-1. Open `src/blend.v5.0.8/index.html` from a local server.
+1. Open `src/blend.v5.0.5/index.html` from a local server.
 2. Press `C` (or click the gear icon) to open the configuration panel.
 3. Add media using one of these actions:
    - `Add Files` for individual files
@@ -116,7 +116,7 @@ Latest source location:
 
 No build step is required for normal playback.
 
-For testing/dev in `src/blend.v5.0.8`:
+For testing/dev in `src/blend.v5.0.5`:
 
 ```bash
 npm install
@@ -127,7 +127,7 @@ npm install
 ### Option A: serve the implementation folder directly
 
 ```bash
-cd src/blend.v5.0.8
+cd src/blend.v5.0.5
 npx serve -l 5173 --cors
 ```
 
@@ -146,7 +146,7 @@ python -m http.server 5173
 Then open:
 
 ```text
-http://localhost:5173/src/blend.v5.0.8/index.html
+http://localhost:5173/src/blend.v5.0.5/index.html
 ```
 
 ## Feature Matrix
@@ -718,7 +718,7 @@ Remote services (optional/by configuration):
 - Supabase Auth endpoints
 - Supabase Storage public/signed URL endpoints
 
-Dev/test (`src/blend.v5.0.8/package.json`):
+Dev/test (`src/blend.v5.0.5/package.json`):
 
 - `@playwright/test`
 - `esbuild`
@@ -765,8 +765,8 @@ Verified in current implementation:
 
 ## Known Issues
 
-- Root-level helper script `scripts/Start-PlayerDev.ps1` still references legacy `src/v/...` paths; use `src/blend.v5.0.8/index.html` URLs instead.
-- Repository root `VERSION` and older README sections may not match runtime versioning used by `src/blend.v5.0.8`.
+- Root-level helper script `scripts/Start-PlayerDev.ps1` still references legacy `src/v/...` paths; use `src/blend.v5.0.5/index.html` URLs instead.
+- Repository root `VERSION` and older README sections may not match runtime versioning used by `src/blend.v5.0.5`.
 
 ## Troubleshooting Guide
 
@@ -826,7 +826,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 ### Project Structure
 
 ```text
-src/blend.v5.0.8/
+src/blend.v5.0.5/
   index.html
   slideshow-playlist-player.html
   styles.css
@@ -871,7 +871,7 @@ src/blend.v5.0.8/
 
 ### Validation and Tests
 
-From `src/blend.v5.0.8`:
+From `src/blend.v5.0.5`:
 
 ```bash
 npm run check
@@ -887,7 +887,7 @@ npm run test
 3. Implement startup behavior tied to `resumeOnLoad` setting.
 4. Add optional codec diagnostics in UI for failed media loads.
 5. Add first-class screenshot assets and GIF demos to documentation.
-6. Update root helper scripts and root version metadata to match `src/blend.v5.0.8` conventions.
+6. Update root helper scripts and root version metadata to match `src/blend.v5.0.5` conventions.
 
 ## Changelog Reference
 
@@ -915,8 +915,8 @@ npm run test
 
 Use also:
 
-- [`src/blend.v5.0.8/MIGRATION_NOTES.md`](src/blend.v5.0.8/MIGRATION_NOTES.md)
-- [Commit history for `src/blend.v5.0.8`](https://github.com/mytech-today-now/slideshow-playlist-player.html/commits/main/src/blend.v5.0.8)
+- [`src/blend.v5.0.6/MIGRATION_NOTES.md`](src/blend.v5.0.6/MIGRATION_NOTES.md)
+- [Commit history for `src/blend.v5.0.6`](https://github.com/mytech-today-now/slideshow-playlist-player.html/commits/main/src/blend.v5.0.6)
 
 ## Contributing
 
@@ -930,7 +930,7 @@ Please prioritize:
 
 Suggested workflow:
 
-1. Work in `src/blend.v5.0.8/`.
+1. Work in `src/blend.v5.0.5/`.
 2. Run regression tests.
 3. Run targeted e2e scenarios for changed workflows.
 4. Validate import/export roundtrips with real sample media.
