@@ -1,0 +1,81 @@
+{
+  "version": "0.1.0",
+  "modules": [
+    {
+      "name": "coding-standards/css",
+      "version": "1.0.0",
+      "type": "coding-standards",
+      "description": "Comprehensive CSS coding standards for modern web development with styling, layouts, responsiveness, and preprocessors (Sass, Less)"
+    },
+    {
+      "name": "coding-standards/html",
+      "version": "1.0.0",
+      "type": "coding-standards",
+      "description": "Comprehensive HTML coding standards for modern web development with semantic HTML, accessibility guidelines, and HTML5 features"
+    },
+    {
+      "name": "coding-standards/html-css-js",
+      "version": "1.0.0",
+      "type": "coding-standards",
+      "description": "Comprehensive HTML/CSS/JavaScript coding standards for modern web development with semantic HTML, modern CSS features, and ES6+ JavaScript"
+    },
+    {
+      "name": "coding-standards/js",
+      "version": "1.0.0",
+      "type": "coding-standards",
+      "description": "Comprehensive JavaScript coding standards for modern web development with ES6+, DOM manipulation, async patterns, and framework integration"
+    },
+    {
+      "name": "coding-standards/powershell",
+      "version": "1.0.0",
+      "type": "coding-standards",
+      "description": "Comprehensive PowerShell coding standards for professional, maintainable, and secure PowerShell code across automation, modules, DSC, cloud orchestration, administrative tools, cross-platform scripts, and legacy migrations."
+    },
+    {
+      "name": "domain-rules/api-design",
+      "version": "1.0.0",
+      "type": "domain-rules",
+      "description": "Comprehensive API design guidelines including REST, GraphQL, versioning, and best practices"
+    },
+    {
+      "name": "domain-rules/database",
+      "version": "1.0.0",
+      "type": "domain-rules",
+      "description": "Comprehensive database design guidelines including schema design, normalization, indexing, and best practices"
+    },
+    {
+      "name": "domain-rules/security",
+      "version": "1.0.0",
+      "type": "domain-rules",
+      "description": "Comprehensive security guidelines including OWASP best practices, authentication, encryption, and secure coding"
+    },
+    {
+      "name": "domain-rules/software-architecture",
+      "version": "1.0.0",
+      "type": "domain-rules",
+      "description": "Comprehensive software architecture design patterns, principles, and best practices covering monolithic, microservices, event-driven, serverless, and industry-specific architectures"
+    },
+    {
+      "name": "examples/rest-api-plugin",
+      "version": "1.0.0",
+      "type": "examples",
+      "description": "Complete REST API plugin examples with custom endpoints (GET, POST, PUT, DELETE), authentication, validation, error handling, and JavaScript client examples"
+    },
+    {
+      "name": "workflows/adr-support",
+      "version": "1.0.0",
+      "type": "workflow",
+      "description": "Automatic Architecture Decision Record (ADR) management with decision detection, lifecycle tracking, templates, and integration with OpenSpec and Beads workflows"
+    },
+    {
+      "name": "workflows/database",
+      "version": "1.0.0",
+      "type": "workflow",
+      "description": "Comprehensive workflow for database design, schema development, migration management, optimization, and testing. Covers relational, NoSQL, vector, and flat databases."
+    }
+  ],
+  "settings": {
+    "autoUpdate": false,
+    "checkUpdatesOnInit": true
+  }
+}

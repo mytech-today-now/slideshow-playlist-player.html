@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
+  <meta name="robots" content="index,follow">
+  <meta name="version" content="5.0.9"> <!-- see script comment block for full changelog -->
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="color-scheme" content="dark light">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Blend 5.0.9">
+  <meta property="og:site_name" content="Blend version 5.0.9">
+  <meta property="og:title" content="Blend version 5.0.9">
+  <meta property="og:description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="./index.html">
+  <meta property="og:image" content="./icon.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blend version 5.0.9">
+  <meta name="twitter:description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
+  <meta name="twitter:image" content="./icon.svg">
+  <link rel="canonical" href="./index.html">
+  <title>Blend version 5.0.9</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./styles.css?v=20260626-v5.0.9-url-limit">
+</head>
+<body>
+  <a class="skip-link" href="#transport">Skip to controls</a>
+  <!-- VIEWPORT -->
+  <div id="viewport" role="region" aria-label="Playback viewport">
+    <div id="playlist-layer" class="media-layer bottom"></div>
+    <div id="slideshow-layer" class="media-layer top"></div>
+
+    <div id="viewport-hud">
+      <span id="hud-playlist">—</span>
+      <span class="sep">•</span>
+      <span id="hud-slideshow">—</span>
+      <span class="sep">•</span>
+      <span id="hud-blend">50%</span>
+    </div>
+    <div id="transition-fps" class="fps-monitor hidden" role="status" aria-live="polite">FPS --</div>
+    <div id="slideshow-loading" class="loading-pill" role="status" aria-live="polite">Loading next slide…</div>
+    <div id="viewport-nav-arrows" aria-label="Slideshow navigation">
+      <button id="slideshow-prev" type="button" class="viewport-nav-arrow viewport-nav-arrow--prev" title="Previous slide (<<)" aria-label="Previous slideshow item"><<</button>
+      <button id="slideshow-next" type="button" class="viewport-nav-arrow viewport-nav-arrow--next" title="Next slide (>>)" aria-label="Next slideshow item">>></button>
+    </div>
+    <div id="install-banner" class="install-banner hidden" role="status" aria-live="polite">
+      <div class="install-banner__copy">
+        <strong>Install Blend</strong>
+        <span>Launch it like an app and keep the shell ready offline.</span>
+      </div>
+      <div class="install-banner__actions">
+        <button id="install-primary" type="button" class="btn primary">Install</button>
+        <button id="install-help" type="button" class="btn">Help</button>
+        <button id="install-dismiss" type="button" class="btn">Later</button>
+      </div>
+    </div>
+
+    <button id="config-gear" title="Configuration (C)" aria-label="Open configuration panel">⚙️</button>
+
+    <!-- Experience load progress overlay (v5.0.9)
+         Shown while a ?experience= URL share is being decompressed and imported.
+         All interactive children of #transport are disabled separately via JS;
+         #config-gear (a sibling, not a child) stays fully functional.  -->
+    <div id="experience-load-overlay" hidden
+         role="region"
+         aria-label="Loading shared experience"
+         aria-live="polite"
+         aria-atomic="false">
+      <div class="exp-load-content">
+        <div class="exp-load-header">
+          <span class="exp-load-spinner" aria-hidden="true">↻</span>
+          <span class="exp-load-title" id="exp-load-title">Loading Shared Experience</span>
+          <span class="exp-load-elapsed" id="exp-load-elapsed" aria-hidden="true">0:00</span>
+        </div>
+        <div class="exp-load-bar-track"
+             role="progressbar"
+             aria-valuenow="0"
+             aria-valuemin="0"
+             aria-valuemax="100"
+             aria-labelledby="exp-load-title"
+             aria-describedby="exp-load-status-text">
+          <div class="exp-load-bar-fill" id="exp-load-fill"></div>
+        </div>
+        <div class="exp-load-status-row">
+          <span id="exp-load-status-text">Preparing…</span>
+          <strong id="exp-load-pct" aria-hidden="true">0%</strong>
+        </div>
+        <div id="exp-load-item-list" class="exp-load-item-list"
+             role="list" aria-label="Recently loaded items"></div>
+        <p id="exp-load-error" class="exp-load-error" hidden role="alert"></p>
+      </div>
+    </div>
+
+    <!-- Transport -->
+    <div id="transport" role="toolbar" aria-label="Playback controls">
+      <button id="btn-prev" title="Previous (← or J)">⏮</button>
+      <button id="btn-play" class="play-btn" title="Play / Pause (Space or K)">▶</button>
+      <button id="btn-next" title="Next (→ or L)">⏭</button>
+      <button id="btn-stop" title="Stop">⏹</button>
+      <button id="btn-share" title="Share current experience" aria-label="Share current experience">🔗</button>
+
+      <div class="blend-wrap">
+        <span>Blend</span>
+        <input id="blend-slider" type="range" min="0" max="100" value="50" title="Opacity blend — [ / ] keys">
+        <span id="blend-value">50%</span>
+      </div>
+
+      <button id="btn-fullscreen" title="Fullscreen viewport (F)">⛶</button>
+      <div class="master-volume" id="master-volume-control" data-muted="false">
+        <button id="btn-mute" type="button" title="Mute master volume (M)" aria-label="Mute master volume">🔊</button>
+        <div class="master-volume__popover">
+          <span id="vol-master-val" class="master-volume__value">100%</span>
+          <input id="vol-master" type="range" min="0" max="1" step="0.05" value="1" title="Master volume" aria-label="Master volume">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIG PANEL -->
+  <div id="config-backdrop"></div>
+  <div id="config-panel" role="dialog" aria-label="Configuration" aria-modal="true">
+    <div class="config-header">
+      <div class="experience-panel">
+        <div class="experience-row">
+          <label for="experience-select">Experience</label>
+          <select id="experience-select" aria-label="Select experience"></select>
+          <button id="experience-new" type="button" class="list-action">New</button>
+          <button id="experience-rename" type="button" class="list-action">Rename</button>
+          <button id="experience-delete" type="button" class="list-action">Delete</button>
+          <button id="experience-import" type="button" class="list-action">Import</button>
+          <button id="experience-export" type="button" class="list-action">Export</button>
+          <button id="experience-share-url" type="button" class="list-action" title="Copy a compressed share URL for this experience" aria-haspopup="dialog">Share URL</button>
+          <button id="clear-browser-storage" type="button" class="list-action danger">Clear Browser Storage</button>
+        </div>
+      </div>
+      <span id="app-version" class="version-badge" title="Application version">v5.0.9</span>
+      <button id="open-info" type="button" class="config-info-btn" title="Information — About myTech.Today &amp; README" aria-label="Open information dialog" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1.1-11.4a1.1 1.1 0 1 1 2.2 0 1.1 1.1 0 0 1-2.2 0zM11 11h2v6h-2v-6z"/></svg>
+      </button>
+      <button id="close-config" type="button" class="close-btn" title="Close (Esc)" aria-label="Close configuration panel">✕</button>
+    </div>
+
+    <div class="config-body">
+      <!-- LIBRARY -->
+      <div class="library-pane">
+        <div class="pane-header">
+          <span>Media Library <span id="lib-count" class="muted">(0)</span></span>
+        </div>
+        <div class="pane-actions">
+          <button id="add-files" class="primary">Add Files</button>
+          <button id="add-folder">Add Folder</button>
+          <button id="add-url">Add URL</button>
+          <button id="library-sort" aria-haspopup="menu" aria-expanded="false">Sort ▾</button>
+          <button id="clear-library">Clear View</button>
+          <button id="remove-stale">Remove Stale</button>
+        </div>
+
+        <input id="library-search" type="search" placeholder="Search media… (/)">
+
+        <div class="type-pills" role="navigation" aria-label="Media type filters">
+          <a href="#" class="type-pill active" data-filter="all">All</a>
+          <a href="#" class="type-pill" data-filter="video">Video</a>
+          <a href="#" class="type-pill" data-filter="audio">Audio</a>
+          <a href="#" class="type-pill" data-filter="image">Images</a>
+          <div class="source-filter" role="group" aria-label="Media source filter">
+            <button type="button" class="source-pill active" data-source-filter="all">All</button>
+            <button type="button" class="source-pill" data-source-filter="local">Local</button>
+            <button type="button" class="source-pill" data-source-filter="url">URL</button>
+          </div>
+        </div>
+
+        <div id="library-grid" role="listbox" aria-label="Media Library" aria-multiselectable="true"></div>
+
+        <div class="pane-actions library-actions">
+          <button id="add-selected-playlist">Add Selected → Playlist</button>
+          <button id="add-selected-slideshow">Add Selected → Slideshow</button>
+          <button id="remove-selected-library" class="list-action danger">Remove Selected</button>
+        </div>
+      </div>
+
+      <!-- LISTS -->
+      <div class="list-pane">
+        <div class="segmented" role="tablist">
+          <button data-tab="playlist" class="active" aria-selected="true">Playlist <span id="pl-count">(0)</span></button>
+          <button data-tab="slideshow" aria-selected="false">Slideshow <span id="ss-count">(0)</span></button>
+        </div>
+
+        <div id="list-editor" role="listbox" aria-label="Playlist editor"></div>
+
+        <div class="list-actions">
+          <div class="list-action-group" aria-label="List organization actions">
+            <button id="list-clear" class="list-action">Clear All</button>
+            <button id="list-shuffle" class="list-action">Shuffle</button>
+            <button id="list-sort" class="list-action" aria-haspopup="menu" aria-expanded="false">Sort ▾</button>
+            <button id="list-reverse" class="list-action">Reverse</button>
+            <button id="list-resolve-links" class="list-action" aria-label="Resolve links in both lists" title="Retry unavailable items in both lists">↻ Resolve links</button>
+          </div>
+          <div class="list-action-group" aria-label="List import and export actions">
+            <button id="list-export" class="list-action" aria-haspopup="menu" aria-expanded="false">Export…</button>
+            <button id="list-import" class="list-action">Import List…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLOBAL SETTINGS -->
+    <div class="global-settings">
+      <div class="global-settings__grid">
+        <div class="setting">
+          <label for="import-behavior">Import behavior</label>
+          <select id="import-behavior">
+            <option value="append" selected>Append</option>
+            <option value="replace">Replace current list</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="theme-mode">Theme</label>
+          <select id="theme-mode" aria-label="Theme">
+            <option value="auto" selected>Auto</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="effect-intensity">Effect intensity</label>
+          <select id="effect-intensity">
+            <option value="off">Off</option>
+            <option value="subtle" selected>Subtle</option>
+            <option value="medium">Medium</option>
+            <option value="strong">Strong</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="experience-playback-mode">Experience playback mode</label>
+          <select id="experience-playback-mode">
+            <option value="loop" selected>Loop</option>
+            <option value="stop">Stop at End</option>
+            <option value="next-experience">Go to Next Experience</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label for="default-duration">Default image duration</label>
+          <div class="setting__control">
+            <input id="default-duration" type="number" step="0.5" min="0.5" max="300" value="4.0">
+            <span>s</span>
+          </div>
+        </div>
+        <label class="setting setting--toggle" for="loop-experience-catalog">
+          <input type="checkbox" id="loop-experience-catalog">
+          <span>Loop experience catalog after last experience</span>
+        </label>
+        <div class="setting">
+          <label for="transition-duration">Transition duration</label>
+          <div class="setting__control">
+            <input id="transition-duration" type="range" min="200" max="3000" step="50" value="900">
+            <span id="transition-duration-val">900ms</span>
+          </div>
+        </div>
+        <div class="setting">
+          <label for="transition-overlap">Crossfade overlap</label>
+          <div class="setting__control">
+            <input id="transition-overlap" type="range" min="0" max="3000" step="50" value="0">
+            <span id="transition-overlap-val">0ms</span>
+          </div>
+        </div>
+        <label class="setting setting--toggle" for="quality-auto-adjust">
+          <input type="checkbox" id="quality-auto-adjust" checked>
+          <span>Auto-adjust transition quality by FPS</span>
+        </label>
+        <label class="setting setting--toggle" for="show-transition-fps">
+          <input type="checkbox" id="show-transition-fps">
+          <span>Show FPS monitor</span>
+        </label>
+        <div class="setting setting--wide transition-picker">
+          <details id="enabled-transitions-picker">
+            <summary>Enabled Transitions</summary>
+            <div class="transition-picker__controls">
+              <label class="transition-picker__toggle" for="transition-randomize-order">
+                <input type="checkbox" id="transition-randomize-order" checked>
+                <span>Randomize order</span>
+              </label>
+              <label class="transition-picker__heavy" for="transition-max-heavy">
+                <span>Max heavy effects in a row</span>
+                <input id="transition-max-heavy" type="number" min="0" max="8" step="1" value="1">
+              </label>
+            </div>
+            <div id="enabled-transitions-list" class="transition-picker__list" role="group" aria-label="Enabled transitions"></div>
+          </details>
+        </div>
+        <label class="setting setting--toggle" for="resume-on-load">
+          <input type="checkbox" id="resume-on-load" checked>
+          <span>Resume on load</span>
+        </label>
+        <label class="setting setting--toggle" for="auto-verify">
+          <input type="checkbox" id="auto-verify" checked>
+          <span>Auto-verify on startup</span>
+        </label>
+        <label class="setting setting--toggle" for="analytics-consent">
+          <input type="checkbox" id="analytics-consent">
+          <span>Allow anonymous analytics</span>
+        </label>
+        <div class="setting setting--wide">
+          <label for="supabase-default-bucket">Supabase media bucket</label>
+          <input id="supabase-default-bucket" type="text" value="media" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="setting">
+          <label for="supabase-signed-url-ttl">Signed URL TTL</label>
+          <div class="setting__control">
+            <input id="supabase-signed-url-ttl" type="number" step="60" min="60" max="2592000" value="1209600">
+            <span>s</span>
+          </div>
+        </div>
+        <label class="setting setting--toggle" for="private-media-auth-required">
+          <input type="checkbox" id="private-media-auth-required" checked>
+          <span>Require auth for private media</span>
+        </label>
+        <div class="setting setting--wide">
+          <label>Supabase session</label>
+          <div class="setting__control" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+            <span id="supabase-auth-status" role="status" aria-live="polite" style="min-width:0;flex:1 1 140px;">Checking session…</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="supabase-sign-in" type="button" class="list-action">Use token</button>
+              <button id="supabase-sign-out" type="button" class="list-action">Sign out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="global-settings__volumes">
+        <div class="volume-inline">
+          <label for="vol-playlist">Playlist volume:</label>
+          <input id="vol-playlist" type="range" min="0" max="1" step="0.05" value="1">
+          <span id="vol-playlist-val">100%</span>
+        </div>
+        <div class="volume-inline">
+          <label for="vol-slideshow">Slideshow volume:</label>
+          <input id="vol-slideshow" type="range" min="0" max="1" step="0.05" value="0.65">
+          <span id="vol-slideshow-val">65%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+  <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- HELP MODAL -->
+  <dialog id="help-modal" aria-labelledby="help-title" aria-modal="true">
+    <div class="modal-header" id="help-title">Keyboard Shortcuts &amp; Tips</div>
+    <div class="modal-body">
+      <table class="help-table">
+        <tr><td class="key">Space / K</td><td>Play / Pause both layers (resumes from the exact paused position)</td></tr>
+        <tr><td class="key">S</td><td>Stop — reset to black and rewind to the beginning</td></tr>
+        <tr><td class="key">← / J</td><td>Previous (respects history in random/shuffle)</td></tr>
+        <tr><td class="key">→ / L</td><td>Next</td></tr>
+        <tr><td class="key">[ / ]</td><td>Blend opacity − / + 10%</td></tr>
+        <tr><td class="key">C</td><td>Toggle config panel (playback continues)</td></tr>
+        <tr><td class="key">F</td><td>Fullscreen viewport</td></tr>
+        <tr><td class="key">M</td><td>Mute / unmute master</td></tr>
+        <tr><td class="key">1–9</td><td>Seek 10%–90% in current playlist video</td></tr>
+        <tr><td class="key">/</td><td>Focus library search</td></tr>
+        <tr><td class="key">Alt+S</td><td>Open Media Library sort menu</td></tr>
+        <tr><td class="key">Delete / ⌫</td><td>Remove selected or focused list item (undoable)</td></tr>
+        <tr><td class="key">Swipe ← / →</td><td>Previous / next media on touch screens</td></tr>
+        <tr><td class="key">Swipe ↑ / ↓</td><td>Fine-tune slideshow blend opacity on touch screens</td></tr>
+        <tr><td class="key">?</td><td>This help</td></tr>
+        <tr><td class="key">Esc</td><td>Close panels / modals</td></tr>
+      </table>
+      <p style="margin-top:14px;font-size:12px;color:#aaa">Drag items from the Media Library directly into the list on the right. Multi-select with Shift or Ctrl/Cmd. The install banner helps on Android, desktop, and iPhone/iPad. All media stays on your machine.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="document.getElementById('help-modal').close()">Close</button>
+    </div>
+  </dialog>
+
+  <!-- WELCOME (first run) -->
+  <dialog id="welcome-modal" aria-labelledby="welcome-title" aria-modal="true">
+    <div class="modal-header" id="welcome-title">Welcome to Blend version 5.0.6</div>
+    <div class="modal-body">
+      <p><strong>Two independent layers.</strong> A Playlist for your audio foundation + a Slideshow for visuals. Blend them live with the opacity slider.</p>
+      <p style="margin:12px 0">Everything is private and local. Use <strong>Add Folder</strong> to point at your videos/ directory for instant testing.</p>
+      <p style="font-size:12px;color:#888">Pro tip: Press <strong>C</strong> to open the full editor while playback continues underneath.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="welcome-example-list">Example .txt</button>
+      <button class="btn" id="welcome-dismiss">Got it</button>
+      <button class="btn primary" id="welcome-add-folder">Add Folder…</button>
+    </div>
+  </dialog>
+
+  <!-- EXPERIENCE MODAL -->
+  <dialog id="experience-modal">
+    <div class="modal-header" id="experience-modal-title">Experience</div>
+    <div class="modal-body">
+      <p id="experience-modal-message" class="muted" style="margin:0 0 10px 0;"></p>
+      <label id="experience-modal-label" for="experience-modal-input">Experience name</label>
+      <input id="experience-modal-input" type="text" placeholder="Experience name" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:14px;">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="experience-modal-cancel">Cancel</button>
+      <button class="btn primary" id="experience-modal-ok">Save</button>
+    </div>
+  </dialog>
+
+  <dialog id="supabase-auth-modal" aria-labelledby="supabase-auth-title" aria-modal="true">
+    <form method="dialog" style="margin:0;">
+      <div class="modal-header" id="supabase-auth-title">Connect Supabase API Token</div>
+      <div class="modal-body">
+        <label for="supabase-auth-token">API token</label>
+        <textarea id="supabase-auth-token" name="accessToken" rows="4" autocomplete="off" spellcheck="false" required style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:13px;font-family:var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);resize:vertical;"></textarea>
+        <label for="supabase-auth-refresh-token" style="display:block;margin-top:12px;">Refresh token (optional)</label>
+        <input id="supabase-auth-refresh-token" name="refreshToken" type="text" autocomplete="off" spellcheck="false" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:14px;">
+        <p class="muted" style="margin:8px 0 0 0;font-size:12px;">Use a project API token that can sign private Storage URLs.</p>
+        <p data-auth-error class="muted" style="min-height:18px;margin:10px 0 0 0;color:#f87171;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" type="button" data-auth-cancel>Cancel</button>
+        <button class="btn primary" type="submit" data-auth-submit>Connect</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- INFORMATION MODAL (About + README) -->
+  <dialog id="info-modal" class="info-modal" aria-labelledby="info-modal-title" aria-modal="true">
+    <div class="info-modal__header">
+      <h2 id="info-modal-title" class="info-modal__title">Information</h2>
+      <div class="info-modal__tabs" role="tablist" aria-label="Information sections">
+        <button type="button" class="info-tab active" id="info-tab-about" role="tab" aria-selected="true" aria-controls="info-panel-about" data-tab="about">About myTech.Today</button>
+        <button type="button" class="info-tab" id="info-tab-readme" role="tab" aria-selected="false" aria-controls="info-panel-readme" data-tab="readme" tabindex="-1">README</button>
+      </div>
+      <button type="button" class="close-btn info-modal__close" id="info-close" title="Close (Esc)" aria-label="Close information dialog">✕</button>
+    </div>
+    <div class="info-modal__body">
+      <!-- TAB 1: About myTech.Today -->
+      <section id="info-panel-about" class="info-panel markdown-body active" role="tabpanel" aria-labelledby="info-tab-about" data-tab="about" tabindex="0">
+        <header class="about-hero">
+          <h1>myTech.Today</h1>
+          <p class="about-tagline">Managed IT services &amp; custom technology solutions for small and mid-sized businesses across the Midwest.</p>
+          <p class="about-cta">
+            <a class="about-link-btn" href="https://mytech.today/" target="_blank" rel="noopener noreferrer">Visit mytech.today →</a>
+          </p>
+        </header>
+
+        <h2>Who we are</h2>
+        <p>Founded in 2016 and headquartered in Illinois, <strong>myTech.Today</strong> is a leading IT service provider serving small and mid-sized businesses (SMBs) across multiple industries. We deliver professional, customized solutions — and we never outsource our support.</p>
+
+        <h2>What we do</h2>
+        <ul>
+          <li><strong>Managed IT &amp; help desk</strong> — subscription-based or hourly support, with calls answered in about 15 seconds and returned immediately.</li>
+          <li><strong>Cloud &amp; infrastructure</strong> — AWS, Azure, Microsoft 365, hosted servers, colocation, and mail services.</li>
+          <li><strong>Backup &amp; disaster recovery</strong> — online backup, cloud services, and business-continuity planning.</li>
+          <li><strong>Networking &amp; security</strong> — VPN deployment, DNS web filtering, Active Directory, Wi-Fi enhancements, and internet connectivity.</li>
+          <li><strong>Projects &amp; development</strong> — custom programming, VMware configuration, OS upgrades, database and workflow transformations.</li>
+          <li><strong>Domains &amp; web</strong> — domain registration, DNS, hardware and software solutions.</li>
+        </ul>
+
+        <h2>Why businesses choose us</h2>
+        <ul>
+          <li>9+ years of trusted service to the SMB community.</li>
+          <li>Fast, human support — your call is answered quickly and never offshored.</li>
+          <li>Flexible engagement: subscription plans or pay-as-you-go hourly help.</li>
+          <li>Tailored solutions designed around how your business actually works.</li>
+        </ul>
+
+        <h2>Get in touch</h2>
+        <p>Request a callback and one of our Technology Advisors will reach out — typically within 15 minutes during business hours (Monday–Friday, 8:30&nbsp;am – 5:00&nbsp;pm Central Time).</p>
+        <ul class="about-links">
+          <li><a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a> — home &amp; request a callback</li>
+          <li><a href="https://mytech.today/it-services-and-solutions-mobile/" target="_blank" rel="noopener noreferrer">IT Services &amp; Solutions</a></li>
+          <li><a href="https://www.linkedin.com/in/kylerode/" target="_blank" rel="noopener noreferrer">Kyle Rode — Owner, on LinkedIn</a></li>
+        </ul>
+
+        <hr>
+        <p class="about-footnote">Blend is built and maintained by myTech.Today. This player keeps all of your media on your own machine — private by design.</p>
+      </section>
+
+      <!-- TAB 2: README (rendered Markdown) -->
+      <section id="info-panel-readme" class="info-panel" role="tabpanel" aria-labelledby="info-tab-readme" data-tab="readme" tabindex="0" hidden>
+        <div class="markdown-body" id="info-readme-content">
+          <p class="info-readme-status">Loading README…</p>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <!-- URL SHARE MODAL (v5.0.9) -->
+  <dialog id="url-share-modal" aria-labelledby="url-share-modal-title" aria-modal="true">
+    <div class="modal-header" id="url-share-modal-title">Share Experience via URL</div>
+    <div class="modal-body">
+      <p class="muted" style="margin:0 0 12px 0;font-size:13px;">
+        This URL encodes the full experience — playlist, slideshow, settings, and media references — compressed into a single link. Recipients can paste it directly into their browser to import.
+      </p>
+
+      <!-- "URL too long" warning banner — shown only when URL > 2 048 characters -->
+      <div id="url-share-toolong" class="url-share-toolong hidden" role="alert" aria-live="assertive">
+        <span class="url-share-toolong__icon" aria-hidden="true">⚠</span>
+        <div class="url-share-toolong__text">
+          <strong class="url-share-toolong__title">URL exceeds 2,048-character browser limit</strong>
+          <span id="url-share-toolong-detail" class="url-share-toolong__detail"></span>
+        </div>
+      </div>
+
+      <!-- URL copy row -->
+      <div class="url-share-box">
+        <input id="url-share-url-input" type="text" readonly aria-label="Share URL" spellcheck="false"
+               style="flex:1;min-width:0;font-family:var(--font-mono,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace);font-size:11px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <button id="url-share-copy" type="button" class="btn primary" style="flex-shrink:0;">Copy URL</button>
+      </div>
+
+      <!-- URL length meter — visual indicator of characters used vs. 2 048 limit -->
+      <div class="url-share-meter" aria-label="URL length relative to 2,048 character limit">
+        <div class="url-share-meter__track" role="presentation" aria-hidden="true">
+          <div id="url-share-meter-fill" class="url-share-meter__fill"></div>
+        </div>
+        <div class="url-share-meter__labels">
+          <span id="url-share-length-text" class="url-share-meter__count"></span>
+          <span class="url-share-meter__limit">limit: 2,048</span>
+        </div>
+      </div>
+
+      <p id="url-share-size" class="muted" style="margin:4px 0 0;font-size:11px;"></p>
+      <p id="url-share-warning" class="url-share-warning hidden" style="margin:8px 0 0;font-size:12px;color:var(--warning,#f59e0b);"></p>
+
+      <!-- Size breakdown — auto-opens when URL is too long, otherwise user-expandable -->
+      <details id="url-share-diagnostics" class="url-share-diagnostics hidden">
+        <summary class="url-share-diagnostics__summary">Size breakdown &amp; contributors</summary>
+        <div id="url-share-diagnostics-body" class="url-share-diagnostics__body"></div>
+      </details>
+
+      <p class="muted" style="margin:12px 0 0;font-size:11px;">
+        Local files are referenced by path only — recipients need the same files to play media. Remote (URL/Supabase/IPFS) media references are fully portable.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button id="url-share-download" type="button" class="btn" title="Download the full experience as a JSON file — no size limits">Download JSON</button>
+      <button id="url-share-close" type="button" class="btn">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Inline Fluent-style icons -->
+  <svg style="display:none" id="icon-defs">
+    <symbol id="icon-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.14v14l11-7z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></symbol>
+    <symbol id="icon-drag" viewBox="0 0 24 24"><path fill="currentColor" d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+  </svg>
+  <script type="text/javascript" id="google_gtagjs" src="https://www.googletagmanager.com/gtag/js?id=G-5NVWHE6T4V" async="async"></script>
+  <script type="module" src="./app.js?v=20260626-v5.0.9-url-limit"></script>
+</body>
+</html>
