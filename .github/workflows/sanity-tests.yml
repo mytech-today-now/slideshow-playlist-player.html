@@ -10,7 +10,11 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
+<<<<<<< HEAD
         working-directory: src/blend.v4.12
+=======
+        working-directory: src/blend.v5.0.5
+>>>>>>> 1759a52efc30a194ff6a5077f3c902ecd1c14850
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +24,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: src/blend.v4.12/package-lock.json
+          cache-dependency-path: src/blend.v5.0.5/package-lock.json
 
       - name: Install dependencies
         run: npm ci
