@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20260710-v5.0.11-timeline-analysis';
-  const CACHE_VERSION = '20260710-v5.0.11-timeline-analysis';
+  const ASSET_VERSION = '20261006-v5.0.11-idb-startup-recovery';
+  const CACHE_VERSION = '20261006-v5.0.11-idb-startup-recovery';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -35,6 +35,7 @@
     './slideshow-playlist-player.html',
     asset('./styles.css'),
     asset('./app.js'),
+    asset('./indexeddb-open.js'),
     asset('./logger.js'),
     asset('./drag-sort.js'),
     asset('./list-reorder.js'),

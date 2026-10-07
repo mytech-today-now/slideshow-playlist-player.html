@@ -1,11 +1,12 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261006-v5.0.11-idb-startup-recovery';
 import { clearRuntimeCaches, registerPwa } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20260710-v5.0.11-option4-pwa';
-import { createPointerReorderFallback } from './drag-sort.js?v=20260710-v5.0.11-option4-pwa';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20260710-v5.0.11-option4-pwa';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20260710-v5.0.11-option4-pwa';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20260710-v5.0.11-option4-pwa';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -14,21 +15,21 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20260710-v5.0.11-option4-pwa';
+} from './storage-url-resolver.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20260710-v5.0.11-option4-pwa';
+} from './transition-manager.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20260710-v5.0.11-option4-pwa';
-import { renderMarkdown } from './markdown.js?v=20260710-v5.0.11-option4-pwa';
-import { fetchReadme } from './readme-fetcher.js?v=20260710-v5.0.11-option4-pwa';
+} from './playback-clock.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { renderMarkdown } from './markdown.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { fetchReadme } from './readme-fetcher.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   compressExperience,
   decompressExperience,
@@ -38,19 +39,19 @@ import {
   URL_SHARE_PARAM_ALIAS,
   URL_SHARE_SIZE_LIMIT,
   URL_MAX_LENGTH
-} from './url-share.js?v=20260710-v5.0.11-option4-pwa';
+} from './url-share.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20260710-v5.0.11-option4-pwa';
+} from './url-share-diagnostics.js?v=20261006-v5.0.11-idb-startup-recovery';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20260710-v5.0.11-timeline-analysis';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20260710-v5.0.11-option4-pwa';
+} from './timeline-analysis.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261006-v5.0.11-idb-startup-recovery';
 
 const log = createLogger('Blend', {
   storageKey: 'blend-debug-log-v1',
@@ -2710,11 +2711,15 @@ function showToast(message, opts = {}) {
 }
 
 // ====================== INDEXEDDB ======================
-async function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const d = e.target.result;
+async function openDB({ onBlocked } = {}) {
+  const connection = await openIndexedDB({
+    indexedDB,
+    name: DB_NAME,
+    version: DB_VERSION,
+    timeoutMs: 15_000,
+    onBlocked,
+    onUpgrade: event => {
+      const d = event.target.result;
       if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('playlist')) d.createObjectStore('playlist', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('slideshow')) d.createObjectStore('slideshow', { keyPath: 'key' });
@@ -2723,10 +2728,21 @@ async function openDB() {
       if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
       ensureAliasObjectStores(d);
-    };
-    req.onsuccess = () => { db = req.result; resolve(db); };
-    req.onerror = () => reject(req.error);
+    }
   });
+  connection.onversionchange = () => {
+    if (db === connection) db = null;
+    connection.close();
+    if (bootstrapCompleted) {
+      showToast('Blend storage changed in another tab. Reload this tab before continuing.', {
+        role: 'alert',
+        timeout: 0,
+        action: { label: 'Reload', run: () => window.location.reload() }
+      });
+    }
+  };
+  db = connection;
+  return db;
 }
 
 async function idbPut(storeName, value) {
@@ -9326,7 +9342,7 @@ function maybeShowWelcome() {
 }
 
 // ====================== INIT ======================
-async function bootstrap() {
+async function runBootstrap() {
   pendingDeepLinkRequest = parseDeepLinkRequest();
   pendingIpfsExperienceRequest = parseIpfsExperienceRequest();
   pendingUrlShareRequest = parseUrlShareRequest();
@@ -9337,7 +9353,7 @@ async function bootstrap() {
   analyticsConsentGranted = readStoredAnalyticsConsent();
   updateAnalyticsConsentState({ consent: analyticsConsentGranted });
 
-  await openDB();
+  await openDB({ onBlocked: showBlockedDatabaseStartup });
   await hydrateState();
   await bootstrapAuthSession();
   resetShareWarningFromUrlIfRequested();
@@ -9429,6 +9445,75 @@ async function bootstrap() {
     transitionManager,
     log
   };
+}
+
+let bootstrapPromise = null;
+let bootstrapCompleted = false;
+
+function showBlockedDatabaseStartup() {
+  const panel = $('#database-startup-recovery');
+  const message = $('#database-startup-message');
+  const retry = $('#database-startup-retry');
+  if (!panel || !message || !retry) return;
+  panel.hidden = false;
+  message.textContent = 'An older Blend tab is holding the local database update. Close the other Blend tab; this page will continue automatically when the database is available.';
+  retry.hidden = true;
+  message.focus({ preventScroll: true });
+}
+
+function showDatabaseStartupFailure(error) {
+  const panel = $('#database-startup-recovery');
+  const message = $('#database-startup-message');
+  const retry = $('#database-startup-retry');
+  if (!panel || !message || !retry) return;
+
+  panel.hidden = false;
+  retry.hidden = false;
+  retry.disabled = false;
+  if (error instanceof IndexedDBOpenError || String(error?.code || '').startsWith('idb_')) {
+    message.textContent = 'Blend could not open your saved library. Close any older Blend tabs, then retry. Your existing database was not cleared or replaced.';
+    retry.textContent = 'Retry startup';
+    retry.dataset.action = 'retry';
+  } else {
+    message.textContent = 'Blend could not finish starting. Reload the page to try again.';
+    retry.textContent = 'Reload Blend';
+    retry.dataset.action = 'reload';
+  }
+  retry.focus({ preventScroll: true });
+}
+
+function bootstrap() {
+  if (bootstrapCompleted) return Promise.resolve(true);
+  if (bootstrapPromise) return bootstrapPromise;
+
+  bootstrapPromise = runBootstrap().then(() => {
+    bootstrapCompleted = true;
+    const panel = $('#database-startup-recovery');
+    if (panel) panel.hidden = true;
+    return true;
+  }).catch(error => {
+    log.warn('app startup failed', {
+      code: error?.code || error?.name || 'startup_error'
+    });
+    showDatabaseStartupFailure(error);
+    return false;
+  }).finally(() => {
+    bootstrapPromise = null;
+  });
+  return bootstrapPromise;
+}
+
+const databaseStartupRetry = $('#database-startup-retry');
+if (databaseStartupRetry) {
+  databaseStartupRetry.addEventListener('click', () => {
+    if (databaseStartupRetry.dataset.action === 'reload') {
+      window.location.reload();
+      return;
+    }
+    databaseStartupRetry.disabled = true;
+    databaseStartupRetry.textContent = 'Retrying...';
+    void bootstrap();
+  });
 }
 
 if (document.readyState === 'loading') {

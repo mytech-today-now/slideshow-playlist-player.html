@@ -27,6 +27,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./index.html'));
   assert.ok(required.has('./offline.html'));
   assert.ok(required.has('./alias-manifest.json'));
+  assert.ok(required.has('./indexeddb-open.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./pwa-config.js'));
   assert.ok(required.has('./pwa-client.js'));
   assert.ok(required.has('./alias-router.js'));

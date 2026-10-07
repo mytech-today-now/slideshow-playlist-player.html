@@ -85,7 +85,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `src/blend.v5.0.11/index.html`
 - **Compatibility redirect entry:** `src/blend.v5.0.11/slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20260710-v5.0.11-timeline-analysis`
+- **Cache/app shell version key:** `20261006-v5.0.11-idb-startup-recovery`
 
 Latest source location:
 
@@ -929,7 +929,7 @@ npm run test
 
 ## Changelog Reference
 
-### 5.0.11 (2026-07-10)
+### 5.0.11 (2026-10-06)
 
 - Added `pwa-config.js` as the shared source for app version, cache version, database version, precache assets, and route cache policies.
 - Moved service worker registration, install prompt handling, update prompts, cache status messages, and alias snapshot sync into `pwa-client.js`.
@@ -939,6 +939,7 @@ npm run test
 - Refined library/list selection with range, toggle, keyboard navigation, keyboard batch removal, and mouse marquee selection; batch removals are undoable.
 - Simplified per-row shared-link validation to status badges while retaining exact measurements in the Share URL dialog.
 - Added eager media-duration metadata probing and compact, backward-compatible `blend-share` URL serialization that preserves export settings, list metadata, media order, and durable editor state.
+- Added bounded IndexedDB startup recovery. Blocked opens explain how to close older Blend tabs, open failures offer a retry, and late connections close without starting the app twice.
 
 ### 5.0.6 (2026-06-25)
 
