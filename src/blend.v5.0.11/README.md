@@ -450,6 +450,9 @@ Implemented accessibility-oriented behavior includes:
 - Keyboard-first operation for core playback and editing workflows.
 - Visible focus states and assistive announcement regions (`aria-live`).
 - Reduced-motion awareness in transition manager via `prefers-reduced-motion`.
+- The loaded current Playlist and Slideshow rows expose `aria-current="true"` while playback is playing or paused; row selection remains independently represented by `aria-selected`.
+
+Manual screen-reader review remains outstanding. Automated browser assertions verify DOM semantics and do not replace a human NVDA or VoiceOver review.
 
 ## Mobile Usage
 
@@ -940,6 +943,7 @@ npm run test
 - Simplified per-row shared-link validation to status badges while retaining exact measurements in the Share URL dialog.
 - Added eager media-duration metadata probing and compact, backward-compatible `blend-share` URL serialization that preserves export settings, list metadata, media order, and durable editor state.
 - Added bounded IndexedDB startup recovery. Blocked opens explain how to close older Blend tabs, open failures offer a retry, and late connections close without starting the app twice.
+- Exposed the loaded current row in each playback layer through `aria-current`, refreshed it on navigation and stop, and covered selection, virtualization, unavailable details, and experience switching in browser assertions.
 
 ### 5.0.6 (2026-06-25)
 

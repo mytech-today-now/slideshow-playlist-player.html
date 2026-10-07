@@ -1,12 +1,12 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261006-v5.0.11-current-playback-a11y';
 import { clearRuntimeCaches, registerPwa } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261006-v5.0.11-current-playback-a11y';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261006-v5.0.11-current-playback-a11y';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261006-v5.0.11-current-playback-a11y';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261006-v5.0.11-current-playback-a11y';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -15,21 +15,21 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './storage-url-resolver.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './transition-manager.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { renderMarkdown } from './markdown.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { fetchReadme } from './readme-fetcher.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './playback-clock.js?v=20261006-v5.0.11-current-playback-a11y';
+import { renderMarkdown } from './markdown.js?v=20261006-v5.0.11-current-playback-a11y';
+import { fetchReadme } from './readme-fetcher.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   compressExperience,
   decompressExperience,
@@ -39,19 +39,19 @@ import {
   URL_SHARE_PARAM_ALIAS,
   URL_SHARE_SIZE_LIMIT,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './url-share.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './url-share-diagnostics.js?v=20261006-v5.0.11-current-playback-a11y';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './timeline-analysis.js?v=20261006-v5.0.11-current-playback-a11y';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261006-v5.0.11-current-playback-a11y';
 
 const log = createLogger('Blend', {
   storageKey: 'blend-debug-log-v1',
@@ -4700,6 +4700,7 @@ function clearPlaylistPlayback() {
   cleanupVideoUrl(playlistVideoA);
   cleanupVideoUrl(playlistVideoB);
   currentPlaylistItem = null;
+  refreshListPlaybackState('playlist');
   const fallback = contextFromRuntimeLayer('slideshow') || contextFromRuntimeLayer('playlist') || buildProjectContext();
   activateExperienceContext(fallback, { trackVirtualPage: false, trigger: 'playlist_clear' });
 }
@@ -4715,6 +4716,7 @@ function clearSlideshowPlayback() {
   }
   slideshowMedia = null;
   currentSlideshowItem = null;
+  refreshListPlaybackState('slideshow');
   slideTimer.cancel();
   stopKenBurns();
   const fallback = contextFromRuntimeLayer('playlist') || contextFromRuntimeLayer('slideshow') || buildProjectContext();
@@ -4873,6 +4875,7 @@ async function playPlaylistAtIndex(startIndex, opts = {}) {
   }
   attempted.add(attemptKey);
   state.runtime.playlistIndex = idx;
+  refreshListPlaybackState('playlist');
   const success = await loadPlaylistItem(ref, idx % 2 === 1, {
     withTransition: opts.withTransition !== false,
     effectId: opts.effectId || ''
@@ -4904,6 +4907,7 @@ async function playSlideshowAtIndex(startIndex, opts = {}) {
     return false;
   }
   state.runtime.slideshowIndex = idx;
+  refreshListPlaybackState('slideshow');
   const success = await loadSlideshowItem(state.slideshow[idx], opts.withCrossfade !== false, opts);
   if (success) {
     layerCompletionState.slideshowDone = false;
@@ -5507,6 +5511,21 @@ function renderListEditor() {
   virtualList.render(true);
 }
 
+// aria-current follows a successfully loaded item, independently for each layer.
+// Selection remains represented by aria-selected on the row.
+function isCurrentPlaybackRow(which, index, ref) {
+  if (!ref || transportMode === TRANSPORT.STOPPED || !isPlayableListRef(which, ref)) return false;
+  const runtimeIndex = which === 'playlist' ? state.runtime.playlistIndex : state.runtime.slideshowIndex;
+  const currentItem = which === 'playlist' ? currentPlaylistItem : currentSlideshowItem;
+  return index === runtimeIndex && currentItem?.id === ref.id;
+}
+
+function refreshListPlaybackState(which) {
+  if (state.ui.activeList !== which) return;
+  // Mounted virtual rows refresh now; off-screen rows are updated when mounted.
+  listVirtualList?.refresh();
+}
+
 function renderListRow(idx, row) {
   const which = state.ui.activeList;
   const items = activeEditorItems();
@@ -5521,6 +5540,8 @@ function renderListRow(idx, row) {
 
   if (!ref) {
     row.className = 'list-item virtual-row';
+    row.removeAttribute('aria-current');
+    row.removeAttribute('aria-describedby');
     row.dataset.idx = idx;
     row.draggable = false;
     row.innerHTML = '<div class="info"><div class="name">Missing item</div></div><span class="del" title="Remove">✕</span>';
@@ -5540,7 +5561,7 @@ function renderListRow(idx, row) {
   const path = item ? bestPathForItem(item) : (ref.path || ref.sourceUrl || ref.id || '');
   const name = item?.name || ref.name || basenameFromPath(path) || 'Not Available';
   const size = item ? formatBytes(item.size) : '';
-  const isCurrent = which === 'playlist' ? idx === state.runtime.playlistIndex : idx === state.runtime.slideshowIndex;
+  const isCurrent = isCurrentPlaybackRow(which, idx, ref);
   const mediaSignature = `${which}|${idx}|${ref.id}|${name}|${path}|${size}|${entryType}|${ref.displayDuration ?? ''}|${ref.includeAudio ? 1 : 0}|${available ? 1 : 0}|${temporarilyUnavailable ? 1 : 0}|${ref.available === false ? 1 : 0}|${ref.reason || ''}|${item?.stale ? 1 : 0}`;
   const urlSignature = urlProjection?.health
     ? `${urlProjection.health.length}|${urlProjection.health.label}`
@@ -5559,6 +5580,10 @@ function renderListRow(idx, row) {
   row.setAttribute('aria-posinset', String(idx + 1));
   row.setAttribute('aria-setsize', String(items.length));
   row.setAttribute('aria-label', `${idx + 1}. ${name}${available ? `, ${entryType || 'media'}` : `, ${availabilityLabel}`}, starts ${formatTimelineMetricTime(timelineEntry?.start)}, ends ${formatTimelineMetricTime(timelineEntry?.end)}`);
+  if (isCurrent) row.setAttribute('aria-current', 'true');
+  else row.removeAttribute('aria-current');
+  if (available) row.removeAttribute('aria-describedby');
+  else row.setAttribute('aria-describedby', `list-${which}-item-${idx}-availability list-${which}-item-${idx}-availability-details`);
 
   if (row.dataset.signature !== signature) {
     if (row.dataset.mediaSignature !== mediaSignature) releaseThumbnailElement(row);
@@ -5579,7 +5604,7 @@ function renderListRow(idx, row) {
       <div class="info">
         <div class="name" title="${escapeHtml(path)}">${escapeHtml(name)}</div>
         <div class="path">${escapeHtml(path || 'Unknown path')}${size ? ` • ${escapeHtml(size)}` : ''}</div>
-        ${available ? '' : `<div class="availability${temporarilyUnavailable ? ' availability--temporary' : ''}" title="${escapeHtml(availabilityDetail)}">${escapeHtml(availabilityLabel)}</div>`}
+        ${available ? '' : `<div class="availability${temporarilyUnavailable ? ' availability--temporary' : ''}" id="list-${which}-item-${idx}-availability" title="${escapeHtml(availabilityDetail)}">${escapeHtml(availabilityLabel)}</div><span class="sr-only" id="list-${which}-item-${idx}-availability-details">${escapeHtml(availabilityDetail)}</span>`}
       </div>
       ${extra}
       ${temporarilyUnavailable ? '<button class="retry-media" type="button" title="Retry this media now" aria-label="Retry this media now">Retry</button>' : ''}
@@ -6442,6 +6467,7 @@ async function loadPlaylistItem(itemRef, useB = false, opts = {}) {
     }
 
     currentPlaylistItem = item;
+    refreshListPlaybackState('playlist');
     clearRemoteMediaFailure(itemRef);
     const playlistContext = buildExperienceContext('playlist', itemRef, state.runtime.playlistIndex, { trigger: 'playlist_load' });
     if (playlistContext) {
@@ -6636,6 +6662,7 @@ async function loadSlideshowItem(itemRef, withCrossfade = true, opts = {}) {
 
   slideshowMedia = el;
   currentSlideshowItem = item;
+  refreshListPlaybackState('slideshow');
   clearRemoteMediaFailure(itemRef);
   const slideshowContext = buildExperienceContext('slideshow', itemRef, state.runtime.slideshowIndex, { trigger: 'slideshow_load' });
   if (slideshowContext) {
@@ -6919,6 +6946,10 @@ function applyTransportMode(mode) {
   state.runtime.isPlaying = (mode === TRANSPORT.PLAYING);
   state.runtime.transport = mode;
   updatePlayButtonUI();
+  if (mode === TRANSPORT.STOPPED) {
+    refreshListPlaybackState('playlist');
+    refreshListPlaybackState('slideshow');
+  }
 }
 
 function updatePlayButtonUI() {
