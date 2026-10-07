@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-07
+goal: Keep private Storage authorization unverified and prevent compressed share
+  links from distributing private Storage references until owner-reviewed
+  staging evidence passes.

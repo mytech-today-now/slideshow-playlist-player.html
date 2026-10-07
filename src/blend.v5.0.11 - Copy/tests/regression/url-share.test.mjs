@@ -10,6 +10,7 @@ import {
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH,
   buildExperienceLibraryPayload,
+  hasNonPublicSupabaseStorageReference,
   compressExperience,
   decompressExperience,
   estimateShareUrlSize,
@@ -22,6 +23,36 @@ import {
   base64UrlToUint8,
   sanitizeBase64UrlInput
 } from '../../url-share.js';
+
+test('private storage share gate follows only the configured public bucket allowlist', () => {
+  const privatePayload = {
+    library: {
+      items: [{
+        id: 'private-fixture',
+        path: 'supabase://private-media/codex-policy-check/private.txt',
+        metadata: { storageReference: 'supabase://private-media/codex-policy-check/private.txt' }
+      }]
+    }
+  };
+  const publicPayload = {
+    library: {
+      items: [{
+        id: 'public-fixture',
+        metadata: { storageBucket: 'public-media', storagePath: 'codex-policy-check/public.txt' }
+      }]
+    }
+  };
+  const directUrlPayload = {
+    library: { items: [{ id: 'direct-url', path: 'https://media.example.test/public.mp4' }] }
+  };
+
+  assert.equal(hasNonPublicSupabaseStorageReference(privatePayload, ['public-media']), true);
+  assert.equal(hasNonPublicSupabaseStorageReference(privatePayload, ['private-media']), false);
+  assert.equal(hasNonPublicSupabaseStorageReference(publicPayload, [' PUBLIC-MEDIA ']), false);
+  assert.equal(hasNonPublicSupabaseStorageReference(publicPayload, []), true);
+  assert.equal(hasNonPublicSupabaseStorageReference(directUrlPayload, ['public-media']), false);
+  assert.equal(hasNonPublicSupabaseStorageReference(null, ['public-media']), false);
+});
 
 test('experience URL library payload includes only referenced records through compressed serialization', async () => {
   const entries = [

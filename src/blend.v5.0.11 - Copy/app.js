@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261007-v5.0.11-private-share-gate';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './experience-persistence.js?v=20261007-v5.0.11-private-share-gate';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { findRelinkCandidates, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261007-v5.0.11-private-share-gate';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261007-v5.0.11-private-share-gate';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261007-v5.0.11-private-share-gate';
+import { findRelinkCandidates, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261007-v5.0.11-private-share-gate';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261007-v5.0.11-private-share-gate';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261007-v5.0.11-private-share-gate';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,31 +22,32 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './storage-url-resolver.js?v=20261007-v5.0.11-private-share-gate';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './transition-manager.js?v=20261007-v5.0.11-private-share-gate';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './playback-clock.js?v=20261007-v5.0.11-private-share-gate';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { fetchReadme } from './readme-fetcher.js?v=20261006-v5.0.11-idb-startup-recovery';
+import { renderMarkdown } from './markdown.js?v=20261007-v5.0.11-private-share-gate';
+import { fetchReadme } from './readme-fetcher.js?v=20261007-v5.0.11-private-share-gate';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
   decompressExperience,
+  hasNonPublicSupabaseStorageReference,
   isBearerUrlForExport,
   sanitizeMediaRecordForExport,
   estimateShareUrlSize,
@@ -56,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './url-share.js?v=20261007-v5.0.11-private-share-gate';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './url-share-diagnostics.js?v=20261007-v5.0.11-private-share-gate';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './timeline-analysis.js?v=20261007-v5.0.11-private-share-gate';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261007-v5.0.11-private-share-gate';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261006-v5.0.11-idb-startup-recovery';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './shared-experience-download.js?v=20261007-v5.0.11-private-share-gate';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261007-v5.0.11-private-share-gate';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261007-v5.0.11-private-share-gate';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261007-v5.0.11-private-share-gate';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -87,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261006-v5.0.11-idb-startup-recovery';
+} from './local-import-limits.js?v=20261007-v5.0.11-private-share-gate';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -168,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261006-v5.0.11-idb-startup-recovery';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261007-v5.0.11-private-share-gate';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -2551,10 +2552,18 @@ async function shareExperienceViaUrl() {
   const btn = $('#experience-share-url');
   const transportBtn = $('#btn-share');
   try {
+    const payload = buildExperienceExportPayload({ referencedOnly: true });
+    if (hasNonPublicSupabaseStorageReference(payload, RUNTIME_CONFIG.publicBucketAllowList)) {
+      showToast('Private media access could not be verified. Contact the project owner before sharing.', {
+        timeout: 6000,
+        role: 'alert'
+      });
+      return false;
+    }
+
     if (btn) { btn.disabled = true; btn.textContent = 'Compressing…'; }
     if (transportBtn) { transportBtn.disabled = true; }
 
-    const payload = buildExperienceExportPayload({ referencedOnly: true });
     const compressed = await compressExperience(payload);
 
     const shareUrl = buildUrlShareLink(compressed);
@@ -8379,14 +8388,14 @@ async function clearBrowserStorage() {
   const confirmed = await showExperienceDialog({
     title: 'Clear browser storage',
     mode: 'confirm',
-    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Your media files on disk are not touched.',
+    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
     okText: '✓ Clear Browser Storage',
     okDanger: true
   });
   if (!confirmed) return false;
 
   if (!(await waitForDatabaseRecovery())) {
-    showToast('Could not clear saved data. Close other Blend tabs and try again.', { timeout: 6000 });
+    showToast('Browser reset could not continue. The local session was not changed by this attempt, and saved Blend data recovery could not be confirmed. Close other Blend tabs and try again.', { timeout: 6500 });
     return false;
   }
 
@@ -8397,7 +8406,7 @@ async function clearBrowserStorage() {
     try {
       supabaseAuthClient.clearLocalSession();
     } catch (_) {
-      showToast('Browser reset incomplete. You are signed out in this tab, but the saved Supabase session could not be removed. Other Blend data was kept.', { timeout: 5000 });
+      showToast('Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.', { timeout: 6000 });
       return false;
     }
 
@@ -8407,7 +8416,7 @@ async function clearBrowserStorage() {
         recoverySnapshot = await snapshotIndexedDBConnection(db);
       } catch (error) {
         log.warn('browser storage clear: could not prepare rollback snapshot', error);
-        showToast('Could not clear saved data. Close other Blend tabs and try again.', { timeout: 6000 });
+        showToast('Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept because a recovery snapshot could not be created.', { timeout: 6500 });
         return false;
       }
     }
@@ -8427,7 +8436,7 @@ async function clearBrowserStorage() {
       // retained database snapshot and screen state before a retry can continue.
       const timedOut = String(error?.code || '').includes('timeout');
       void recoverDatabaseAfterFailedReset(recoverySnapshot, timedOut);
-      showToast('Could not clear saved data. Close other Blend tabs and try again.', { timeout: 6000 });
+      showToast('Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept for recovery and retry after the database deletion failed. Close other Blend tabs and try again.', { timeout: 7000 });
       return false;
     }
 
@@ -8552,13 +8561,13 @@ async function clearBrowserStorage() {
     updateHUD();
     syncIpfsControls();
     if (cleanupFailures.length) {
-      showToast(`Saved data was cleared. Cleanup still needs attention: ${cleanupFailures.join(', ')}.`, { timeout: 6500 });
+      showToast(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${cleanupFailures.join(', ')}.`, { timeout: 7000 });
       return false;
     }
-    showToast('Blend storage cleared. Other apps on this site were left alone.', { timeout: 4500 });
+    showToast('Browser data cleared. The saved Supabase session was removed, runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
     return true;
   } catch (_) {
-    showToast('Browser reset incomplete. The saved Supabase session was removed, but some other Blend browser data could not be cleared.', { timeout: 5000 });
+    showToast('Browser reset incomplete. The saved Supabase session and Blend database were cleared from this browser, but some other browser data could not be cleared.', { timeout: 6000 });
     return false;
   } finally {
     browserStorageResetting = false;

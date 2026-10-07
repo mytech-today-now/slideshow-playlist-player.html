@@ -61,6 +61,38 @@ export function buildExperienceLibraryPayload(entries, {
   return { order: items.map(item => item.id), items };
 }
 
+/** Return true when a referenced share record points at a non-public Supabase bucket. */
+export function hasNonPublicSupabaseStorageReference(payload, publicBucketAllowList = []) {
+  const publicBuckets = new Set(
+    (Array.isArray(publicBucketAllowList) ? publicBucketAllowList : [])
+      .map(bucket => String(bucket || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const items = Array.isArray(payload?.library?.items) ? payload.library.items : [];
+
+  return items.some(item => {
+    const metadata = isRecord(item?.metadata) ? item.metadata : {};
+    const bucket = metadata.storageBucket || metadata.bucket || item?.storageBucket || item?.bucket;
+    const path = metadata.storagePath || metadata.objectPath || item?.storagePath || item?.objectPath;
+    const candidates = [
+      metadata.storageReference,
+      item?.storageReference,
+      bucket && path ? `${bucket}/${path}` : '',
+      item?.path,
+      item?.fullPath,
+      item?.sourceUrl,
+      metadata.sourceUrl
+    ];
+
+    return candidates.some(candidate => {
+      const reference = sanitizeSupabaseStorageReference(candidate || '');
+      if (!reference) return false;
+      const referenceBucket = reference.slice('supabase://'.length).split('/', 1)[0];
+      return !publicBuckets.has(referenceBucket);
+    });
+  });
+}
+
 // Compact transport schema. The magic/version pair is intentionally an array
 // rather than an object so it remains cheap after gzip and Base64URL encoding.
 // Known fields are represented by a presence bitmask followed by values in the

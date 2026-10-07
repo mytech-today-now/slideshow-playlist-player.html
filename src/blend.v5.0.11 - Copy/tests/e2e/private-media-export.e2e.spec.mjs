@@ -7,6 +7,9 @@ const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 const BEARER_MARKER = 'issue01-e2e-synthetic-bearer-94a7';
 const PORTABLE_REFERENCE = 'supabase://private-media/private/video.mp4';
 const PUBLIC_URL = 'https://cdn.example.test/media/public.mp4?version=3';
+const PUBLIC_STORAGE_REFERENCE = 'supabase://public/codex-policy-check/public-video.mp4';
+const UNUSED_PRIVATE_STORAGE_REFERENCE = 'supabase://private-media/codex-policy-check/unused-private-video.mp4';
+const PRIVATE_POLICY_WARNING = 'Private media access could not be verified. Contact the project owner before sharing.';
 const SIGNED_URL = `https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=${BEARER_MARKER}&expires=4102444800`;
 
 async function boot(page) {
@@ -31,10 +34,11 @@ async function boot(page) {
 
 async function seedPrivateAndPublicRecords(page, {
   expiredPrivateUrl = false,
+  includePrivate = true,
   includePublic = true,
   includeUnused = false
 } = {}) {
-  await page.evaluate(({ signedUrl, publicUrl, portableReference, expiredPrivateUrl }) => {
+  await page.evaluate(({ signedUrl, publicUrl, portableReference, expiredPrivateUrl, includePrivate, includePublic, includeUnused }) => {
     const blend = window.Blend;
     const state = blend.state;
     const privateMetadata = {
@@ -47,11 +51,13 @@ async function seedPrivateAndPublicRecords(page, {
       nestedAuth: { refresh_token: 'issue01-e2e-synthetic-bearer-94a7' }
     };
     state.library.clear();
-    state.library.set('private-video', {
-      id: 'private-video', name: 'Private video.mp4', type: 'video', size: 1200,
-      duration: 12, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
-      pathHint: portableReference, sourceUrl: signedUrl, metadata: { ...privateMetadata }
-    });
+    if (includePrivate) {
+      state.library.set('private-video', {
+        id: 'private-video', name: 'Private video.mp4', type: 'video', size: 1200,
+        duration: 12, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
+        pathHint: portableReference, sourceUrl: signedUrl, metadata: { ...privateMetadata }
+      });
+    }
     if (includePublic) {
       state.library.set('public-video', {
         id: 'public-video', name: 'Public video.mp4', type: 'video', size: 2400,
@@ -73,7 +79,7 @@ async function seedPrivateAndPublicRecords(page, {
       });
     }
     state.playlist = [
-      { id: 'private-video', sourceUrl: signedUrl, metadata: { ...privateMetadata }, available: true },
+      ...(includePrivate ? [{ id: 'private-video', sourceUrl: signedUrl, metadata: { ...privateMetadata }, available: true }] : []),
       ...(includePublic ? [
         { id: 'public-video', sourceUrl: publicUrl, metadata: { sourceUrl: publicUrl }, available: true },
         { id: 'public-video', sourceUrl: publicUrl, metadata: { sourceUrl: publicUrl }, available: true }
@@ -91,7 +97,52 @@ async function seedPrivateAndPublicRecords(page, {
     publicUrl: PUBLIC_URL,
     portableReference: PORTABLE_REFERENCE,
     expiredPrivateUrl,
+    includePrivate,
+    includePublic,
     includeUnused
+  });
+}
+
+async function seedPublicSupabaseOnly(page) {
+  await page.evaluate(({ publicReference, unusedPrivateReference }) => {
+    const blend = window.Blend;
+    const state = blend.state;
+    state.library.clear();
+    state.library.set('public-video', {
+      id: 'public-video', name: 'Public video.mp4', type: 'video', size: 2400,
+      duration: 24, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
+      pathHint: publicReference,
+      sourceUrl: publicReference,
+      metadata: {
+        storageReference: publicReference,
+        storageBucket: 'public',
+        storagePath: 'codex-policy-check/public-video.mp4'
+      }
+    });
+    state.library.set('unused-private-video', {
+      id: 'unused-private-video', name: 'Unused private video.mp4', type: 'video', size: 1200,
+      duration: 12, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
+      pathHint: unusedPrivateReference,
+      sourceUrl: unusedPrivateReference,
+      metadata: {
+        storageReference: unusedPrivateReference,
+        storageBucket: 'private-media',
+        storagePath: 'codex-policy-check/unused-private-video.mp4'
+      }
+    });
+    state.playlist = [{
+      id: 'public-video', path: publicReference, sourceUrl: publicReference,
+      metadata: { storageReference: publicReference, storageBucket: 'public', storagePath: 'codex-policy-check/public-video.mp4' },
+      available: true
+    }];
+    state.slideshow = [];
+    state.projectName = 'Public Supabase Share E2E';
+    state.ui.activeList = 'playlist';
+    blend.renderLibrary();
+    blend.renderListEditor();
+  }, {
+    publicReference: PUBLIC_STORAGE_REFERENCE,
+    unusedPrivateReference: UNUSED_PRIVATE_STORAGE_REFERENCE
   });
 }
 
@@ -126,12 +177,11 @@ function assertNoBearerData(value) {
   expect(leaves.join('\n')).not.toMatch(/[?&](?:access_token|refresh_token|token|signature|sig)=/i);
 }
 
-test('JSON export and compressed share redact private bearer data and preserve portable/public URLs', async ({ page }, testInfo) => {
+test('JSON export preserves private references while compressed sharing blocks them until provider verification', async ({ page }, testInfo) => {
   const consoleMessages = [];
   page.on('console', message => consoleMessages.push(message.text()));
   await boot(page);
   await seedPrivateAndPublicRecords(page, { includeUnused: true });
-  const before = await snapshotUserState(page);
 
   const config = page.locator('#config-panel');
   if (!(await config.evaluate(node => node.classList.contains('open')))) {
@@ -175,63 +225,33 @@ test('JSON export and compressed share redact private bearer data and preserve p
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: FIXTURE_ORIGIN });
   await page.evaluate(() => navigator.clipboard.writeText(''));
   const shareTrigger = page.locator('#experience-share-url');
+  const beforeShare = await snapshotUserState(page);
   await shareTrigger.click();
+  const toast = page.locator('#toast-container .toast[role="alert"]');
+  await expect(toast).toHaveText(PRIVATE_POLICY_WARNING, { timeout: 7000 });
   const shareInput = page.locator('#url-share-url-input');
-  await expect(shareInput).toBeVisible();
-  const shareDialog = page.getByRole('dialog', { name: 'Share Experience via URL' });
-  await expect(shareDialog).toBeVisible();
-  await expect(page.getByRole('note')).toHaveText(
-    'This link includes media referenced by the playlist and slideshow. Unused library items are not included.'
-  );
-  await expect(page.locator('#url-share-copy')).toHaveText('Copy URL');
-  expect(await page.locator('#url-share-modal').evaluate(dialog => dialog.contains(document.activeElement))).toBeTruthy();
+  await expect(page.locator('#url-share-modal')).not.toBeVisible();
+  await expect(shareInput).toHaveValue('');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('');
-  const shareUrl = await shareInput.inputValue();
-  const sharePayload = new URL(shareUrl).searchParams.get('experience');
-  expect(sharePayload).toBeTruthy();
-  const shared = await decompressExperience(sharePayload);
-  expect(shared.schema).toBe('player.blend.experience.v2');
-  assertNoBearerData(shared);
-  expect(shared.playlist.items.map(item => item.id)).toEqual(['private-video', 'public-video', 'public-video']);
-  expect(shared.slideshow.items.map(item => item.id)).toEqual(['public-video']);
-  expect(new Set(shared.library.items.map(item => item.id))).toEqual(new Set(['private-video', 'public-video']));
-  expect(shared.library.items.some(item => item.id === 'unused-secret-id-02')).toBeFalsy();
-  const sharedText = JSON.stringify(shared);
-  for (const privateMarker of [
-    'unused-secret-id-02',
-    'Unused private media 02',
-    'C:\\private\\unused-directory\\unused-secret-02.mp4',
-    'https://private.example.test/unused-secret-url-02.mp4',
-    'unused-secret-metadata-02'
-  ]) {
-    expect(sharedText).not.toContain(privateMarker);
-  }
-  const sharedPrivate = shared.library.items.find(item => item.id === 'private-video');
-  expect(sharedPrivate.path).toBe(PORTABLE_REFERENCE);
-  expect(sharedPrivate.metadata.storageReference).toBe(PORTABLE_REFERENCE);
-  const sharedPublic = shared.library.items.find(item => item.id === 'public-video');
-  expect(sharedPublic.path).toBe(PUBLIC_URL);
-  expect(sharedPublic.sourceUrl).toBe(PUBLIC_URL);
-
-  expect(await snapshotUserState(page)).toEqual(before);
-  await page.locator('#url-share-copy').click();
-  await expect(page.locator('#url-share-copy')).toHaveText('Copied ✓');
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shareUrl);
-  expect(await page.locator('#url-share-copy').evaluate(button => button === document.activeElement)).toBeTruthy();
+  expect(await snapshotUserState(page)).toEqual(beforeShare);
+  await expect(shareTrigger).toBeEnabled();
   expect(consoleMessages.join('\n')).not.toContain(BEARER_MARKER);
   expect(consoleMessages.join('\n')).not.toContain('unused-secret-id-02');
   expect(consoleMessages.join('\n')).not.toContain('unused-secret-url-02');
   expect(consoleMessages.join('\n')).not.toMatch(/[?&](?:access_token|refresh_token|token|signature|sig)=/i);
   expect(consoleMessages.join('\n')).not.toContain('private/video.mp4');
-  await page.locator('#url-share-close').click();
-  await expect(shareTrigger).toBeFocused();
 });
 
 test('share disclosure stays readable across viewports and clipboard failure preserves the link', async ({ page }) => {
   const consoleMessages = [];
   page.on('console', message => consoleMessages.push(message.text()));
   await boot(page);
-  await seedPrivateAndPublicRecords(page, { includeUnused: true });
+  await seedPublicSupabaseOnly(page);
+  const config = page.locator('#config-panel');
+  if (!(await config.evaluate(node => node.classList.contains('open')))) {
+    await page.locator('#config-gear').click();
+    await expect(config).toHaveClass(/open/);
+  }
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: FIXTURE_ORIGIN });
   await page.evaluate(() => navigator.clipboard.writeText(''));
 
@@ -240,11 +260,18 @@ test('share disclosure stays readable across viewports and clipboard failure pre
     const shareTrigger = page.locator('#experience-share-url');
     await shareTrigger.click();
     const dialog = page.getByRole('dialog', { name: 'Share Experience via URL' });
-    const disclosure = page.getByRole('note');
+    const disclosure = page.locator('#url-share-disclosure');
     await expect(dialog).toBeVisible();
     await expect(disclosure).toHaveText(
       'This link includes media referenced by the playlist and slideshow. Unused library items are not included.'
     );
+    if (width === 320) {
+      const sharedValue = new URL(await page.locator('#url-share-url-input').inputValue());
+      const shared = await decompressExperience(sharedValue.searchParams.get('experience'));
+      expect(shared.library.items.map(item => item.id)).toEqual(['public-video']);
+      expect(shared.library.items[0].metadata.storageReference).toBe(PUBLIC_STORAGE_REFERENCE);
+      expect(JSON.stringify(shared)).not.toContain(UNUSED_PRIVATE_STORAGE_REFERENCE);
+    }
     const layout = await page.evaluate(() => {
       const dialogRect = document.querySelector('#url-share-modal').getBoundingClientRect();
       const disclosureNode = document.querySelector('#url-share-disclosure');
@@ -312,7 +339,7 @@ test('share disclosure stays readable across viewports and clipboard failure pre
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
   await page.setViewportSize({ width: 768, height: 900 });
   await page.locator('#experience-share-url').click();
-  await expect(page.getByRole('note')).toBeVisible();
+  await expect(page.locator('#url-share-disclosure')).toBeVisible();
   const zoomLayout = await page.evaluate(() => {
     const dialog = document.querySelector('#url-share-modal').getBoundingClientRect();
     const disclosure = document.querySelector('#url-share-disclosure').getBoundingClientRect();

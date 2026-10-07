@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261006-v5.0.11-idb-startup-recovery';
-  const CACHE_VERSION = '20261006-v5.0.11-idb-startup-recovery';
+  const ASSET_VERSION = '20261007-v5.0.11-private-share-gate';
+  const CACHE_VERSION = '20261007-v5.0.11-private-share-gate';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';

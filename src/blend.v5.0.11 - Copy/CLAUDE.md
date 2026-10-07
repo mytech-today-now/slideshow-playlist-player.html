@@ -60,7 +60,7 @@ Two layers with different boundaries:
 
 ### Persistence
 - IndexedDB `player-blend-v1` (version 5): stores `library`, `playlist`, `slideshow`, `settings`, `experiences`, `thumbnails`, `dirHandles`, `aliases`, and `aliasMeta`. Bump `DB_VERSION` in `pwa-config.js` when changing the schema, and make `app.js` openDB migrations create the new stores.
-- LocalStorage: `blend-active-experience-id`, `blend-runtime-config-v1`, `blend-supabase-auth-session-v2` (explicit opt-in only), consent/banner flags. Startup removes but never restores the old auth-session `v1` key.
+- LocalStorage: `blend-active-experience-id`, `blend-runtime-config-v1` (operator-managed connection configuration, preserved by Clear Browser Storage), `blend-supabase-auth-session-v2` (explicit opt-in only), consent/banner flags. Startup removes but never restores the old auth-session `v1` key.
 - Version constants live in `pwa-config.js`: `APP_VERSION`, `ASSET_VERSION`, `CACHE_VERSION`, `DB_VERSION`, cache names, precache assets, and route policies. `app.js`, `index.html`, manifests, and service worker behavior should stay aligned with that source and the invariant tests.
 
 ### Service worker

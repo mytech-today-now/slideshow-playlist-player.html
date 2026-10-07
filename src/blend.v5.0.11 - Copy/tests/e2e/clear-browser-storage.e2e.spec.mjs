@@ -4,9 +4,12 @@ import { BlendAppPage } from './support/blend-app-page.mjs';
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
 const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 const AUTH_STORAGE_KEY = 'blend-supabase-auth-session-v2';
-const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Your media files on disk are not touched.';
-const RESET_FAILURE = 'Could not clear saved data. Close other Blend tabs and try again.';
-const RESET_SUCCESS = 'Browser data cleared. The saved Supabase session was removed from this browser.';
+const RUNTIME_CONFIG_STORAGE_KEY = 'blend-runtime-config-v1';
+const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.';
+const RESET_SESSION_STORAGE_FAILURE = 'Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.';
+const RESET_SNAPSHOT_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept because a recovery snapshot could not be created.';
+const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept for recovery and retry after the database deletion failed. Close other Blend tabs and try again.';
+const RESET_SUCCESS = 'Browser data cleared. The saved Supabase session was removed, runtime configuration was preserved, and other apps on this site were left alone.';
 
 async function confirmResetWithKeyboard(page) {
   const resetButton = page.locator('#clear-browser-storage');
@@ -114,6 +117,30 @@ async function injectDeleteFailure(page, mode) {
   }, mode);
 }
 
+async function injectSnapshotFailure(page) {
+  await page.evaluate(() => {
+    const prototype = IDBDatabase.prototype;
+    window.__nativeDatabaseTransaction = prototype.transaction;
+    prototype.transaction = function transactionWithSnapshotFailure(...args) {
+      const [storeNames, mode] = args;
+      const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+      if (mode === 'readonly' && names.length > 5) {
+        throw new DOMException('Synthetic snapshot failure', 'UnknownError');
+      }
+      return Reflect.apply(window.__nativeDatabaseTransaction, this, args);
+    };
+  });
+}
+
+async function restoreSnapshotFailure(page) {
+  await page.evaluate(() => {
+    if (window.__nativeDatabaseTransaction) {
+      IDBDatabase.prototype.transaction = window.__nativeDatabaseTransaction;
+      delete window.__nativeDatabaseTransaction;
+    }
+  });
+}
+
 async function restoreDeleteDatabase(page) {
   await page.evaluate(() => {
     if (window.__nativeDeleteDatabase) {
@@ -141,12 +168,20 @@ async function injectCleanupFailure(page, mode) {
   }, mode);
 }
 
-test('reset removes the saved Supabase session without remote logout and public playback remains available', async ({ page }) => {
+test('reset removes the saved Supabase session, preserves runtime config, and keeps public playback available without remote logout', async ({ page }) => {
   let authRequests = 0;
   await page.route('**/auth/v1/**', async route => {
     authRequests += 1;
     await route.abort('failed');
   });
+  const runtimeConfig = {
+    SUPABASE_URL: 'https://reset-preserved.example.test',
+    SUPABASE_ANON_KEY: 'synthetic-reset-preserved-anon-key',
+    SUPABASE_MEDIA_BUCKET: 'reset-preserved-media'
+  };
+  await page.addInitScript(({ key, value }) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  }, { key: RUNTIME_CONFIG_STORAGE_KEY, value: runtimeConfig });
 
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
@@ -175,12 +210,16 @@ test('reset removes the saved Supabase session without remote logout and public 
   expect(afterReset.authSession).toBeNull();
   expect(afterReset.values.join('\n')).not.toContain('synthetic-reset-access-token');
   expect(afterReset.values.join('\n')).not.toContain('synthetic-reset-refresh-token');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
+    .toEqual(runtimeConfig);
   expect(authRequests).toBe(0);
 
   await page.reload();
   await page.waitForFunction(() => !!window.Blend?.state);
   await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
+    .toEqual(runtimeConfig);
   const emptyAfterReload = await page.evaluate(() => ({
     library: window.Blend.state.library.size,
     playlist: window.Blend.state.playlist.length,
@@ -239,6 +278,7 @@ test('reset reports a saved-session removal failure and keeps existing Blend dat
 
   await page.evaluate(storageKey => {
     const originalRemoveItem = Storage.prototype.removeItem;
+    window.__nativeStorageRemoveItem = originalRemoveItem;
     Storage.prototype.removeItem = function removeItem(key) {
       if (key === storageKey) throw new DOMException('Storage is unavailable', 'SecurityError');
       return originalRemoveItem.call(this, key);
@@ -247,9 +287,7 @@ test('reset reports a saved-session removal failure and keeps existing Blend dat
   await blendPage.openConfig();
   await confirmResetWithKeyboard(page);
 
-  await expect(blendPage.toastContainer).toContainText(
-    'Browser reset incomplete. You are signed out in this tab, but the saved Supabase session could not be removed. Other Blend data was kept.'
-  );
+  await expect(blendPage.toastContainer).toContainText(RESET_SESSION_STORAGE_FAILURE);
   await expect(page.locator('#clear-browser-storage')).toBeFocused();
   await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
   const partialReset = await page.evaluate(storageKey => ({
@@ -259,11 +297,76 @@ test('reset reports a saved-session removal failure and keeps existing Blend dat
   expect(partialReset.savedSession).toContain('synthetic-partial-reset-access-token');
   expect(partialReset.experienceNames).toContain('Keep this experience');
   expect(authRequests).toBe(0);
+
+  await page.evaluate(() => {
+    if (window.__nativeStorageRemoveItem) {
+      Storage.prototype.removeItem = window.__nativeStorageRemoveItem;
+      delete window.__nativeStorageRemoveItem;
+    }
+  });
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS);
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
+  expect(authRequests).toBe(0);
+});
+
+test('snapshot failure reports local sign-out and kept data, then retry completes without restoring the session', async ({ page }) => {
+  let authRequests = 0;
+  await page.route('**/auth/v1/**', async route => {
+    authRequests += 1;
+    await route.abort('failed');
+  });
+  await page.addInitScript(storageKey => {
+    localStorage.setItem(storageKey, JSON.stringify({
+      access_token: 'synthetic-snapshot-reset-access-token',
+      refresh_token: 'synthetic-snapshot-reset-refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 3600
+    }));
+  }, AUTH_STORAGE_KEY);
+
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  await blendPage.createExperience('Keep after snapshot failure');
+  await injectSnapshotFailure(page);
+
+  await blendPage.openConfig();
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer).toContainText(RESET_SNAPSHOT_FAILURE);
+  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name)))
+    .toContain('Keep after snapshot failure');
+  await expect.poll(() => storedExperienceNames(page)).toContain('Keep after snapshot failure');
+  expect(authRequests).toBe(0);
+
+  await restoreSnapshotFailure(page);
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS);
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
+  expect(authRequests).toBe(0);
 });
 
 test('blocked deletion keeps the current experience and a retry clears it after reload', async ({ page }) => {
+  let authRequests = 0;
+  await page.route('**/auth/v1/**', async route => {
+    authRequests += 1;
+    await route.abort('failed');
+  });
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
+  await page.evaluate(storageKey => {
+    localStorage.setItem(storageKey, JSON.stringify({
+      access_token: 'synthetic-blocked-reset-access-token',
+      refresh_token: 'synthetic-blocked-reset-refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 3600
+    }));
+  }, AUTH_STORAGE_KEY);
+  await page.reload();
+  await page.waitForFunction(() => !!window.Blend?.state);
+  await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
   await blendPage.createExperience('Keep this experience');
   await seedResetThumbnail(page);
 
@@ -280,9 +383,11 @@ test('blocked deletion keeps the current experience and a retry clears it after 
 
   await blendPage.openConfig();
   await confirmResetWithKeyboard(page);
-  await expect(blendPage.toastContainer).toContainText(RESET_FAILURE, { timeout: 12000 });
-  await expect(blendPage.toastContainer).not.toContainText(RESET_SUCCESS);
+  await expect(blendPage.toastContainer).toContainText(RESET_DELETE_FAILURE, { timeout: 12000 });
+  await expect(blendPage.toastContainer).not.toContainText('Browser data cleared.');
   await expect(page.locator('#clear-browser-storage')).toBeFocused();
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
   await expect(page.locator('#experience-select')).toHaveValue(await blendPage.activeExperienceIdByName('Keep this experience'));
   expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name))).toContain('Keep this experience');
   expect(await heldExperienceNames(holderPage)).toContain('Keep this experience');
@@ -296,6 +401,8 @@ test('blocked deletion keeps the current experience and a retry clears it after 
   await confirmResetWithKeyboard(page);
   await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS, { timeout: 12000 });
   await expect(page.locator('#clear-browser-storage')).toBeFocused();
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  expect(authRequests).toBe(0);
   await page.reload();
   await page.waitForFunction(() => !!window.Blend?.state);
   const emptyAfterRetry = await page.evaluate(() => ({
@@ -338,8 +445,8 @@ for (const failureMode of ['error', 'timeout']) {
 
     await blendPage.openConfig();
     await confirmResetWithKeyboard(page);
-    await expect(blendPage.toastContainer).toContainText(RESET_FAILURE, { timeout: 12000 });
-    await expect(blendPage.toastContainer).not.toContainText(RESET_SUCCESS);
+    await expect(blendPage.toastContainer).toContainText(RESET_DELETE_FAILURE, { timeout: 12000 });
+    await expect(blendPage.toastContainer).not.toContainText('Browser data cleared.');
     await expect(page.locator('#clear-browser-storage')).toBeFocused();
     expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name)))
       .toContain(`Keep after ${failureMode}`);

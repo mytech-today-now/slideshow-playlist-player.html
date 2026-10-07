@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 4191);
+const OUTPUT_DIR = process.env.PLAYWRIGHT_TEST_OUTPUT_DIR || 'test-results';
+const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_OUTPUT_DIR || 'playwright-report';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -11,7 +13,11 @@ export default defineConfig({
   fullyParallel: false,
   respectGitIgnore: false,
   retries: process.env.CI ? 1 : 0,
-  reporter: [['list']],
+  outputDir: OUTPUT_DIR,
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }]
+  ],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     headless: true,

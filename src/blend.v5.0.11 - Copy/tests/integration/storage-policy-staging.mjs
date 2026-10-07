@@ -131,12 +131,12 @@ async function main() {
   }
 
   const privateObject = objectUrl(baseUrl, privateBucket, privatePath);
-  const publicResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: '' });
   const anonymousPrivate = await responseStatus(privateObject, { anonKey });
   checked(isPrivateReadDeniedStatus(anonymousPrivate.status), 'Anonymous private request did not return a denial status.');
+  const anonymousResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: '' });
   let anonymousError = null;
   try {
-    await publicResolver.resolve(`supabase://${privateBucket}/${privatePath}`);
+    await anonymousResolver.resolve(`supabase://${privateBucket}/${privatePath}`);
     fail('The app resolver returned a private URL to an anonymous principal.');
   } catch (error) {
     if (error instanceof MatrixFailure) throw error;
@@ -180,13 +180,29 @@ async function main() {
   if (otherSigned) checked(isAuthenticatedReadDeniedStatus(otherSigned.status), 'Unrelated user B resolved request did not return a denial status.');
   console.log(`PASS unrelated user B private read denied (direct HTTP ${otherDirect.status}${otherSigned ? `; resolved HTTP ${otherSigned.status}` : '; resolver returned no URL'})`);
 
-  const publicResolverResult = await publicResolver.resolve(`supabase://${publicBucket}/${publicPath}`);
-  checked(publicResolverResult?.signed === false && publicResolverResult.visibility === 'public', 'Allowlisted public object did not resolve as a public URL.');
-  const publicOrigin = new URL(publicResolverResult.url).origin;
-  checked(publicOrigin === parsedBase.origin, 'Allowlisted public resolver returned a URL outside the staging project.');
-  const publicResponse = await responseStatus(publicResolverResult.url, { anonKey });
-  checked(publicResponse.ok, `Allowlisted public object was not readable anonymously (HTTP ${publicResponse.status}).`);
-  console.log(`PASS allowlisted public object remains readable anonymously (HTTP ${publicResponse.status})`);
+  const publicObject = objectUrl(baseUrl, publicBucket, publicPath, 'public');
+  async function checkPublicObject(principal, accessToken) {
+    const direct = await responseStatus(publicObject, { anonKey, accessToken });
+    checked(direct.ok, `${principal} could not read the allowlisted public object directly (HTTP ${direct.status}).`);
+
+    const resolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken });
+    let resolved;
+    try { resolved = await resolver.resolve(`supabase://${publicBucket}/${publicPath}`); }
+    catch (_) { fail(`${principal} could not resolve the allowlisted public object through the app.`); }
+    checked(resolved?.signed === false && resolved.visibility === 'public', `${principal} resolver did not use the public allowlist.`);
+    let resolvedOrigin;
+    try { resolvedOrigin = new URL(resolved.url).origin; } catch (_) { fail(`${principal} public resolver returned an invalid URL.`); }
+    checked(resolvedOrigin === parsedBase.origin, `${principal} public resolver returned a URL outside the staging project.`);
+
+    // Public resolution must remain readable without attaching a user token.
+    const throughResolver = await responseStatus(resolved.url, { anonKey });
+    checked(throughResolver.ok, `${principal} could not read the resolved public object (HTTP ${throughResolver.status}).`);
+    console.log(`PASS ${principal} public read allowed (direct HTTP ${direct.status}; resolver HTTP ${throughResolver.status})`);
+  }
+
+  await checkPublicObject('anonymous', '');
+  await checkPublicObject('owner A', ownerToken);
+  await checkPublicObject('unrelated user B', otherToken);
 }
 
 main().catch(error => {

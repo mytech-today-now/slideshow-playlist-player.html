@@ -523,7 +523,7 @@ Manual screen-reader review of the current-playback row state is still outstandi
 |---|---|---|
 | IndexedDB object stores | Yes | Main persistent application state |
 | LocalStorage key-values | Yes | UI/session flags, consent, runtime overrides |
-| Runtime config JSON (`blend-runtime-config-v1`) | Yes | Optional override path for Supabase/runtime settings |
+| Runtime config JSON (`blend-runtime-config-v1`) | Yes | Operator-managed override path for Supabase/runtime settings; preserved by Clear Browser Storage |
 
 ### Export Formats
 
@@ -628,7 +628,7 @@ Stores:
 - `blend-welcome-v4`
 - `blend-analytics-consent-v1`
 - `blend-share-mastodon-instance-v1`
-- `blend-runtime-config-v1`
+- `blend-runtime-config-v1` (operator-managed connection settings; preserved by Clear Browser Storage)
 - `blend-supabase-auth-session-v2` (only after opting in to save the session)
 - `blend-debug-log-v1`
 
@@ -663,9 +663,10 @@ Use **Clear Browser Storage** to remove browser-side data:
 
 - IndexedDB data, including saved media access handles
 - selected LocalStorage keys, including saved Supabase sessions and any legacy session entry
+- operator-managed runtime configuration (`blend-runtime-config-v1`) is retained, including Supabase endpoint, key, and bucket overrides, so configured service access can be restored after reset
 - Blend service worker/cache entries across `blend-shell-*`, `blend-static-*`, `blend-docs-*`, `blend-api-*`, and `blend-alias-*`
 
-Media files on disk are not deleted. Reset confirms the Supabase session was removed only after its LocalStorage key is cleared; if that key cannot be removed, the reset stops before deleting the rest of Blend's browser data.
+Media files on disk are not deleted, and reset does not send a remote logout request. The local Supabase session is cleared before Blend data is deleted. The runtime configuration override is connection configuration rather than resettable player data, so the confirmation identifies it as preserved. If session storage cannot be fully cleared, Blend signs out in the current tab, reports that removal of all saved session data could not be confirmed, and keeps the other Blend data. If the recovery snapshot or IndexedDB deletion fails after local sign-out, the reset reports that the session was removed and keeps the saved Blend data for recovery and retry. A success message appears only after the requested local cleanup steps finish.
 
 ## Architecture Documentation
 
@@ -847,7 +848,7 @@ Yes. Deep links include `exp`, optional `layer`, optional `item`, and optional `
 
 ### Can I use private Supabase media?
 
-Blend requests signed URLs with the signed-in user's access token. Whether that user may read an object is controlled by the Supabase project's Storage policies, which this app does not configure or verify. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md) before sharing private media.
+Blend requests signed URLs with the signed-in user's access token. Whether that user may read an object is controlled by the Supabase project's Storage policies, which this app does not configure or verify. While the provider release gate is unverified, **Share URL is blocked for experiences that reference a non-allowlisted private bucket**; public-only sharing and normal playback remain available. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md), have the policy owner review the redacted policy and rollback exports, and record all six principal/object outcomes before authorizing a later release change for private-reference sharing.
 
 ### Are IPFS features still active?
 
