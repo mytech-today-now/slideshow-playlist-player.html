@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Blend Player Current-State Report Comparison, 2026-10-04</title>
+  <link rel="stylesheet" href="https://raw.githubusercontent.com/mytech-today-now/prompt-refined/refs/heads/main/css/style.css">
+  <script defer src="https://raw.githubusercontent.com/mytech-today-now/prompt-refined/refs/heads/main/js/code.js"></script>
+  <style>
+    :root{color-scheme:light;--ink:#17232f;--muted:#526274;--paper:#f3f6f8;--card:#fff;--line:#cbd5df;--blue:#155e75;--blue-soft:#e6f4f7;--red:#9b2c2c;--amber:#7b4b08;--green:#23613d}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.62 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+    a{color:#075c83;text-underline-offset:.17em}a:focus-visible{outline:3px solid #0a789f;outline-offset:3px}.skip-link{position:absolute;left:-9999px;top:0;background:#fff;padding:.65rem 1rem;z-index:5}.skip-link:focus{left:1rem;top:1rem}
+    .hero{background:#102b3c;color:#f8fbfd;padding:2.5rem max(1.25rem,calc((100vw - 1120px)/2))}.hero h1{font-size:clamp(2rem,4vw,3.25rem);line-height:1.12;max-width:25ch;margin:.35rem 0 1rem}.hero p{max-width:80ch}.eyebrow,.issue-number{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}.hero .eyebrow{color:#b7e2eb}
+    .meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:.7rem;margin-top:1.5rem}.meta-item{border:1px solid #587182;background:rgba(255,255,255,.06);border-radius:.65rem;padding:.65rem .8rem;overflow-wrap:anywhere}.meta-item strong{display:block;color:#b7e2eb;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+    main,.page-footer{width:min(1120px,calc(100% - 2rem));margin:1.5rem auto}.panel,.issue-card{background:var(--card);border:1px solid var(--line);border-radius:.85rem;padding:clamp(1rem,2.7vw,2rem);box-shadow:0 8px 26px rgba(25,45,64,.08);margin:1rem 0 1.3rem}h2,h3{line-height:1.25}.panel>h2{margin-top:0}h2{font-size:1.45rem}h3{font-size:1.05rem;margin:.15rem 0 .45rem}p,li{max-width:92ch}.note{border-left:5px solid var(--blue);background:var(--blue-soft);padding:.9rem 1rem;border-radius:.35rem}.note.warning{border-color:#a55d00;background:#fff7e6}
+    .scope-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.scope-grid section{border-top:3px solid var(--blue);padding:.7rem .2rem}.scope-grid h3{color:var(--blue)}.risk-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:.6rem}.risk-table,.test-results{border-collapse:collapse;width:100%;min-width:900px}.risk-table th,.risk-table td,.test-results th,.test-results td{border-bottom:1px solid var(--line);padding:.62rem .7rem;text-align:left;vertical-align:top}.risk-table th,.test-results th{background:#eaf0f4;font-size:.82rem}.risk-table td:nth-child(2){font-weight:700}
+    .status{display:inline-block;padding:.08rem .48rem;border-radius:999px;font-weight:700;font-size:.82rem;white-space:nowrap}.status.closed{background:#e6f3e9;color:var(--green)}.status.open{background:#fbe9e7;color:var(--red)}.status.partial,.status.question{background:#fff1d4;color:var(--amber)}.status.boundary{background:#eaf0f4;color:#455668}
+    .issue-card{scroll-margin-top:1rem}.issue-heading{border-bottom:1px solid var(--line);padding-bottom:.75rem;margin-bottom:1rem}.issue-heading h2{margin:.2rem 0 0}.issue-number{color:var(--muted);margin:0}.field{border-top:1px solid #e3e9ee;padding:.85rem 0}.field p:last-child,.field ol:last-child{margin-bottom:.1rem}.field ol{padding-left:1.35rem}.implementation-prompt{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7f9;border:1px solid var(--line);border-radius:.45rem;padding:.85rem;margin:.45rem 0}.tag{font-weight:700;color:var(--blue)}.page-footer{color:var(--muted);font-size:.9rem;padding-bottom:2rem}code{overflow-wrap:anywhere}
+    @media print{body{background:#fff;font-size:11pt}.hero{background:#fff;color:var(--ink);padding:1rem 0;border-bottom:2px solid var(--ink)}.hero .eyebrow,.meta-item strong{color:var(--blue)}main,.page-footer{width:100%;margin:.5rem 0}.panel,.issue-card{box-shadow:none;break-inside:avoid}.risk-wrap{overflow:visible}.risk-table,.test-results{min-width:0}.risk-table th{position:static}a{color:inherit;text-decoration:none}.implementation-prompt{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to report</a>
+<header class="hero">
+  <p class="eyebrow">Repository report comparison</p>
+  <h1>Blend Player 5.0.11: Prior Findings Compared With the Current Working Tree</h1>
+  <p>This report rechecks each claim in the September 28 pre-mortem against the files now present in this standalone app folder. It carries forward a finding only when current source supports it, and records fixed, partial, conditional, and out-of-scope claims separately.</p>
+  <div class="meta-grid">
+    <div class="meta-item"><strong>Source report</strong>ai-prompts/pre-mortem-2026-09-28-12-35-13.html</div>
+    <div class="meta-item"><strong>Current scope</strong>Blend Player 5.0.11 active app folder</div>
+    <div class="meta-item"><strong>Generated</strong>2026-10-04 17:47:51 America/Chicago</div>
+    <div class="meta-item"><strong>Current findings</strong>7 open findings and 1 reset-policy question</div>
+    <div class="meta-item"><strong>Evidence mode</strong>Static source, documentation, and test-configuration inspection</div>
+  </div>
+</header>
+<main id="main-content">
+  <section class="panel" aria-labelledby="summary-title">
+    <h2 id="summary-title">Review summary</h2>
+    <div class="scope-grid">
+      <section><h3>Prior claims reviewed</h3><p>All 20 numbered claims in the source report were compared with the current tree. Ten are resolved in current source, seven remain open, one is partly mitigated, one depends on the intended reset contract, and one is outside this app folder's provider-policy boundary.</p></section>
+      <section><h3>Current findings</h3><p>Seven current code or configuration gaps are documented below. The number reflects evidence found in this checkout. Findings were not added or severity-rated to meet a preset count.</p></section>
+      <section><h3>Unverified behavior</h3><p>No package tests, browser sessions, hosted CI runs, Supabase policy inspection, or deployment checks were run. Statements about runtime impact that were not directly established from source are labeled <strong>Testable assumption</strong>.</p></section>
+    </div>
+    <p class="note">The open items are current review findings, not work tracker priorities. Priority and severity labels are qualitative triage for this report. No finding is promoted to P1 or Severity 1 without evidence for that level.</p>
+    <p class="note warning">The linked Markdown instruction file could not be fetched in this environment: the web reader returned a cache miss and direct outbound access was refused. The active app folder also contains no <code>pre-mortem-with-prompts.md</code>. This comparison uses the supplied source report, the local project instructions, and the known report-comparison contract. The shared stylesheet and script URLs below are included by convention, but their live responses and browser loading were not verified.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="ledger-title">
+    <h2 id="ledger-title">Status of the 20 source-report claims</h2>
+    <div class="risk-wrap" role="region" aria-label="Scrollable prior-claim status table" tabindex="0">
+      <table class="risk-table">
+        <thead><tr><th scope="col">Source claim</th><th scope="col">Current status</th><th scope="col">Current-tree comparison</th></tr></thead>
+        <tbody>
+          <tr><td>01. Signed private media URLs in exports</td><td><span class="status closed">Resolved</span></td><td><code>url-share.js</code> sanitizes signed URLs and credential fields; app export and share serialization call the sanitizer while preserving portable references.</td></tr>
+          <tr><td>02. URL share includes unrelated library rows</td><td><span class="status closed">Resolved</span></td><td>The URL share caller passes <code>referencedOnly: true</code>. Full experience export still keeps full-library behavior.</td></tr>
+          <tr><td>03. Stale multi-tab snapshot overwrites</td><td><span class="status closed">Resolved</span></td><td><code>experience-persistence.js</code> reads a revision, merges independent changes, and aborts conflicting writes in the same transaction.</td></tr>
+          <tr><td>04. Provider-side private Storage authorization</td><td><span class="status boundary">Boundary only</span></td><td>This app tree does not establish the live provider bucket policy. No claim about a live authorization defect can be confirmed here.</td></tr>
+          <tr><td>05. Multi-stage experience import commit</td><td><span class="status closed">Resolved</span></td><td>Import stages the library and experience, persists the snapshot atomically, then changes live state. A rollback path handles post-commit failure.</td></tr>
+          <tr><td>06. Experience switch races outgoing save</td><td><span class="status closed">Resolved</span></td><td>The switch path flushes pending state and awaits the outgoing experience write before applying the next snapshot; failure offers retry or cancel.</td></tr>
+          <tr><td>07. Debounced save on page hide</td><td><span class="status partial">Partly mitigated</span></td><td>The page-hide handler now starts a flush when dirty. It does not await IndexedDB completion; app-controlled switching flushes before changing experiences. Hard termination remains unverified.</td></tr>
+          <tr><td>08. Remote shared-experience fetch lacks bounds</td><td><span class="status closed">Resolved</span></td><td><code>shared-experience-download.js</code> sets a 15-second timeout and a streamed 10 MiB size cap.</td></tr>
+          <tr><td>09. Local JSON import reads unbounded files</td><td><span class="status closed">Resolved</span></td><td>List and experience imports use bounded reads, a 10 MiB file limit, and structure and entry-count limits before parsing or activation.</td></tr>
+          <tr><td>10. Duplicate-basename relinking is arbitrary</td><td><span class="status closed">Resolved</span></td><td><code>media-relink.js</code> indexes normalized paths separately from basenames and returns ambiguous basename matches for explicit choice.</td></tr>
+          <tr><td>11. Same-name, same-size local files coalesce</td><td><span class="status open">Open</span></td><td>When no source URL or normalized path is available, <code>ensureHandleInLibrary</code> treats equal names as the same identity and then accepts equal or unknown size. See Finding 01.</td></tr>
+          <tr><td>12. Folder scans can silently be partial</td><td><span class="status open">Open</span></td><td>The walker logs a failed branch and returns the handles it found; the folder picker reports added and existing counts but not skipped branches. See Finding 02.</td></tr>
+          <tr><td>13. IndexedDB open has no startup blocked state</td><td><span class="status open">Open</span></td><td><code>openDB</code> has success and error handlers but no <code>onblocked</code> or bounded recovery. Bootstrap directly awaits it. See Finding 03.</td></tr>
+          <tr><td>14. Overlength URL copied before warning</td><td><span class="status closed">Resolved</span></td><td>The share flow opens the measurement and warning dialog before the user chooses Copy URL. The clipboard write occurs from that dialog button.</td></tr>
+          <tr><td>15. Current playback state absent from list row name</td><td><span class="status open">Open</span></td><td>The row gets a visual <code>current</code> class, but its accessible name does not expose current playback and it has no <code>aria-current</code>. See Finding 04.</td></tr>
+          <tr><td>16. Browser reset retains runtime config override</td><td><span class="status question">Contract question</span></td><td>The reset removes selected keys but leaves <code>blend-runtime-config-v1</code>. The README describes a full local reset while also documenting host/runtime overrides. Whether the override should survive needs an explicit ownership decision.</td></tr>
+          <tr><td>17. Reset clears auth before IndexedDB deletion</td><td><span class="status open">Open</span></td><td><code>clearLocalSession</code> runs before snapshot and database deletion. A later deletion failure gives generic failure copy although the session has already been cleared. See Finding 05.</td></tr>
+          <tr><td>18. CI omits syntax and regression gates</td><td><span class="status open">Open</span></td><td>The sole workflow in this folder runs Playwright but not <code>npm run check</code> or <code>npm run test:regression</code>. Branch protection was not inspected. See Finding 06.</td></tr>
+          <tr><td>19. CI uploads an unconfigured Playwright report folder</td><td><span class="status open">Open</span></td><td>The workflow uploads <code>playwright-report/</code>; the Playwright config selects only the list reporter. The hosted artifact result was not observed. See Finding 07.</td></tr>
+          <tr><td>20. README cache key is stale</td><td><span class="status closed">Resolved</span></td><td><code>README.md</code> and <code>pwa-config.js</code> both currently show <code>20260928-v5.0.11-local-import-bounds</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="findings-title">
+    <h2 id="findings-title">Open findings in the current tree</h2>
+    <ol>
+      <li><a href="#finding-01">File picker identity can merge distinct same-name files</a></li>
+      <li><a href="#finding-02">Directory scans hide skipped branches</a></li>
+      <li><a href="#finding-03">IndexedDB startup can remain blocked without recovery feedback</a></li>
+      <li><a href="#finding-04">The accessible list row omits the current playback state</a></li>
+      <li><a href="#finding-05">A failed reset can still sign the user out</a></li>
+      <li><a href="#finding-06">CI skips syntax and regression checks</a></li>
+      <li><a href="#finding-07">CI uploads a Playwright report directory its reporter does not create</a></li>
+    </ol>
+    <p>Finding 08 below records the runtime-config reset contract question. It is not counted as a confirmed defect.</p>
+  </section>
+
+  <article id="finding-01" class="issue-card kind-core" data-issue-number="01">
+    <header class="issue-heading"><p class="issue-number">Finding <span>01</span> | Source claim 11</p><h2>File picker identity can merge distinct same-name files</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, moderate data integrity risk. <strong>Likelihood:</strong> Possible when files are added without stable relative paths.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>app.js:4622-4659</code> prefers a source URL or normalized path for identity. When neither exists, <code>sameIdentity</code> falls back to <code>it.name === name</code> at line 4645. The subsequent size check accepts equal size, or missing size, at line 4646. A match returns the existing record rather than adding the selected handle.</p><p><strong>Testable assumption:</strong> two different files with the same name and byte length, added through a picker without path hints, take this fallback and one file is omitted from the library. This path is visible in source; the browser reproduction was not run.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>Users may select two different clips with the same filename from separate directories. If the browser picker supplies no relative path, the second file can disappear behind the first library entry.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Deduplicate only when a stable source URL or normalized path matches. When identity is ambiguous, retain a distinct library item or ask the user instead of using filename and size as proof of identity. Preserve folder path hints and the existing persisted schema.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Inspect Add Files and Add Folder callers of ensureHandleInLibrary. Reproduce two distinct same-name, same-size synthetic files with and without path hints. Change the smallest identity helper so equal filename and size alone do not collapse an ambiguous local file. Keep exact-path and identical-source deduplication behavior, preserve pathHint and IndexedDB compatibility, and do not hash entire media files as an implicit workaround. Add focused regression coverage and a browser workflow test for separate selected handles. Run the focused checks and report only results actually observed.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>Two same-name, same-size records with distinct paths remain separate.</li><li>Equal normalized path continues to reuse the existing record.</li><li>Unknown file size does not turn a name-only collision into confirmed identity.</li><li>Existing folder imports retain relative path hints and playback still resolves both items.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Ambiguous local files are not merged solely because name and size match.</li><li>Stable path and URL deduplication contracts remain covered and pass.</li><li>Export, relink, selection, and reload preserve both distinct records.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the equality branch; medium for user impact until reproduced in a browser.</strong></p></section>
+  </article>
+
+  <article id="finding-02" class="issue-card kind-core" data-issue-number="02">
+    <header class="issue-heading"><p class="issue-number">Finding <span>02</span> | Source claim 12</p><h2>Directory scans hide skipped branches</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, moderate import completeness risk. <strong>Likelihood:</strong> Possible when an entry iterator rejects partway through a folder.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>app.js:4577-4611</code> catches errors for a directory branch, logs a sanitized warning, and continues. It returns only the collected file handles. <code>app.js:4544-4565</code> then displays added and existing counts, without a skipped-branch count or incomplete-scan notice.</p><p><strong>Testable assumption:</strong> a permission or read error in one nested directory can produce a success-looking partial import. No failing directory fixture was executed.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>A user can finish an import believing the selected folder was fully scanned while media from a nested branch was skipped.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Carry a scan summary with discovered handles and sanitized skipped-branch counts. Preserve successful files, but report partial completion and offer a retry path. Do not log local paths or file names.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Trace every walkDirectoryForMedia caller. Add an additive scan summary or progress callback that records branch failures without exposing paths. Update folder import and missing-media relink copy to distinguish complete, partial, canceled, and empty scans. Keep found files and cancellation behavior intact. Add a fake directory handle whose nested iterator rejects after returning a file; assert partial status reaches the user while the file remains importable. Cover an empty complete scan and a fully successful scan as baselines.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>A nested branch failure is counted and produces a partial-scan notice.</li><li>Files discovered before and after a failed branch remain available.</li><li>A complete scan keeps the existing success message.</li><li>Cancellation remains distinct from a read failure and does not report success.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Callers can distinguish a complete scan from a partial scan with skipped branches.</li><li>Partial results are retained and the user can retry without duplicate media.</li><li>Logs contain only sanitized operation and error categories.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the swallowed branch summary; medium for frequency and user impact.</strong></p></section>
+  </article>
+
+  <article id="finding-03" class="issue-card kind-core" data-issue-number="03">
+    <header class="issue-heading"><p class="issue-number">Finding <span>03</span> | Source claim 13</p><h2>IndexedDB startup can remain blocked without recovery feedback</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, startup availability risk. <strong>Likelihood:</strong> Uncommon, especially during a version upgrade with another open tab.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>app.js:3138-3162</code> handles the open request's upgrade, success, and error events, but has no <code>onblocked</code> handler or bounded wait. <code>bootstrap</code> awaits <code>openDB()</code> at <code>app.js:11193</code>; the DOM-ready registration at <code>app.js:11292-11295</code> passes <code>bootstrap</code> directly and has no rejection handler.</p><p><strong>Testable assumption:</strong> a version change held by another tab can leave this tab without an actionable startup message; an open failure can become an unhandled bootstrap rejection. No two-tab upgrade was run.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>The app needs its database before hydrating its library and wiring controls. A blocked upgrade or failed open can prevent startup without telling the user how to recover.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Add bounded blocked/open failure state with a clear instruction to close older Blend tabs and retry. Keep the app fail-closed for persisted data and avoid rendering a false empty library.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Review openDB, bootstrap, and versionchange handling. Add explicit blocked and error outcomes with a bounded timeout and accessible retry or recovery copy. Do not silently continue with empty state or overwrite the existing database. Add deterministic tests for success, error, blocked timeout, and late success; add a two-page browser test for a blocked version upgrade where the harness permits. Preserve version 5 stores and migrations.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>A blocked open reaches a visible, actionable recovery state before timeout.</li><li>An open error is caught by bootstrap and does not produce an unhandled rejection.</li><li>A late successful request does not double-initialize controls.</li><li>A normal open still hydrates saved state and keeps current schema migrations.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Every database open settles or reaches a bounded recovery state.</li><li>The user is told how to resolve a blocked upgrade without data loss.</li><li>No failed open is presented as a successful empty start.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the missing handlers; medium for the exact browser failure outcome.</strong></p></section>
+  </article>
+
+  <article id="finding-04" class="issue-card kind-core" data-issue-number="04">
+    <header class="issue-heading"><p class="issue-number">Finding <span>04</span> | Source claim 15</p><h2>The accessible list row omits the current playback state</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, accessibility information gap. <strong>Likelihood:</strong> Consistent for assistive technology that reads the row label.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>app.js:6426-6446</code> calculates <code>isCurrent</code> and adds a visual CSS class, but the row's accessible label includes name, availability, and timing only. The row does not set <code>aria-current</code>. The only nearby playback announcement found is a generic experience-level toast at <code>app.js:7219</code>.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>A screen-reader user navigating the list cannot identify the item currently playing from the row's accessible state, even though sighted users get a visual highlight.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Expose the current row with <code>aria-current</code> or concise current-playback text in its accessible name. Update it whenever either layer advances, stops, switches, or changes list, while preserving selection and availability announcements.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Inspect list virtualization and all playlist/slideshow current-index changes. Add a semantic current-playback signal to exactly the active row and clear it from the previous row after advance, stop, switch, or relink. Keep row selection semantics separate from playback state. Add automated accessibility assertions for both layers, plus a manual screen-reader review note rather than claiming that automation is a human audit.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>Current row exposes the state in its accessible name or aria-current attribute.</li><li>Next, Previous, stop, and experience switch update the state correctly.</li><li>Selected state remains independent and is not overwritten by current playback state.</li><li>Unavailable rows keep their existing accessible error detail.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Current playback is programmatically available for both layers.</li><li>Only the current row in a layer carries that state.</li><li>Keyboard selection, row virtualization, and unavailable-item descriptions remain intact.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the missing row-level semantic; a screen-reader audit was not performed.</strong></p></section>
+  </article>
+
+  <article id="finding-05" class="issue-card kind-core" data-issue-number="05">
+    <header class="issue-heading"><p class="issue-number">Finding <span>05</span> | Source claim 17</p><h2>A failed reset can still sign the user out</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, partial-action reporting and recovery risk. <strong>Likelihood:</strong> Possible when snapshot or database deletion fails after session clearing.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>app.js:8281-8299</code> calls <code>clearLocalSession()</code> before creating the recovery snapshot. <code>app.js:8308-8319</code> can then fail IndexedDB deletion and show “Could not clear saved data” without saying the saved session was already removed. The README at <code>README.md:659-665</code> describes selected LocalStorage keys and reset behavior, but does not document this partial outcome.</p><p>This is a local session clear; no remote logout is implied by the inspected path.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>The reset can partially succeed while presenting a generic failure. Users may believe they remain signed in, or repeat a destructive operation without understanding which state changed.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Either defer clearing the session until the IndexedDB deletion is committed, or provide explicit partial-reset copy when session removal succeeds but database reset fails. Keep recoverable database state and avoid claiming a full reset.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Trace reset ordering, rollback, and current tests. Make the smallest change that ensures each failure outcome names whether local sign-out happened and whether saved Blend data remains. Keep this operation local-only and do not add a network logout. If session clearing stays before database deletion, show an explicit partial-reset message on snapshot or delete failure. Add failure-injection coverage for snapshot, delete, session-storage removal, and retry; preserve other tabs' recoverable data.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>Database deletion failure reports that the local session was removed if it was.</li><li>Session storage failure stops before deleting other Blend data.</li><li>Successful reset reports completion only after all promised steps finish.</li><li>Retry does not restore a cleared token or falsely claim remote logout.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Every reset failure message truthfully describes local session and saved-data state.</li><li>Recoverable data is retained on failure and available for retry.</li><li>No reset message implies remote logout unless a remote logout call is added and verified.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the operation order and generic error copy; medium for failure frequency.</strong></p></section>
+  </article>
+
+  <article id="finding-06" class="issue-card kind-additional" data-issue-number="06">
+    <header class="issue-heading"><p class="issue-number">Finding <span>06</span> | Source claim 18</p><h2>CI skips syntax and regression checks</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open. <strong>Priority:</strong> P2. <strong>Severity:</strong> 2, verification coverage gap. <strong>Likelihood:</strong> Certain for the inspected workflow; merge impact depends on repository branch rules.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>.github/workflows/playwright.yml:16-21</code> installs dependencies and runs <code>npm run test:e2e</code>. The package defines separate <code>npm run check</code> and <code>npm run test:regression</code> scripts at <code>package.json:6-10</code>. No other workflow file is present in this active app folder. Branch protection and external workflows were not inspected.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>Pure modules and JavaScript syntax may regress without being covered by the configured E2E run. This report does not establish whether external branch protection adds another gate.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Add syntax and regression steps to the workflow before browser tests, or explicitly document and link the authoritative external check if it lives elsewhere. Keep test failure propagation enabled.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Compare the active package scripts with all tracked workflow files and repository branch rules available to the maintainers. Add npm run check and npm run test:regression to the appropriate required workflow before test:e2e. Keep npm ci, browser installation, and existing E2E coverage. Confirm a failing regression exits CI nonzero. Do not claim branch protection without inspecting it; report local runner restrictions separately from hosted results.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>Workflow runs syntax checks and regression tests on push and pull request.</li><li>A controlled failing regression makes the workflow fail before deployment or merge.</li><li>Existing Playwright workflow still runs and retains its result status.</li><li>Branch protection claims are tied to repository settings evidence.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Every package quality gate intended for CI is explicitly invoked.</li><li>Failures propagate as failed checks.</li><li>External required-check settings are reported only after inspection.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the inspected workflow omission; low for merge protection because it is outside this tree.</strong></p></section>
+  </article>
+
+  <article id="finding-07" class="issue-card kind-additional" data-issue-number="07">
+    <header class="issue-heading"><p class="issue-number">Finding <span>07</span> | Source claim 19</p><h2>CI uploads a Playwright report directory its reporter does not create</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Open configuration mismatch; hosted artifact result unverified. <strong>Priority:</strong> P3. <strong>Severity:</strong> 3, diagnostic artifact risk. <strong>Likelihood:</strong> Likely that the HTML report path is absent on a clean run.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>playwright.config.mjs:13</code> configures <code>reporter: [['list']]</code>. <code>.github/workflows/playwright.yml:22-26</code> uploads <code>playwright-report/</code>. The clean hosted artifact was not inspected.</p><p><strong>Testable assumption:</strong> a clean CI run has no HTML report file under that path and the upload step warns or emits an empty artifact. The mismatch is visible in current configuration; hosted behavior was not tested.</p></section>
+    <section class="field"><h3>Why it matters</h3><p>When a browser run fails, maintainers may expect an HTML artifact that the selected reporter did not produce.</p></section>
+    <section class="field"><h3>Recommended mitigation</h3><p>Choose one artifact contract: enable Playwright's HTML reporter with automatic opening disabled, or upload a directory the current run actually creates, such as intentional traces or results. Keep retention bounded and synthetic data only.</p></section>
+    <section class="field"><h3>Implementation prompt</h3><pre class="implementation-prompt"><code>Inspect Playwright reporter output and workflow upload paths. On a clean disposable run, confirm which files exist after success and failure. Configure an HTML reporter with open disabled or change the upload path to existing diagnostic artifacts. Add a CI smoke assertion that the chosen artifact exists and contains no secrets or private local paths. Preserve list output if needed for local use and keep retention bounded.</code></pre></section>
+    <section class="field"><h3>Regression and baseline checks</h3><ol><li>A fresh passing run creates the configured upload path.</li><li>A controlled browser failure retains a useful report or trace.</li><li>The upload action contains only intended files with bounded retention.</li><li>List output remains available if it is part of the local workflow contract.</li></ol></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Reporter and upload paths agree on a clean run.</li><li>Failure artifacts are useful and contain no credentials or private paths.</li><li>Hosted artifact behavior is confirmed before the report is marked resolved.</li></ol></section>
+    <section class="field"><h3>Confidence</h3><p><strong>High for the configuration mismatch; medium for the hosted missing-artifact outcome.</strong></p></section>
+  </article>
+
+  <article id="finding-08" class="issue-card kind-additional" data-issue-number="08">
+    <header class="issue-heading"><p class="issue-number">Finding <span>08</span> | Source claim 16, decision needed</p><h2>Runtime configuration survives Clear Browser Storage</h2></header>
+    <section class="field"><h3>Type and triage</h3><p><strong>Status:</strong> Contract question, not counted as a confirmed defect. <strong>Priority:</strong> P3 if user-owned overrides are intended to clear. <strong>Severity:</strong> 3. <strong>Confidence:</strong> Low until configuration ownership is explicit.</p></section>
+    <section class="field"><h3>Current evidence</h3><p><code>supabase-config.js:13,44-57</code> reads <code>blend-runtime-config-v1</code>. The reset key removals at <code>app.js:8425-8430</code> do not remove it. The README documents runtime configuration at <code>README.md:902-906</code> and describes selected LocalStorage keys at <code>README.md:659-665</code>.</p><p><strong>Testable assumption:</strong> an operator or user may expect the command described as a full local reset to remove a user-owned LocalStorage override. A host-managed configuration may intentionally need to persist.</p></section>
+    <section class="field"><h3>Decision and safe next step</h3><p>Decide whether this key is user-owned browser data or host-managed deployment configuration. If user-owned, include it in reset and add a preservation or explicit-warning flow for values needed to connect. If host-managed, document that it survives reset and distinguish it from user data.</p></section>
+    <section class="field"><h3>Acceptance criteria</h3><ol><li>Reset behavior for the runtime key is explicit and covered by an E2E assertion.</li><li>Documentation and confirmation copy match the chosen ownership contract.</li><li>Reset does not silently remove a configuration required to restore service access.</li></ol></section>
+  </article>
+
+  <section class="panel" aria-labelledby="method-title">
+    <h2 id="method-title">Method, evidence limits, and files</h2>
+    <ul>
+      <li>Inspected the existing report, app source modules, README, CLAUDE guide, package scripts, current Playwright workflow, and test file inventory. Augment reports no linked modules.</li>
+      <li>Compared the source report's statements with the current files and call paths. Prior status labels were not treated as proof.</li>
+      <li>Git resolves to a parent directory where this app folder appears as untracked content. Per-file history is unavailable, so this report does not make commit or release claims.</li>
+      <li>No application source, tests, configuration, documentation, or existing report was changed. The only intended repository change is this new HTML report.</li>
+      <li>No test commands or browser checks were run. Test plans in finding cards are recommendations, not executed results.</li>
+      <li>Live Supabase authorization, GitHub branch protection, hosted workflow artifacts, responsive rendering, screen reader behavior, and deployment status remain unverified.</li>
+      <li>The report contains current evidence and Testable assumptions separately. Triage ratings are qualitative review judgments, not incident statistics.</li>
+    </ul>
+    <table class="test-results"><thead><tr><th scope="col">Artifact check</th><th scope="col">Result</th></tr></thead><tbody>
+      <tr><td>Prior source claims compared</td><td>20 of 20</td></tr>
+      <tr><td>Open current findings</td><td>7, with one additional reset-policy question</td></tr>
+      <tr><td>Product tests and browser checks</td><td>Not run</td></tr>
+      <tr><td>Existing files changed</td><td>No; one new dated report created</td></tr>
+    </tbody></table>
+  </section>
+</main>
+<footer class="page-footer">
+  <p><strong>Source report:</strong> ai-prompts/pre-mortem-2026-09-28-12-35-13.html.</p>
+  <p><strong>Output:</strong> ai-prompts/pre-mortem-refactored-2026-10-04-17-47-51.html.</p>
+  <p><strong>Scope:</strong> current working tree in the standalone Blend Player 5.0.11 app folder.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Other app service worker fixture</title>
+</head>
+<body>
+  <main>
+    <h1>Other app fixture</h1>
+    <p id="worker-status" role="status">Waiting for its service worker.</p>
+  </main>
+  <script type="module">
+    const workerUrl = new URL('./service-worker.js', document.baseURI).href;
+    const status = document.querySelector('#worker-status');
+
+    try {
+      await caches.open('other-app-shell-v1');
+      await navigator.serviceWorker.register('./service-worker.js');
+      await navigator.serviceWorker.ready;
+      if (navigator.serviceWorker.controller?.scriptURL !== workerUrl) {
+        await new Promise(resolve => {
+          const checkController = () => {
+            if (navigator.serviceWorker.controller?.scriptURL !== workerUrl) return;
+            navigator.serviceWorker.removeEventListener('controllerchange', checkController);
+            resolve();
+          };
+          navigator.serviceWorker.addEventListener('controllerchange', checkController);
+          checkController();
+        });
+      }
+      status.textContent = navigator.serviceWorker.controller?.scriptURL === workerUrl
+        ? `Controlled by ${workerUrl}`
+        : 'The fixture worker did not control this route.';
+    } catch (_) {
+      status.textContent = 'The fixture worker could not be registered.';
+    }
+  </script>
+</body>
+</html>

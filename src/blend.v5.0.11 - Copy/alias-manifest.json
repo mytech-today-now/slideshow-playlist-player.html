@@ -1,0 +1,46 @@
+{
+  "schema": "blend.aliases.v1",
+  "version": 1,
+  "generatedAt": "2026-07-10T00:00:00.000Z",
+  "aliases": [
+    {
+      "id": "legacy-static-shell",
+      "from": "./slideshow-playlist-player.html",
+      "to": "./index.html",
+      "type": "navigation",
+      "match": "exact",
+      "status": 200,
+      "preserveQuery": true,
+      "preserveHash": true,
+      "enabled": true,
+      "priority": 100,
+      "expiresAt": null
+    },
+    {
+      "id": "friendly-player-route",
+      "from": "./player",
+      "to": "./index.html",
+      "type": "navigation",
+      "match": "exact",
+      "status": 200,
+      "preserveQuery": true,
+      "preserveHash": true,
+      "enabled": true,
+      "priority": 90,
+      "expiresAt": null
+    },
+    {
+      "id": "friendly-blend-route",
+      "from": "./blend",
+      "to": "./index.html",
+      "type": "navigation",
+      "match": "exact",
+      "status": 200,
+      "preserveQuery": true,
+      "preserveHash": true,
+      "enabled": true,
+      "priority": 80,
+      "expiresAt": null
+    }
+  ]
+}

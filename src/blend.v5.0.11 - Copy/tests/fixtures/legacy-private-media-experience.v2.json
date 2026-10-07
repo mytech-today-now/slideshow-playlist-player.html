@@ -1,0 +1,113 @@
+{
+  "version": "5.0.11",
+  "schema": "player.blend.experience.v2",
+  "type": "experience",
+  "id": "legacy-private-media-fixture",
+  "name": "Legacy Private Media Fixture",
+  "project": "Legacy Private Media Fixture",
+  "exportedAt": "2026-09-28T00:00:00.000Z",
+  "settings": {},
+  "library": {
+    "order": ["private-video", "public-video"],
+    "items": [
+      {
+        "order": 0,
+        "id": "private-video",
+        "path": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "fullPath": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "pathKind": "remote",
+        "name": "Private video.mp4",
+        "type": "video",
+        "size": 1200,
+        "duration": 12,
+        "addedAt": "2026-09-27T00:00:00.000Z",
+        "stale": false,
+        "sourceUrl": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "metadata": {
+          "sourceUrl": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+          "storageReference": "supabase://private-media/private/video.mp4",
+          "storageBucket": "private-media",
+          "storagePath": "private/video.mp4",
+          "signedUrlExpiresAt": 4102444800000,
+          "access_token": "issue01-legacy-fixture-marker-78d2"
+        }
+      },
+      {
+        "order": 1,
+        "id": "public-video",
+        "path": "https://cdn.example.test/media/public.mp4?version=3",
+        "fullPath": "https://cdn.example.test/media/public.mp4?version=3",
+        "pathKind": "remote",
+        "name": "Public video.mp4",
+        "type": "video",
+        "size": 2400,
+        "duration": 24,
+        "addedAt": "2026-09-27T00:00:00.000Z",
+        "stale": false,
+        "sourceUrl": "https://cdn.example.test/media/public.mp4?version=3",
+        "metadata": { "sourceUrl": "https://cdn.example.test/media/public.mp4?version=3" }
+      }
+    ]
+  },
+  "playlist": {
+    "version": "5.0.11",
+    "schema": "player.blend.list.v1",
+    "type": "playlist",
+    "name": "Playlist",
+    "description": "",
+    "createdAt": "2026-09-27T00:00:00.000Z",
+    "project": "Legacy Private Media Fixture",
+    "exportedAt": "2026-09-28T00:00:00.000Z",
+    "order": ["private-video", "public-video"],
+    "items": [
+      {
+        "order": 0,
+        "id": "private-video",
+        "path": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "fullPath": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "pathKind": "remote",
+        "name": "Private video.mp4",
+        "type": "video",
+        "size": 1200,
+        "duration": 12,
+        "addedAt": "2026-09-27T00:00:00.000Z",
+        "available": true,
+        "sourceUrl": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+        "metadata": {
+          "sourceUrl": "https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=issue01-legacy-fixture-marker-78d2&expires=4102444800",
+          "storageReference": "supabase://private-media/private/video.mp4",
+          "storageBucket": "private-media",
+          "storagePath": "private/video.mp4",
+          "signedUrlExpiresAt": 4102444800000
+        }
+      },
+      {
+        "order": 1,
+        "id": "public-video",
+        "path": "https://cdn.example.test/media/public.mp4?version=3",
+        "fullPath": "https://cdn.example.test/media/public.mp4?version=3",
+        "pathKind": "remote",
+        "name": "Public video.mp4",
+        "type": "video",
+        "size": 2400,
+        "duration": 24,
+        "addedAt": "2026-09-27T00:00:00.000Z",
+        "available": true,
+        "sourceUrl": "https://cdn.example.test/media/public.mp4?version=3",
+        "metadata": { "sourceUrl": "https://cdn.example.test/media/public.mp4?version=3" }
+      }
+    ]
+  },
+  "slideshow": {
+    "version": "5.0.11",
+    "schema": "player.blend.list.v1",
+    "type": "slideshow",
+    "name": "Slideshow",
+    "description": "",
+    "createdAt": "2026-09-27T00:00:00.000Z",
+    "project": "Legacy Private Media Fixture",
+    "exportedAt": "2026-09-28T00:00:00.000Z",
+    "order": [],
+    "items": []
+  }
+}

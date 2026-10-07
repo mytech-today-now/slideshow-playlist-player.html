@@ -1,0 +1,8 @@
+node_modules/
+tests/
+scripts/
+dist/
+package.json
+package-lock.json
+ipfs-helia-provider.source.js
+IPFS-SHARING.md
