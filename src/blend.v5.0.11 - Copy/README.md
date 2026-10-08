@@ -789,7 +789,7 @@ Verified in current implementation:
 
 ## Known Limitations
 
-- Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`).
+- Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`). A scan that reaches this limit reports how many child folders it skipped as a partial result; choose **Choose deeper folder** in the status notice (or select the deeper folder directly) to include that media.
 - Remote URL parsing generally requires media-like filenames/extensions for text list imports.
 - Service worker intentionally does not cache media/range responses.
 - File System Access capabilities vary significantly by browser.

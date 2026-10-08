@@ -10,6 +10,14 @@ const PUBLIC_URL = 'https://cdn.example.test/media/public.mp4?version=3';
 const PUBLIC_STORAGE_REFERENCE = 'supabase://public/codex-policy-check/public-video.mp4';
 const UNUSED_PRIVATE_STORAGE_REFERENCE = 'supabase://private-media/codex-policy-check/unused-private-video.mp4';
 const PRIVATE_POLICY_WARNING = 'Private media access could not be verified. Contact the project owner before sharing.';
+const PATH_OMISSION_NOTICE = 'Local file path details were omitted from this export for privacy. Media references and the saved library were not changed.';
+const PATH_CREDENTIAL_MARKER = 'issue05-e2e-synthetic-credential-marker';
+const ABSOLUTE_PATH_SENTINELS = [
+  'C:\\Users\\blend-issue05\\private\\windows-secret-05.mp4',
+  '\\\\blend-server-issue05\\private-share\\unc-secret-05.mp4',
+  '/home/blend-issue05/private/posix-secret-05.mp4',
+  '\\blend-issue05\\rooted-secret-05.mp4'
+];
 const SIGNED_URL = `https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=${BEARER_MARKER}&expires=4102444800`;
 
 async function boot(page) {
@@ -38,7 +46,7 @@ async function seedPrivateAndPublicRecords(page, {
   includePublic = true,
   includeUnused = false
 } = {}) {
-  await page.evaluate(({ signedUrl, publicUrl, portableReference, expiredPrivateUrl, includePrivate, includePublic, includeUnused }) => {
+  await page.evaluate(({ signedUrl, publicUrl, portableReference, pathSentinels, pathCredentialMarker, expiredPrivateUrl, includePrivate, includePublic, includeUnused }) => {
     const blend = window.Blend;
     const state = blend.state;
     const privateMetadata = {
@@ -48,7 +56,15 @@ async function seedPrivateAndPublicRecords(page, {
       storagePath: 'private/video.mp4',
       signedUrlExpiresAt: expiredPrivateUrl ? Date.now() - 60_000 : 4102444800000,
       access_token: 'issue01-e2e-synthetic-bearer-94a7',
-      nestedAuth: { refresh_token: 'issue01-e2e-synthetic-bearer-94a7' }
+      nestedAuth: { refresh_token: 'issue01-e2e-synthetic-bearer-94a7' },
+      safeLabel: 'Synthetic imported media label',
+      relativePath: 'media/private/video.mp4',
+      importedDetails: {
+        localA: pathSentinels[0],
+        nested: [{ localB: pathSentinels[1] }, { localC: pathSentinels[2] }],
+        rootedWindowsPath: pathSentinels[3],
+        access_token: pathCredentialMarker
+      }
     };
     state.library.clear();
     if (includePrivate) {
@@ -96,6 +112,8 @@ async function seedPrivateAndPublicRecords(page, {
     signedUrl: SIGNED_URL,
     publicUrl: PUBLIC_URL,
     portableReference: PORTABLE_REFERENCE,
+    pathSentinels: ABSOLUTE_PATH_SENTINELS,
+    pathCredentialMarker: PATH_CREDENTIAL_MARKER,
     expiredPrivateUrl,
     includePrivate,
     includePublic,
@@ -104,7 +122,7 @@ async function seedPrivateAndPublicRecords(page, {
 }
 
 async function seedPublicSupabaseOnly(page) {
-  await page.evaluate(({ publicReference, unusedPrivateReference }) => {
+  await page.evaluate(({ publicReference, unusedPrivateReference, pathSentinels, pathCredentialMarker }) => {
     const blend = window.Blend;
     const state = blend.state;
     state.library.clear();
@@ -116,7 +134,15 @@ async function seedPublicSupabaseOnly(page) {
       metadata: {
         storageReference: publicReference,
         storageBucket: 'public',
-        storagePath: 'codex-policy-check/public-video.mp4'
+        storagePath: 'codex-policy-check/public-video.mp4',
+        safeLabel: 'Public project label',
+        relativePath: 'media/public-video.mp4',
+        importedDetails: {
+          localA: pathSentinels[0],
+          nested: [{ localB: pathSentinels[1] }, { localC: pathSentinels[2] }],
+          rootedWindowsPath: pathSentinels[3],
+          access_token: pathCredentialMarker
+        }
       }
     });
     state.library.set('unused-private-video', {
@@ -142,7 +168,9 @@ async function seedPublicSupabaseOnly(page) {
     blend.renderListEditor();
   }, {
     publicReference: PUBLIC_STORAGE_REFERENCE,
-    unusedPrivateReference: UNUSED_PRIVATE_STORAGE_REFERENCE
+    unusedPrivateReference: UNUSED_PRIVATE_STORAGE_REFERENCE,
+    pathSentinels: ABSOLUTE_PATH_SENTINELS,
+    pathCredentialMarker: PATH_CREDENTIAL_MARKER
   });
 }
 
@@ -153,8 +181,15 @@ async function snapshotUserState(page) {
       projectName: state.projectName,
       activeExperienceId: state.activeExperienceId,
       activeList: state.ui.activeList,
-      playlist: state.playlist.map(ref => ({ id: ref.id, sourceUrl: ref.sourceUrl, available: ref.available })),
-      slideshow: state.slideshow.map(ref => ({ id: ref.id, sourceUrl: ref.sourceUrl, available: ref.available })),
+      playlist: state.playlist.map(ref => ({ id: ref.id, sourceUrl: ref.sourceUrl, available: ref.available, metadata: structuredClone(ref.metadata || {}) })),
+      slideshow: state.slideshow.map(ref => ({ id: ref.id, sourceUrl: ref.sourceUrl, available: ref.available, metadata: structuredClone(ref.metadata || {}) })),
+      listSelection: Array.from(state.ui.listSelection || []),
+      listSelectionAnchorId: state.ui.listSelectionAnchorId,
+      library: Array.from(state.library.entries(), ([id, item]) => [id, {
+        pathHint: item.pathHint,
+        sourceUrl: item.sourceUrl,
+        metadata: structuredClone(item.metadata || {})
+      }]),
       libraryIds: Array.from(state.library.keys()),
       playlistIndex: state.runtime.playlistIndex,
       slideshowIndex: state.runtime.slideshowIndex,
@@ -174,7 +209,15 @@ function stringLeaves(value, result = []) {
 function assertNoBearerData(value) {
   const leaves = stringLeaves(value);
   expect(leaves.join('\n')).not.toContain(BEARER_MARKER);
+  expect(leaves.join('\n')).not.toContain(PATH_CREDENTIAL_MARKER);
   expect(leaves.join('\n')).not.toMatch(/[?&](?:access_token|refresh_token|token|signature|sig)=/i);
+}
+
+function assertNoPathSentinels(value) {
+  const leaves = stringLeaves(value);
+  for (const sentinel of ABSOLUTE_PATH_SENTINELS) {
+    expect(leaves.join('\n')).not.toContain(sentinel);
+  }
 }
 
 test('JSON export preserves private references while compressed sharing blocks them until provider verification', async ({ page }, testInfo) => {
@@ -188,6 +231,7 @@ test('JSON export preserves private references while compressed sharing blocks t
     await page.locator('#config-gear').click();
     await expect(config).toHaveClass(/open/);
   }
+  const beforeExperienceExport = await snapshotUserState(page);
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#experience-export').click();
   const download = await downloadPromise;
@@ -197,6 +241,9 @@ test('JSON export preserves private references while compressed sharing blocks t
 
   expect(exported.schema).toBe('player.blend.experience.v2');
   assertNoBearerData(exported);
+  assertNoPathSentinels(exported);
+  expect(await snapshotUserState(page)).toEqual(beforeExperienceExport);
+  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE })).toHaveText(PATH_OMISSION_NOTICE);
   expect(exported.library.items.some(item => item.id === 'unused-secret-id-02')).toBeTruthy();
   const exportedPrivate = exported.library.items.find(item => item.id === 'private-video');
   expect(exportedPrivate.path).toBe(PORTABLE_REFERENCE);
@@ -208,10 +255,13 @@ test('JSON export preserves private references while compressed sharing blocks t
   expect(exportedPrivate.metadata.storageBucket).toBe('private-media');
   expect(exportedPrivate.metadata.storagePath).toBe('private/video.mp4');
   expect(exportedPrivate.metadata.signedUrlExpiresAt).toBe(4102444800000);
+  expect(exportedPrivate.metadata.safeLabel).toBe('Synthetic imported media label');
+  expect(exportedPrivate.metadata.relativePath).toBe('media/private/video.mp4');
   const exportedPublic = exported.library.items.find(item => item.id === 'public-video');
   expect(exportedPublic.path).toBe(PUBLIC_URL);
   expect(exportedPublic.sourceUrl).toBe(PUBLIC_URL);
 
+  const beforeLibraryExport = await snapshotUserState(page);
   const fullLibraryDownloadPromise = page.waitForEvent('download');
   await page.locator('#list-export').click();
   await page.getByRole('menuitem', { name: 'Export Media Library JSON' }).click();
@@ -221,6 +271,9 @@ test('JSON export preserves private references while compressed sharing blocks t
   const fullLibrary = JSON.parse(await readFile(fullLibraryPath, 'utf8'));
   expect(fullLibrary.schema).toBe('player.blend.library.v1');
   expect(fullLibrary.items.some(item => item.id === 'unused-secret-id-02')).toBeTruthy();
+  assertNoBearerData(fullLibrary);
+  assertNoPathSentinels(fullLibrary);
+  expect(await snapshotUserState(page)).toEqual(beforeLibraryExport);
 
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: FIXTURE_ORIGIN });
   await page.evaluate(() => navigator.clipboard.writeText(''));
@@ -229,6 +282,7 @@ test('JSON export preserves private references while compressed sharing blocks t
   await shareTrigger.click();
   const toast = page.locator('#toast-container .toast[role="alert"]');
   await expect(toast).toHaveText(PRIVATE_POLICY_WARNING, { timeout: 7000 });
+  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE })).toHaveText(PATH_OMISSION_NOTICE);
   const shareInput = page.locator('#url-share-url-input');
   await expect(page.locator('#url-share-modal')).not.toBeVisible();
   await expect(shareInput).toHaveValue('');
@@ -236,6 +290,8 @@ test('JSON export preserves private references while compressed sharing blocks t
   expect(await snapshotUserState(page)).toEqual(beforeShare);
   await expect(shareTrigger).toBeEnabled();
   expect(consoleMessages.join('\n')).not.toContain(BEARER_MARKER);
+  expect(consoleMessages.join('\n')).not.toContain(PATH_CREDENTIAL_MARKER);
+  for (const sentinel of ABSOLUTE_PATH_SENTINELS) expect(consoleMessages.join('\n')).not.toContain(sentinel);
   expect(consoleMessages.join('\n')).not.toContain('unused-secret-id-02');
   expect(consoleMessages.join('\n')).not.toContain('unused-secret-url-02');
   expect(consoleMessages.join('\n')).not.toMatch(/[?&](?:access_token|refresh_token|token|signature|sig)=/i);
@@ -254,14 +310,24 @@ test('share disclosure stays readable across viewports and clipboard failure pre
   }
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: FIXTURE_ORIGIN });
   await page.evaluate(() => navigator.clipboard.writeText(''));
+  const sourceStateBeforeShare = await snapshotUserState(page);
 
   for (const width of [320, 768, 1366]) {
     await page.setViewportSize({ width, height: 900 });
     const shareTrigger = page.locator('#experience-share-url');
-    await shareTrigger.click();
+    if (width === 320) {
+      await shareTrigger.focus();
+      await page.keyboard.press('Enter');
+    } else {
+      await shareTrigger.click();
+    }
     const dialog = page.getByRole('dialog', { name: 'Share Experience via URL' });
     const disclosure = page.locator('#url-share-disclosure');
+    const omissionNote = page.locator('#url-share-path-omission');
     await expect(dialog).toBeVisible();
+    await expect(omissionNote).toBeVisible();
+    await expect(omissionNote).toHaveAttribute('role', 'status');
+    await expect(omissionNote).toHaveText(PATH_OMISSION_NOTICE);
     await expect(disclosure).toHaveText(
       'This link includes media referenced by the playlist and slideshow. Unused library items are not included.'
     );
@@ -270,12 +336,18 @@ test('share disclosure stays readable across viewports and clipboard failure pre
       const shared = await decompressExperience(sharedValue.searchParams.get('experience'));
       expect(shared.library.items.map(item => item.id)).toEqual(['public-video']);
       expect(shared.library.items[0].metadata.storageReference).toBe(PUBLIC_STORAGE_REFERENCE);
+      expect(shared.library.items[0].metadata.safeLabel).toBe('Public project label');
+      expect(shared.library.items[0].metadata.relativePath).toBe('media/public-video.mp4');
+      assertNoPathSentinels(shared);
+      assertNoBearerData(shared);
       expect(JSON.stringify(shared)).not.toContain(UNUSED_PRIVATE_STORAGE_REFERENCE);
     }
     const layout = await page.evaluate(() => {
       const dialogRect = document.querySelector('#url-share-modal').getBoundingClientRect();
       const disclosureNode = document.querySelector('#url-share-disclosure');
       const disclosureRect = disclosureNode.getBoundingClientRect();
+      const omissionNode = document.querySelector('#url-share-path-omission');
+      const omissionRect = omissionNode.getBoundingClientRect();
       return {
         viewportWidth: window.innerWidth,
         dialogLeft: dialogRect.left,
@@ -284,9 +356,17 @@ test('share disclosure stays readable across viewports and clipboard failure pre
         disclosureRight: disclosureRect.right,
         disclosureClientWidth: disclosureNode.clientWidth,
         disclosureScrollWidth: disclosureNode.scrollWidth,
+        omissionRight: omissionRect.right,
+        omissionClientWidth: omissionNode.clientWidth,
+        omissionScrollWidth: omissionNode.scrollWidth,
         disclosureLines: (() => {
           const range = document.createRange();
           range.selectNodeContents(disclosureNode);
+          return range.getClientRects().length;
+        })(),
+        omissionLines: (() => {
+          const range = document.createRange();
+          range.selectNodeContents(omissionNode);
           return range.getClientRects().length;
         })(),
         focusInsideDialog: document.querySelector('#url-share-modal').contains(document.activeElement)
@@ -299,6 +379,10 @@ test('share disclosure stays readable across viewports and clipboard failure pre
     expect(layout.disclosureScrollWidth).toBeLessThanOrEqual(layout.disclosureClientWidth + 1);
     expect(layout.disclosureLines).toBeGreaterThanOrEqual(1);
     if (width === 320) expect(layout.disclosureLines).toBeGreaterThan(1);
+    expect(layout.omissionRight).toBeLessThanOrEqual(layout.dialogRight);
+    expect(layout.omissionScrollWidth).toBeLessThanOrEqual(layout.omissionClientWidth + 1);
+    expect(layout.omissionLines).toBeGreaterThanOrEqual(1);
+    if (width === 320) expect(layout.omissionLines).toBeGreaterThan(1);
     expect(layout.focusInsideDialog).toBeTruthy();
     await expect(page.locator('#url-share-url-input')).toHaveAccessibleName('Share URL');
 
@@ -312,6 +396,7 @@ test('share disclosure stays readable across viewports and clipboard failure pre
       await page.keyboard.press('Escape');
       await expect(dialog).not.toBeVisible();
       await expect(shareTrigger).toBeFocused();
+      expect(await snapshotUserState(page)).toEqual(sourceStateBeforeShare);
       continue;
     }
 
@@ -334,12 +419,14 @@ test('share disclosure stays readable across viewports and clipboard failure pre
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
     await expect(shareTrigger).toBeFocused();
+    expect(await snapshotUserState(page)).toEqual(sourceStateBeforeShare);
   }
 
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
   await page.setViewportSize({ width: 768, height: 900 });
   await page.locator('#experience-share-url').click();
   await expect(page.locator('#url-share-disclosure')).toBeVisible();
+  await expect(page.locator('#url-share-path-omission')).toBeVisible();
   const zoomLayout = await page.evaluate(() => {
     const dialog = document.querySelector('#url-share-modal').getBoundingClientRect();
     const disclosure = document.querySelector('#url-share-disclosure').getBoundingClientRect();
@@ -365,6 +452,7 @@ test('share disclosure stays readable across viewports and clipboard failure pre
   await expect(page.locator('#toast-container')).toContainText(
     'Could not prepare this share link. Your experience is unchanged.'
   );
+  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE })).toHaveText(PATH_OMISSION_NOTICE);
   expect(await snapshotUserState(page)).toEqual(stateBeforeShareFailure);
   const storedLog = await page.evaluate(() => localStorage.getItem('blend-debug-log-v1') || '');
   expect(storedLog).toContain('build_url_share');

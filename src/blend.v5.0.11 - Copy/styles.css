@@ -1501,6 +1501,52 @@ button {
 .toast-save-failure .btn,
 .toast-save-conflict .btn,
 .toast-import-failure .btn { min-height: 36px; }
+.toast-directory-scan {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.toast-directory-scan > span {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.toast-directory-scan .btn {
+  min-height: 36px;
+  white-space: normal;
+}
+.toast-directory-scan .btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#config-panel > .toast-directory-scan {
+  align-self: center;
+  width: min(560px, calc(100% - 24px));
+  max-width: calc(100% - 24px);
+  margin: 8px 12px 0;
+}
+.toast-duplicate-warning {
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 24px));
+  max-width: min(420px, calc(100vw - 32px));
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.toast-duplicate-warning > span {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.toast-duplicate-warning:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#config-panel > .toast-duplicate-warning {
+  align-self: center;
+  margin: 8px 12px 0;
+}
 
 @media (max-width: 520px) {
   #toast-container { left: 12px; right: 12px; align-items: stretch; }

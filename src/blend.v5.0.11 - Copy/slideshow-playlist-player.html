@@ -2,14 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=./index.html">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Blend version 5.0.0</title>
-  <script>
-    location.replace('./index.html');
-  </script>
+  <title>Blend version 5.0.11</title>
+  <style>
+    body { box-sizing: border-box; max-width: 46rem; margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); font: 1rem/1.5 system-ui, sans-serif; overflow-wrap: anywhere; }
+    a { box-sizing: border-box; display: inline-block; max-width: 100%; min-height: 44px; padding: .5rem .75rem; }
+    a:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+  </style>
 </head>
 <body>
-  <p><a href="./index.html">Open Blend</a></p>
+  <main>
+    <noscript>
+      <h1>JavaScript is needed to forward shared details</h1>
+      <p id="no-script-error">This compatibility link could not keep its shared playback or sign-in details. Open the original link in index.html or request a fresh link.</p>
+      <p id="no-script-original-link-help">To keep every shared detail, copy this page's original URL from your browser address bar (Ctrl+L, then Ctrl+C; Cmd+L, then Cmd+C on Mac), and replace <code>slideshow-playlist-player.html</code> with <code>index.html</code> before opening it.</p>
+      <p><a id="no-script-index-link" href="./index.html">Open Blend directly (shared details may not carry without JavaScript)</a></p>
+    </noscript>
+    <section id="redirect-fallback" hidden>
+      <p id="redirect-error" role="alert" aria-live="assertive">This compatibility link could not keep its shared playback or sign-in details. Open the original link in index.html or request a fresh link.</p>
+      <p><a id="direct-index-link" href="./index.html">Open Blend directly without forwarded details</a></p>
+      <p id="original-link-container" hidden><a id="original-link" href="">Copy the original compatibility link</a></p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const errorMessage = document.getElementById('redirect-error');
+      const fallback = document.getElementById('redirect-fallback');
+      const directLink = document.getElementById('direct-index-link');
+      const originalLinkContainer = document.getElementById('original-link-container');
+      const originalLink = document.getElementById('original-link');
+      originalLink.href = window.location.href;
+
+      try {
+        const current = new URL(window.location.href);
+        const destination = new URL('./index.html', current);
+        destination.search = current.search;
+        destination.hash = current.hash;
+        if (destination.origin !== current.origin) throw new Error('same-origin destination required');
+
+        directLink.href = destination.href;
+        directLink.textContent = 'Open Blend with the original shared details';
+        window.location.replace(destination.href);
+      } catch (_) {
+        fallback.hidden = false;
+        errorMessage.hidden = false;
+        originalLinkContainer.hidden = false;
+      }
+    })();
+  </script>
 </body>
 </html>

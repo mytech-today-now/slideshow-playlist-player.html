@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-07
+goal: Keep synthetic Windows, UNC, and POSIX path sentinels out of all JSON and
+  compressed share payloads, preserve safe portable metadata and state, and
+  explain omissions accessibly.

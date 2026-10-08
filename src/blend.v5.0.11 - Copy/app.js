@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261007-v5.0.11-private-share-gate';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261007-v5.0.11-private-share-gate';
+} from './experience-persistence.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261007-v5.0.11-private-share-gate';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261007-v5.0.11-private-share-gate';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261007-v5.0.11-private-share-gate';
-import { findRelinkCandidates, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261007-v5.0.11-private-share-gate';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261007-v5.0.11-private-share-gate';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261007-v5.0.11-private-share-gate';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261007-v5.0.11-private-share-gate';
+} from './storage-url-resolver.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261007-v5.0.11-private-share-gate';
+} from './transition-manager.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261007-v5.0.11-private-share-gate';
+} from './playback-clock.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261007-v5.0.11-private-share-gate';
-import { fetchReadme } from './readme-fetcher.js?v=20261007-v5.0.11-private-share-gate';
+import { renderMarkdown } from './markdown.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { fetchReadme } from './readme-fetcher.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261007-v5.0.11-private-share-gate';
+} from './url-share.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261007-v5.0.11-private-share-gate';
+} from './url-share-diagnostics.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261007-v5.0.11-private-share-gate';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261007-v5.0.11-private-share-gate';
+} from './timeline-analysis.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261007-v5.0.11-private-share-gate';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261007-v5.0.11-private-share-gate';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261007-v5.0.11-private-share-gate';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261007-v5.0.11-private-share-gate';
+} from './shared-experience-download.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261007-v5.0.11-private-share-gate';
+} from './local-import-limits.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261007-v5.0.11-private-share-gate';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261007-v5.0.11-issue05-metadata-export-privacy';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -1005,6 +1005,8 @@ function exportPathForItem(item, ref = null) {
   if (portableReference) return normalizePathForExport(portableReference);
 
   for (const candidate of [item?.pathHint, ref?.path, item?.sourceUrl, ref?.sourceUrl]) {
+    const localPath = sanitizeLocalPathHint(candidate, { allowAbsolute: true });
+    if (localPath && !isBearerUrlForExport(localPath)) return localPath;
     const normalized = normalizePathForExport(candidate);
     if (normalized && !isBearerUrlForExport(normalized)) return normalized;
   }
@@ -1012,10 +1014,16 @@ function exportPathForItem(item, ref = null) {
 }
 
 function pathKind(path) {
+  const localPath = sanitizeLocalPathHint(path, { allowAbsolute: true });
+  if (localPath) {
+    return /^[a-zA-Z]:\//.test(localPath) || localPath.startsWith('/') || localPath.startsWith('//')
+      ? 'absolute'
+      : 'relative';
+  }
   const normalized = normalizePathForExport(path);
   if (!normalized) return 'unknown';
   if (isIpfsUri(normalized)) return 'legacy-ipfs';
-  if (isSupabaseRef(normalized)) return 'remote';
+  if (/^(?:supabase|storage):\/\//i.test(normalized)) return 'remote';
   if (isRemoteUrl(normalized)) return 'remote';
   if (/^[a-zA-Z]:\//.test(normalized) || normalized.startsWith('/') || normalized.startsWith('//')) return 'absolute';
   return 'relative';
@@ -1225,15 +1233,17 @@ function remoteUrlForItem(item = null, ref = null) {
 }
 
 function storageReferenceForItem(item = null, ref = null) {
+  const metadataReferences = [item?.metadata, ref?.metadata].map(metadata => {
+    const bucket = String(metadata?.storageBucket || '').trim();
+    const path = String(metadata?.storagePath || '').trim();
+    return bucket && path ? `supabase://${bucket}/${path}` : '';
+  });
   const candidates = [
     item?.metadata?.storageReference,
     ref?.metadata?.storageReference,
-    item?.metadata?.storagePath,
-    ref?.metadata?.storagePath,
+    ...metadataReferences,
     item?.sourceUrl,
-    ref?.sourceUrl,
-    item?.pathHint,
-    ref?.path
+    ref?.sourceUrl
   ];
   for (const candidate of candidates) {
     const normalized = sanitizeImportPath(candidate || '');
@@ -2551,13 +2561,18 @@ async function loadUrlSharedExperience(request) {
 async function shareExperienceViaUrl() {
   const btn = $('#experience-share-url');
   const transportBtn = $('#btn-share');
+  const privacyTracker = createExportPrivacyTracker();
   try {
-    const payload = buildExperienceExportPayload({ referencedOnly: true });
+    const payload = buildExperienceExportPayload({
+      referencedOnly: true,
+      onMetadataPathOmitted: privacyTracker.onMetadataPathOmitted
+    });
     if (hasNonPublicSupabaseStorageReference(payload, RUNTIME_CONFIG.publicBucketAllowList)) {
       showToast('Private media access could not be verified. Contact the project owner before sharing.', {
         timeout: 6000,
         role: 'alert'
       });
+      showExportPrivacyOmissionNotice(privacyTracker);
       return false;
     }
 
@@ -2578,7 +2593,7 @@ async function shareExperienceViaUrl() {
     const sizeReport = (!urlCheck.ok || oversized) ? analyzeExperienceSize(payload) : null;
 
     // Show the scope disclosure before the user chooses to copy the link.
-    showUrlShareModal(shareUrl, payloadBytes, oversized, payload, urlCheck, sizeReport);
+    showUrlShareModal(shareUrl, payloadBytes, oversized, payload, urlCheck, sizeReport, privacyTracker.metadataPathOmitted);
   } catch (error) {
     const safeErrorNames = new Set([
       'AbortError', 'InvalidStateError', 'NotSupportedError', 'OperationError',
@@ -2589,6 +2604,7 @@ async function shareExperienceViaUrl() {
       code: safeErrorNames.has(error?.name) ? error.name : 'unexpected_error'
     });
     showToast('Could not prepare this share link. Your experience is unchanged.', { timeout: 5000 });
+    showExportPrivacyOmissionNotice(privacyTracker);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Share URL'; }
     if (transportBtn) { transportBtn.disabled = false; }
@@ -2609,7 +2625,9 @@ function buildExperienceExportPayload(options = {}) {
       slideshowRefs,
       referencedOnly: !!options.referencedOnly,
       sortEntries: sortLibraryEntries,
-      serializeRecord: exportLibraryRecord
+      serializeRecord: (item, index) => exportLibraryRecord(item, index, {
+        onMetadataPathOmitted: options.onMetadataPathOmitted
+      })
     }
   );
   return {
@@ -2631,8 +2649,8 @@ function buildExperienceExportPayload(options = {}) {
       activeList: state.ui.activeList === 'slideshow' ? 'slideshow' : 'playlist'
     },
     library: libraryPayload,
-    playlist: makeListExportPayload('playlist', playlistRefs),
-    slideshow: makeListExportPayload('slideshow', slideshowRefs)
+    playlist: makeListExportPayload('playlist', playlistRefs, options),
+    slideshow: makeListExportPayload('slideshow', slideshowRefs, options)
   };
 }
 
@@ -2656,12 +2674,15 @@ function buildUrlShareLink(base64Url) {
  * @param {{ ok: boolean, length: number, limit: number, excess: number, pct: number }} urlCheck
  * @param {import('./url-share-diagnostics.js').ExperienceSizeReport|null} sizeReport
  */
-function showUrlShareModal(shareUrl, payloadBytes, oversized, payload, urlCheck, sizeReport) {
+function showUrlShareModal(shareUrl, payloadBytes, oversized, payload, urlCheck, sizeReport, metadataPathOmitted = false) {
   const modal = $('#url-share-modal');
   if (!modal) return;
 
   // Default safe values when called from legacy code paths without urlCheck.
   if (!urlCheck) urlCheck = { ok: true, length: shareUrl?.length ?? 0, limit: URL_MAX_LENGTH, excess: 0, pct: 0 };
+
+  const privacyNotice = $('#url-share-path-omission');
+  if (privacyNotice) privacyNotice.hidden = !metadataPathOmitted;
 
   // -- URL input ----------------------------------------------------------------
   const urlInput = $('#url-share-url-input');
@@ -4579,9 +4600,14 @@ async function addFolderFromPicker() {
   } catch (e) { if (e.name !== 'AbortError') showToast('Folder picker cancelled or blocked'); }
 }
 
-function rememberDirectoryHandle(handle) {
+async function rememberDirectoryHandle(handle) {
   for (const existing of state.directoryHandles.values()) {
-    if (existing.name === handle.name) return existing.id;
+    if (existing.handle === handle) return existing.id;
+    if (typeof existing.handle?.isSameEntry === 'function') {
+      try {
+        if (await existing.handle.isSameEntry(handle)) return existing.id;
+      } catch (_) {}
+    }
   }
   const id = 'dir-' + uid();
   state.directoryHandles.set(id, { id, handle, name: handle.name, addedAt: Date.now() });
@@ -4594,6 +4620,7 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
   const handles = [];
   let status = 'complete';
   let skippedBranches = 0;
+  let skippedDepthBranches = 0;
   let scanned = 0;
 
   while (queue.length && status !== 'cancelled') {
@@ -4607,8 +4634,12 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
             try { entry.pathHint = pathHint; } catch (_) {}
             handles.push(entry);
           }
-        } else if (entry.kind === 'directory' && depth < maxDepth) {
-          queue.push({ handle: entry, depth: depth + 1, path: path ? `${path}/${entry.name}` : entry.name });
+        } else if (entry.kind === 'directory') {
+          if (depth < maxDepth) {
+            queue.push({ handle: entry, depth: depth + 1, path: path ? `${path}/${entry.name}` : entry.name });
+          } else {
+            skippedDepthBranches = Math.min(Number.MAX_SAFE_INTEGER, skippedDepthBranches + 1);
+          }
         }
         scanned++;
         if (scanned % 24 === 0) {
@@ -4625,17 +4656,29 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
       } else {
         status = 'partial';
         skippedBranches++;
-        log.warn('Directory scan skipped a branch', { operation: 'directory_scan', errorName });
+        log.warn('Directory scan skipped a branch', {
+          operation: opts.operation || 'directory_scan',
+          errorName,
+          skippedBranches
+        });
       }
     }
   }
   opts.onProgress?.(handles.length);
+  if (skippedDepthBranches && status === 'complete') status = 'partial';
   if (status === 'complete' && !handles.length) status = 'empty';
+  if (skippedDepthBranches) {
+    log.warn('Directory scan stopped at the depth limit', {
+      operation: opts.operation || 'directory_scan',
+      skippedDepthBranches
+    });
+  }
   return {
     handles,
     summary: {
       status,
       skippedBranches,
+      skippedDepthBranches,
       found: handles.length
     }
   };
@@ -4647,6 +4690,7 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false } 
   const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found`, { timeout: 0 });
   try {
     return await walkDirectoryForMedia(dirHandle, {
+      operation: forMissingPaths ? 'missing_media_relink' : 'directory_scan',
       onProgress: count => {
         progress.label.textContent = `Scanning "${dirHandle.name}"... ${count} ${subject} found`;
       }
@@ -4656,9 +4700,29 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false } 
   }
 }
 
+function folderDepthLimitNotice(skippedDepthBranches) {
+  const count = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(skippedDepthBranches) || 0));
+  const noun = count === 1 ? 'folder was' : 'folders were';
+  return `Folder scan stopped at the six-level limit. Select a deeper folder directly to include its media. ${count} ${noun} skipped at the limit.`;
+}
+
+function showDirectoryScanToast(message, options = {}) {
+  const notice = showToast(message, {
+    ...options,
+    role: 'status',
+    className: 'toast-directory-scan'
+  });
+  const configPanel = $('#config-panel');
+  const configBody = configPanel?.querySelector('.config-body');
+  if (configPanel?.classList.contains('open') && configBody) {
+    configPanel.insertBefore(notice.toast, configBody);
+  }
+  return notice;
+}
+
 async function scanAndImportDirectory(dirHandle, options = {}) {
   const { handles, summary } = await scanDirectoryWithProgress(dirHandle);
-  const directoryId = rememberDirectoryHandle(dirHandle);
+  const directoryId = await rememberDirectoryHandle(dirHandle);
   const result = handles.length
     ? await addHandles(handles, { directoryId, notify: summary.status === 'complete' })
     : { ids: [], added: 0, existing: 0, skipped: 0 };
@@ -4666,34 +4730,50 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
   options.onImported?.(result.ids, { retrying });
 
   if (summary.status === 'partial') {
-    const folderCount = summary.skippedBranches;
-    const message = `Folder scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read. ${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present. Check permissions and retry.`;
-    showToast(message, {
-      timeout: 12000,
-      role: 'status',
-      className: 'toast-directory-scan',
-      action: {
+    const messages = [];
+    if (summary.skippedBranches) {
+      const folderCount = summary.skippedBranches;
+      messages.push(`Folder scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read.`);
+    }
+    if (summary.skippedDepthBranches) messages.push(folderDepthLimitNotice(summary.skippedDepthBranches));
+    messages.push(`${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`);
+    if (summary.skippedBranches) messages.push('Check permissions and retry.');
+
+    const actions = [];
+    if (summary.skippedBranches) {
+      actions.push({
         label: 'Retry scan',
         run: () => { void scanAndImportDirectory(dirHandle, { ...options, retrying: true }); }
-      }
+      });
+    }
+    if (summary.skippedDepthBranches) {
+      actions.push({ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } });
+    }
+    showDirectoryScanToast(messages.join(' '), {
+      timeout: 12000,
+      actions
     });
   } else if (summary.status === 'cancelled') {
     const retained = result.added + result.existing;
     const skipped = summary.skippedBranches
       ? ` ${summary.skippedBranches} folder${summary.skippedBranches === 1 ? '' : 's'} could not be read.`
       : '';
+    const depthNotice = summary.skippedDepthBranches
+      ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
+      : '';
     const message = retained
-      ? `Folder scan canceled.${skipped} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
-      : `Folder scan canceled.${skipped} No media files were added.`;
-    showToast(message, { timeout: 6000, role: 'status', className: 'toast-directory-scan' });
+      ? `Folder scan canceled.${skipped}${depthNotice} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
+      : `Folder scan canceled.${skipped}${depthNotice} No media files were added.`;
+    const actions = summary.skippedDepthBranches
+      ? [{ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } }]
+      : [];
+    showDirectoryScanToast(message, { timeout: 6000, actions });
   } else if (summary.status === 'empty') {
-    showToast('No supported media found in that folder', { timeout: 2400, role: 'status', className: 'toast-directory-scan' });
+    showDirectoryScanToast('No supported media found in that folder', { timeout: 2400 });
+  } else if (result.ambiguousDuplicates) {
+    // addHandles already announced that both uncertain local items were kept.
   } else if (retrying) {
-    showToast(`Folder scan complete. ${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`, {
-      timeout: 6000,
-      role: 'status',
-      className: 'toast-directory-scan'
-    });
+    showDirectoryScanToast(`Folder scan complete. ${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`, { timeout: 6000 });
   } else if (options.completeMessage) {
     const message = typeof options.completeMessage === 'function'
       ? options.completeMessage(result)
@@ -4719,6 +4799,7 @@ async function ensureHandleInLibrary(handle, meta = {}) {
   const sourceUrl = sanitizeImportPath(meta.sourceUrl || handle.sourceUrl || '');
   const candidatePathHint = sanitizeLocalPathHint(meta.pathHint || mediaHandlePathHint(handle) || '')
     || sanitizeImportPath(meta.pathHint || handle.pathHint || '');
+  const candidateDirectoryId = meta.directoryId || handle.directoryId || '';
   let size = meta.size || 0;
   try {
     if (!size) {
@@ -4727,11 +4808,13 @@ async function ensureHandleInLibrary(handle, meta = {}) {
     }
   } catch (_) {}
 
+  let mayDuplicate = false;
   for (const [id, it] of state.library) {
     const sameIdentity = hasSameLibraryMediaIdentity(it, {
       name,
       sourceUrl,
-      pathHint: candidatePathHint
+      pathHint: candidatePathHint,
+      directoryId: candidateDirectoryId
     }, sanitizeImportPath);
     const sameSize = !size || !it.size || it.size === size;
     if (sameIdentity && sameSize) {
@@ -4748,6 +4831,11 @@ async function ensureHandleInLibrary(handle, meta = {}) {
       }
       return { id, status: 'existing', item: it };
     }
+    if (hasPotentialSameLibraryMediaPath(it, {
+      name,
+      sourceUrl,
+      pathHint: candidatePathHint
+    })) mayDuplicate = true;
   }
 
   const id = uid();
@@ -4761,18 +4849,18 @@ async function ensureHandleInLibrary(handle, meta = {}) {
     duration: meta.duration ?? null,
     pathHint,
     sourceUrl: sourceUrl || null,
-    directoryId: meta.directoryId,
+    directoryId: candidateDirectoryId || undefined,
     metadata: meta.metadata && typeof meta.metadata === 'object' ? meta.metadata : undefined,
     addedAt: meta.addedAt || Date.now(),
     lastVerified: Date.now(),
     stale: false
   };
   state.library.set(id, item);
-  return { id, status: 'added', item };
+  return { id, status: 'added', item, mayDuplicate };
 }
 
 async function addHandles(handles, meta = {}) {
-  let added = 0, existing = 0, skipped = 0;
+  let added = 0, existing = 0, skipped = 0, ambiguousDuplicates = 0;
   const ids = [];
   const durationCandidates = [];
   for (const h of handles) {
@@ -4780,6 +4868,7 @@ async function addHandles(handles, meta = {}) {
     if (result.id) ids.push(result.id);
     if (result.status === 'added') {
       added++;
+      if (result.mayDuplicate) ambiguousDuplicates++;
       if (result.item) durationCandidates.push(result.item);
     }
     else if (result.status === 'existing') existing++;
@@ -4788,8 +4877,23 @@ async function addHandles(handles, meta = {}) {
   renderLibrary();
   const saved = await saveStateNow();
   scheduleMediaDurationDiscovery(durationCandidates);
-  if (saved && added && meta.notify !== false) showToast(`Added ${added} item${added>1?'s':''}${existing || skipped ? ` (${existing + skipped} skipped)` : ''}`);
-  return { ids, added, existing, skipped };
+  if (ambiguousDuplicates) {
+    const notice = showToast('This file may duplicate an existing item. Both copies were kept so you can choose safely.', {
+      role: 'status',
+      className: 'toast-duplicate-warning',
+      timeout: 12000
+    });
+    notice.toast.tabIndex = 0;
+    notice.toast.setAttribute('aria-live', 'polite');
+    const configPanel = $('#config-panel');
+    const configBody = configPanel?.querySelector('.config-body');
+    if (configPanel?.classList.contains('open') && configBody) {
+      configPanel.insertBefore(notice.toast, configBody);
+    }
+  } else if (saved && added && meta.notify !== false) {
+    showToast(`Added ${added} item${added>1?'s':''}${existing || skipped ? ` (${existing + skipped} skipped)` : ''}`);
+  }
+  return { ids, added, existing, skipped, ambiguousDuplicates };
 }
 
 function ensureLibraryVirtualList() {
@@ -9428,7 +9532,21 @@ function showExportMenu(anchor) {
 }
 
 // ====================== IMPORT / EXPORT ======================
-function exportItemRecord(ref, index, which) {
+const LOCAL_METADATA_PATH_OMISSION_NOTICE = 'Local file path details were omitted from this export for privacy. Media references and the saved library were not changed.';
+
+function createExportPrivacyTracker() {
+  const tracker = { metadataPathOmitted: false };
+  tracker.onMetadataPathOmitted = () => { tracker.metadataPathOmitted = true; };
+  return tracker;
+}
+
+function showExportPrivacyOmissionNotice(tracker) {
+  if (tracker?.metadataPathOmitted) {
+    showToast(LOCAL_METADATA_PATH_OMISSION_NOTICE, { timeout: 6500, role: 'status' });
+  }
+}
+
+function exportItemRecord(ref, index, which, { onMetadataPathOmitted } = {}) {
   const item = state.library.get(ref.id);
   const metadata = normalizeStorageMetadata(item, ref);
   const storageReference = storageReferenceForItem(item, ref);
@@ -9454,10 +9572,10 @@ function exportItemRecord(ref, index, which) {
   if (metadata && typeof metadata === 'object' && Object.keys(metadata).length) record.metadata = metadata;
   const social = normalizeSocialObject(ref.social || ref.share || ref.og || metadata?.social || metadata?.share || metadata?.og);
   if (social) record.social = social;
-  return sanitizeMediaRecordForExport(record, { storageReference });
+  return sanitizeMediaRecordForExport(record, { storageReference, onMetadataPathOmitted });
 }
 
-function exportLibraryRecord(item, index) {
+function exportLibraryRecord(item, index, { onMetadataPathOmitted } = {}) {
   const storageReference = storageReferenceForItem(item);
   const path = exportPathForItem(item) || normalizePathForExport(fallbackRelativePath(item?.name));
   const record = {
@@ -9477,12 +9595,12 @@ function exportLibraryRecord(item, index) {
   if (item.sourceUrl && !isBearerUrlForExport(item.sourceUrl)) record.sourceUrl = normalizePathForExport(item.sourceUrl);
   const social = normalizeSocialObject(record.metadata?.social || record.metadata?.share || record.metadata?.og);
   if (social) record.social = social;
-  return sanitizeMediaRecordForExport(record, { storageReference });
+  return sanitizeMediaRecordForExport(record, { storageReference, onMetadataPathOmitted });
 }
 
-function makeListExportPayload(which, refs = null) {
+function makeListExportPayload(which, refs = null, exportOptions = {}) {
   const list = Array.isArray(refs) ? refs : (which === 'playlist' ? state.playlist : state.slideshow);
-  const items = list.map((ref, index) => exportItemRecord(ref, index, which));
+  const items = list.map((ref, index) => exportItemRecord(ref, index, which, exportOptions));
   const meta = normalizeListMeta(which, state.listMeta[which]);
   return {
     version: VERSION,
@@ -9499,7 +9617,8 @@ function makeListExportPayload(which, refs = null) {
 }
 
 function exportList(which, format = 'json') {
-  const payload = makeListExportPayload(which);
+  const privacyTracker = format === 'txt' ? null : createExportPrivacyTracker();
+  const payload = makeListExportPayload(which, null, privacyTracker || {});
   const date = new Date().toISOString().slice(0,10);
   if (format === 'txt') {
     downloadBlob(payload.items.map(it => quotePath(it.path)).join('\r\n') + '\r\n', `blend-${which}-${date}.txt`, 'text/plain');
@@ -9507,12 +9626,19 @@ function exportList(which, format = 'json') {
   }
   downloadJson(payload, `blend-${which}-${date}.json`);
   showToast(`Exported ${which} JSON (${payload.items.length} item${payload.items.length === 1 ? '' : 's'})`);
+  showExportPrivacyOmissionNotice(privacyTracker);
 }
 
 function exportMediaLibrary() {
+  const privacyTracker = createExportPrivacyTracker();
   const libraryPayload = buildExperienceLibraryPayload(
     Array.from(state.library.entries()),
-    { sortEntries: sortLibraryEntries, serializeRecord: exportLibraryRecord }
+    {
+      sortEntries: sortLibraryEntries,
+      serializeRecord: (item, index) => exportLibraryRecord(item, index, {
+        onMetadataPathOmitted: privacyTracker.onMetadataPathOmitted
+      })
+    }
   );
   const payload = {
     version: VERSION,
@@ -9529,12 +9655,15 @@ function exportMediaLibrary() {
   };
   downloadJson(payload, `blend-library-${new Date().toISOString().slice(0,10)}.json`);
   showToast(`Exported Media Library JSON (${libraryPayload.items.length} item${libraryPayload.items.length === 1 ? '' : 's'})`);
+  showExportPrivacyOmissionNotice(privacyTracker);
 }
 
 function exportExperience() {
-  const payload = buildExperienceExportPayload();
+  const privacyTracker = createExportPrivacyTracker();
+  const payload = buildExperienceExportPayload({ onMetadataPathOmitted: privacyTracker.onMetadataPathOmitted });
   downloadJson(payload, experienceExportFilename(state.projectName));
   showToast(`Exported ${state.projectName} experience JSON`);
+  showExportPrivacyOmissionNotice(privacyTracker);
 }
 
 function downloadJson(payload, filename) {
@@ -10236,12 +10365,12 @@ function showRelinkCandidateDialog(candidates) {
     ));
     const labelCounts = new Map();
     for (const label of candidateLabels) {
-      const key = normalizeRelinkPath(label) || label.toLowerCase();
+      const key = normalizeRelinkPath(label) || label;
       labelCounts.set(key, (labelCounts.get(key) || 0) + 1);
     }
     const options = candidates.map((candidate, index) => {
       const path = candidateLabels[index];
-      const key = normalizeRelinkPath(path) || path.toLowerCase();
+      const key = normalizeRelinkPath(path) || path;
       const label = labelCounts.get(key) > 1 ? `${path} (file ${index + 1})` : path;
       return `<li><button class="btn missing-media-relink-option" type="button" data-candidate="${index}" aria-label="${escapeHtml(`Choose ${label}`)}">${escapeHtml(label)}</button></li>`;
     }).join('');
@@ -10312,7 +10441,7 @@ async function resolveMissingImports(missing, which) {
     const dirHandle = await window.showDirectoryPicker();
     const { handles, summary } = await scanDirectoryWithProgress(dirHandle, { forMissingPaths: true });
 
-    const directoryId = rememberDirectoryHandle(dirHandle);
+    const directoryId = await rememberDirectoryHandle(dirHandle);
     const indexedHandles = handles.map(handle => ({
       handle,
       name: handle.name,
@@ -10388,31 +10517,40 @@ async function resolveMissingImports(missing, which) {
     if (resolved && firstResolvedIndex >= 0 && state.ui.activeList === which) scrollListItemIntoView(firstResolvedIndex);
     const resolvedMessage = `Resolved ${resolved}/${missing.length} missing path${missing.length === 1 ? '' : 's'}${incompatible ? ` (${incompatible} incompatible)` : ''}`;
     if (summary.status === 'partial') {
-      const folderCount = summary.skippedBranches;
-      showToast(`Missing-media scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}. Check permissions and retry.`, {
-        timeout: 12000,
-        role: 'status',
-        className: 'toast-directory-scan',
-        action: {
+      const messages = [];
+      if (summary.skippedBranches) {
+        const folderCount = summary.skippedBranches;
+        messages.push(`Missing-media scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read.`);
+      }
+      if (summary.skippedDepthBranches) messages.push(folderDepthLimitNotice(summary.skippedDepthBranches));
+      messages.push(`${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`);
+      if (summary.skippedBranches) messages.push('Check permissions and retry.');
+
+      const actions = [];
+      if (summary.skippedBranches) {
+        actions.push({
           label: 'Retry scan',
           run: () => { void resolveMissingImports(missing, which); }
-        }
-      });
+        });
+      }
+      if (summary.skippedDepthBranches) {
+        actions.push({ label: 'Choose deeper folder', run: () => { void resolveMissingImports(missing, which); } });
+      }
+      showDirectoryScanToast(messages.join(' '), { timeout: 12000, actions });
     } else if (summary.status === 'cancelled') {
       const stoppedAfter = summary.skippedBranches
         ? ` after ${summary.skippedBranches} folder${summary.skippedBranches === 1 ? '' : 's'} could not be read`
         : '';
-      showToast(`Missing-media scan canceled${stoppedAfter}. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`, {
-        timeout: 6000,
-        role: 'status',
-        className: 'toast-directory-scan'
-      });
+      const depthNotice = summary.skippedDepthBranches
+        ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
+        : '';
+      const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice} ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
+      const actions = summary.skippedDepthBranches
+        ? [{ label: 'Choose deeper folder', run: () => { void resolveMissingImports(missing, which); } }]
+        : [];
+      showDirectoryScanToast(message, { timeout: 6000, actions });
     } else if (summary.status === 'empty') {
-      showToast('No supported media found in that folder. Missing paths were left unchanged.', {
-        timeout: 6000,
-        role: 'status',
-        className: 'toast-directory-scan'
-      });
+      showDirectoryScanToast('No supported media found in that folder. Missing paths were left unchanged.', { timeout: 6000 });
     } else {
       showToast(resolvedMessage);
     }

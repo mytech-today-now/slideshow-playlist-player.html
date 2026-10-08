@@ -7,7 +7,7 @@ export function normalizeRelinkPath(path) {
 
   const segments = slashed.split('/').filter(segment => segment && segment !== '.');
   if (segments.some(segment => segment === '..')) return '';
-  return segments.join('/').toLowerCase();
+  return segments.join('/');
 }
 
 function stableLibraryPath(pathHint, name) {
@@ -20,13 +20,29 @@ function stableLibraryPath(pathHint, name) {
 export function hasSameLibraryMediaIdentity(existing, candidate, normalizeSourceUrl = value => String(value || '')) {
   if (!existing || !candidate) return false;
 
-  const sourceUrl = normalizeSourceUrl(candidate.sourceUrl || '');
-  if (sourceUrl) return normalizeSourceUrl(existing.sourceUrl || '') === sourceUrl;
+  const candidateSourceUrl = String(candidate.sourceUrl || '').trim();
+  if (candidateSourceUrl) {
+    const sourceUrl = normalizeSourceUrl(candidateSourceUrl);
+    return !!sourceUrl && normalizeSourceUrl(existing.sourceUrl || '') === sourceUrl;
+  }
+  if (existing.sourceUrl) return false;
+
+  const candidateDirectoryId = String(candidate.directoryId || '');
+  const existingDirectoryId = String(existing.directoryId || '');
+  if (!candidateDirectoryId || !existingDirectoryId || candidateDirectoryId !== existingDirectoryId) return false;
 
   const candidatePath = stableLibraryPath(candidate.pathHint, candidate.name);
   if (!candidatePath) return false;
   const existingPath = stableLibraryPath(existing.pathHint, existing.name);
   return !!existingPath && existingPath === candidatePath;
+}
+
+export function hasPotentialSameLibraryMediaPath(existing, candidate) {
+  if (!existing || !candidate || existing.sourceUrl || candidate.sourceUrl) return false;
+  const candidatePath = stableLibraryPath(candidate.pathHint, candidate.name);
+  const existingPath = stableLibraryPath(existing.pathHint, existing.name);
+  if (!candidatePath || !existingPath) return false;
+  return existingPath === candidatePath || existingPath.toLowerCase() === candidatePath.toLowerCase();
 }
 
 function normalizeRelinkBasename(value) {

@@ -206,7 +206,7 @@ test('exact normalized path wins over duplicate basenames and updates placeholde
   ]);
   await importMissingList(page, 'slideshow', [
     { id: 'issue10-before', name: 'Before.png', path: 'Before.png', type: 'image' },
-    { id: 'missing-clip', name: 'clip.mp4', path: 'Assets\\B\\CLIP.MP4', type: 'video', includeAudio: true },
+    { id: 'missing-clip', name: 'clip.mp4', path: 'Assets\\B\\clip.mp4', type: 'video', includeAudio: true },
     { id: 'missing-poster', name: 'poster.png', path: 'Assets/C/poster.png', type: 'image', displayDuration: 19.5 },
     { id: 'issue10-after', name: 'After.png', path: 'After.png', type: 'image' }
   ]);

@@ -123,6 +123,16 @@ function isCredentialField(value) {
     || key === 'sig';
 }
 
+function isAbsoluteFilesystemPathForExport(value) {
+  const candidate = String(value || '').trim();
+  if (!candidate) return false;
+  if (/^(?:https?|supabase):\/\//i.test(candidate)) return false;
+  if (/^file:\/\//i.test(candidate)) return true;
+  return /^[a-z]:[\\/]/i.test(candidate)
+    || candidate.startsWith('\\')
+    || candidate.startsWith('/');
+}
+
 function sanitizePortableStorageReference(...values) {
   for (const value of values) {
     const raw = String(value || '').trim();
@@ -174,7 +184,11 @@ function containsBearerUrl(value) {
   return urls.some(isBearerUrlForExport) || hasCredentialAssignment(text);
 }
 
-function sanitizeExportValue(value, key = '', seen = new WeakSet()) {
+function sanitizeExportValue(value, key = '', seen = new WeakSet(), context = {}) {
+  if (context.inMetadata && typeof value === 'string' && isAbsoluteFilesystemPathForExport(value)) {
+    context.onMetadataPathOmitted?.();
+    return OMIT_EXPORT_VALUE;
+  }
   if (isCredentialField(key)) return OMIT_EXPORT_VALUE;
   if (typeof value === 'string') {
     if (key === 'storageReference') {
@@ -191,7 +205,7 @@ function sanitizeExportValue(value, key = '', seen = new WeakSet()) {
   if (Array.isArray(value)) {
     const result = [];
     for (const entry of value) {
-      const sanitized = sanitizeExportValue(entry, '', seen);
+      const sanitized = sanitizeExportValue(entry, '', seen, context);
       if (sanitized !== OMIT_EXPORT_VALUE) result.push(sanitized);
     }
     seen.delete(value);
@@ -200,7 +214,10 @@ function sanitizeExportValue(value, key = '', seen = new WeakSet()) {
 
   const result = {};
   for (const [entryKey, entryValue] of Object.entries(value)) {
-    const sanitized = sanitizeExportValue(entryValue, entryKey, seen);
+    const sanitized = sanitizeExportValue(entryValue, entryKey, seen, {
+      ...context,
+      inMetadata: context.inMetadata || entryKey === 'metadata'
+    });
     if (sanitized !== OMIT_EXPORT_VALUE) result[entryKey] = sanitized;
   }
   seen.delete(value);
@@ -208,14 +225,20 @@ function sanitizeExportValue(value, key = '', seen = new WeakSet()) {
 }
 
 /**
- * Clone a media record for JSON export/share while removing bearer URLs and
- * credential fields. Portable storage references and public URLs are kept.
+ * Clone a media record for JSON export/share while removing bearer URLs,
+ * credential fields, and absolute filesystem paths nested in metadata.
+ * Portable storage references and public URLs are kept.
  */
-export function sanitizeMediaRecordForExport(record, { storageReference = '' } = {}) {
+export function sanitizeMediaRecordForExport(record, {
+  storageReference = '',
+  onMetadataPathOmitted
+} = {}) {
   if (!isRecord(record)) return record;
   const metadata = isRecord(record.metadata) ? record.metadata : {};
   const metadataPath = metadata.storagePath || metadata.path || '';
-  const reference = sanitizePortableStorageReference(
+  const absoluteMetadataPaths = Object.values(metadata)
+    .filter(value => typeof value === 'string' && isAbsoluteFilesystemPathForExport(value));
+  const referenceCandidates = [
     storageReference,
     metadata.storageReference,
     record.storageReference,
@@ -223,8 +246,12 @@ export function sanitizeMediaRecordForExport(record, { storageReference = '' } =
     metadata.bucket && metadataPath ? `${metadata.bucket}/${metadataPath}` : '',
     portableReferenceFromRecordPath(record, 'path'),
     portableReferenceFromRecordPath(record, 'fullPath')
-  );
-  const sanitized = sanitizeExportValue(record);
+  ].filter(candidate => !absoluteMetadataPaths.some(path => String(candidate || '').includes(path)));
+  const reference = sanitizePortableStorageReference(...referenceCandidates);
+  const sanitized = sanitizeExportValue(record, '', new WeakSet(), {
+    onMetadataPathOmitted,
+    inMetadata: false
+  });
   const result = isRecord(sanitized) ? sanitized : {};
 
   for (const key of ['path', 'fullPath']) {
@@ -320,17 +347,21 @@ function isCompactableExperience(experience) {
  * Non-experience objects intentionally pass through unchanged so the public
  * compressor remains a lossless generic JSON utility for integrations.
  */
-export function serializeExperienceForShare(experience) {
+export function serializeExperienceForShare(experience, options = {}) {
+  const onMetadataPathOmitted = options?.onMetadataPathOmitted;
   if (!isCompactableExperience(experience)) return experience;
 
   // Share links are an independent serialization boundary. Sanitize media
   // records here as well as at app export so direct compressor callers cannot
   // accidentally put a fresh signed URL into a compact payload.
-  const sanitizedExperience = sanitizeExportValue(experience);
+  const sanitizedExperience = sanitizeExportValue(experience, '', new WeakSet(), {
+    onMetadataPathOmitted,
+    inMetadata: false
+  });
   const safeExperience = isRecord(sanitizedExperience) ? sanitizedExperience : experience;
-  safeExperience.library.items = experience.library.items.map(item => sanitizeMediaRecordForExport(item));
-  safeExperience.playlist.items = experience.playlist.items.map(item => sanitizeMediaRecordForExport(item));
-  safeExperience.slideshow.items = experience.slideshow.items.map(item => sanitizeMediaRecordForExport(item));
+  safeExperience.library.items = experience.library.items.map(item => sanitizeMediaRecordForExport(item, { onMetadataPathOmitted }));
+  safeExperience.playlist.items = experience.playlist.items.map(item => sanitizeMediaRecordForExport(item, { onMetadataPathOmitted }));
+  safeExperience.slideshow.items = experience.slideshow.items.map(item => sanitizeMediaRecordForExport(item, { onMetadataPathOmitted }));
 
   const { library, playlist, slideshow, ...root } = safeExperience;
   const { items: libraryItems, ...libraryHeader } = library;

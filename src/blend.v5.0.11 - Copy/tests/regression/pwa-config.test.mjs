@@ -52,5 +52,6 @@ test('HTML shell uses manifest.webmanifest and the configured asset version', as
   assert.match(app, new RegExp(`analytics-consent\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`media-relink\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`indexeddb-open\\.js\\?v=${config.ASSET_VERSION}`));
+  assert.match(app, new RegExp(`url-share\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(html, new RegExp(`content="${config.APP_VERSION}"`));
 });

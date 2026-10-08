@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-07
+goal: Keep separately selected folder roots independently identifiable through
+  import, persistence, playlist use, and relinking.
