@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './experience-persistence.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './storage-url-resolver.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './transition-manager.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './playback-clock.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { fetchReadme } from './readme-fetcher.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+import { renderMarkdown } from './markdown.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { fetchReadme } from './readme-fetcher.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './url-share.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './url-share-diagnostics.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './timeline-analysis.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './shared-experience-download.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261007-v5.0.11-issue05-metadata-export-privacy';
+} from './local-import-limits.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261007-v5.0.11-issue05-metadata-export-privacy';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261008-v5.0.11-issue07-directory-walk-file-limit';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -305,6 +305,7 @@ const MEDIA_PICKER_TYPES = [{
 }];
 const LIST_FILE_EXTS = ['json','jsonl','txt','md'];
 const MAX_FOLDER_DEPTH = 6;
+const MAX_FOLDER_MEDIA_FILES = 250;
 const REMOTE_MEDIA_RETRY_DELAY_MS = 900;
 const REMOTE_MEDIA_RETRY_COOLDOWN_MS = 30000;
 const REMOTE_MEDIA_MAX_RETRIES = 1;
@@ -4535,19 +4536,25 @@ function pickFilesWithInput({ directory = false, withStatus = false } = {}) {
     input.style.position = 'fixed';
     input.style.left = '-9999px';
     document.body.appendChild(input);
-    const finish = (handles, status) => {
+    const finish = (handles, status, details = {}) => {
       input.remove();
-      resolve(withStatus ? { handles, status } : handles);
+      resolve(withStatus ? { handles, status, ...details } : handles);
     };
     input.onchange = () => {
-      const handles = Array.from(input.files || [])
-        .filter(file => getMediaType(file.name))
-        .map(file => {
-          const handle = transientHandleFromFile(file);
-          if (file.webkitRelativePath) handle.pathHint = file.webkitRelativePath;
-          return handle;
-        });
-      finish(handles, handles.length ? 'complete' : 'empty');
+      const handles = [];
+      let found = 0;
+      for (const file of input.files || []) {
+        if (!getMediaType(file.name)) continue;
+        found++;
+        if (directory && handles.length >= MAX_FOLDER_MEDIA_FILES) continue;
+        const handle = transientHandleFromFile(file);
+        if (file.webkitRelativePath) handle.pathHint = file.webkitRelativePath;
+        handles.push(handle);
+      }
+      finish(handles, found ? 'complete' : 'empty', {
+        found,
+        pending: directory ? Math.max(0, found - handles.length) : 0
+      });
     };
     input.oncancel = () => finish([], 'cancelled');
     input.click();
@@ -4585,11 +4592,18 @@ async function addFolderFromPicker() {
       const scan = await pickFilesWithInput({ directory: true, withStatus: true });
       if (scan.status === 'cancelled') return;
       const handles = scan.handles;
-      const result = await addHandles(handles, { directoryId: null });
+      const result = await addHandles(handles, { directoryId: null, notify: false });
       if (scan.status === 'empty') {
         showToast('No supported media found in that folder', { timeout: 2400 });
+      } else if (scan.pending > 0 && result.saved) {
+        showDirectoryScanToast(folderImportLimitMessage(scan.found, scan.pending, result), {
+          timeout: 30000,
+          actions: [{ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } }]
+        });
       } else {
-        showToast(`Added ${result.added} item${result.added === 1 ? '' : 's'} from selected folder (${result.existing} already present)`);
+        if (result.saved) {
+          showToast(`Added ${result.added} item${result.added === 1 ? '' : 's'} from selected folder (${result.existing} already present)`);
+        }
       }
       return;
     }
@@ -4616,36 +4630,60 @@ async function rememberDirectoryHandle(handle) {
 
 async function walkDirectoryForMedia(dirHandle, opts = {}) {
   const maxDepth = opts.maxDepth ?? MAX_FOLDER_DEPTH;
-  const queue = [{ handle: dirHandle, depth: 0, path: dirHandle.name || '' }];
+  const maxMediaFiles = Number.isFinite(opts.maxMediaFiles)
+    ? Math.max(0, Math.floor(opts.maxMediaFiles))
+    : Number.POSITIVE_INFINITY;
   const handles = [];
   let status = 'complete';
   let skippedBranches = 0;
   let skippedDepthBranches = 0;
   let scanned = 0;
+  let found = 0;
+  let pending = 0;
+  let batchCommitted = false;
 
-  while (queue.length && status !== 'cancelled') {
-    const { handle, depth, path } = queue.shift();
+  async function visitDirectory(handle, depth, path) {
+    if (status === 'cancelled' || status === 'persistence-failed') return;
     try {
       for await (const entry of handle.values()) {
+        if (status === 'cancelled' || status === 'persistence-failed') break;
+        scanned++;
         if (entry.kind === 'file') {
           if (getMediaType(entry.name)) {
-            const pathHint = path ? `${path}/${entry.name}` : entry.name;
-            try { directoryMediaPathHints.set(entry, pathHint); } catch (_) {}
-            try { entry.pathHint = pathHint; } catch (_) {}
-            handles.push(entry);
+            found++;
+            if (found <= maxMediaFiles) {
+              const pathHint = path ? `${path}/${entry.name}` : entry.name;
+              try { directoryMediaPathHints.set(entry, pathHint); } catch (_) {}
+              try { entry.pathHint = pathHint; } catch (_) {}
+              handles.push(entry);
+
+              if (!batchCommitted && handles.length === maxMediaFiles && typeof opts.onMediaBatch === 'function') {
+                const batch = handles.splice(0, handles.length);
+                batchCommitted = true;
+                try {
+                  const result = await opts.onMediaBatch(batch);
+                  if (result?.saved === false) status = 'persistence-failed';
+                } catch (_) {
+                  status = 'persistence-failed';
+                }
+                if (status === 'persistence-failed') break;
+              }
+            } else {
+              pending++;
+            }
           }
         } else if (entry.kind === 'directory') {
           if (depth < maxDepth) {
-            queue.push({ handle: entry, depth: depth + 1, path: path ? `${path}/${entry.name}` : entry.name });
+            await visitDirectory(entry, depth + 1, path ? `${path}/${entry.name}` : entry.name);
           } else {
             skippedDepthBranches = Math.min(Number.MAX_SAFE_INTEGER, skippedDepthBranches + 1);
           }
         }
-        scanned++;
         if (scanned % 24 === 0) {
-          opts.onProgress?.(handles.length);
+          opts.onProgress?.({ found, pending, retained: handles.length, scanned });
           await new Promise(resolve => requestAnimationFrame(resolve));
         }
+        if (status === 'cancelled' || status === 'persistence-failed') break;
       }
     } catch (e) {
       const errorName = ['NotAllowedError', 'NotReadableError', 'SecurityError', 'AbortError', 'TypeError'].includes(e?.name)
@@ -4664,9 +4702,11 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
       }
     }
   }
-  opts.onProgress?.(handles.length);
+  await visitDirectory(dirHandle, 0, dirHandle.name || '');
+  opts.onProgress?.({ found, pending, retained: handles.length, scanned });
+  if (pending && status === 'complete') status = 'partial';
   if (skippedDepthBranches && status === 'complete') status = 'partial';
-  if (status === 'complete' && !handles.length) status = 'empty';
+  if (status === 'complete' && !found) status = 'empty';
   if (skippedDepthBranches) {
     log.warn('Directory scan stopped at the depth limit', {
       operation: opts.operation || 'directory_scan',
@@ -4679,22 +4719,38 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
       status,
       skippedBranches,
       skippedDepthBranches,
-      found: handles.length
+      found,
+      pending
     }
   };
 }
 
-async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false } = {}) {
+async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, onMediaBatch } = {}) {
   const subject = forMissingPaths ? 'media files' : 'files';
   const opening = forMissingPaths ? ' for missing paths' : '';
-  const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found`, { timeout: 0 });
+  const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found`, {
+    timeout: 0,
+    role: 'status',
+    className: 'toast-directory-scan-progress'
+  });
+  let lastAnnouncedAt = performance.now();
+  let lastAnnouncedCount = 0;
+  const announceProgress = (count, force = false) => {
+    if (count === lastAnnouncedCount) return;
+    if (!force && performance.now() - lastAnnouncedAt < 1000) return;
+    progress.label.textContent = `Scanning "${dirHandle.name}"${opening}... ${count} ${subject} found`;
+    lastAnnouncedAt = performance.now();
+    lastAnnouncedCount = count;
+  };
   try {
-    return await walkDirectoryForMedia(dirHandle, {
+    const result = await walkDirectoryForMedia(dirHandle, {
       operation: forMissingPaths ? 'missing_media_relink' : 'directory_scan',
-      onProgress: count => {
-        progress.label.textContent = `Scanning "${dirHandle.name}"... ${count} ${subject} found`;
-      }
+      maxMediaFiles: forMissingPaths ? Number.POSITIVE_INFINITY : MAX_FOLDER_MEDIA_FILES,
+      onMediaBatch: forMissingPaths ? undefined : onMediaBatch,
+      onProgress: ({ found }) => announceProgress(found)
     });
+    announceProgress(result.summary.found, true);
+    return result;
   } finally {
     progress.close();
   }
@@ -4704,6 +4760,15 @@ function folderDepthLimitNotice(skippedDepthBranches) {
   const count = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(skippedDepthBranches) || 0));
   const noun = count === 1 ? 'folder was' : 'folders were';
   return `Folder scan stopped at the six-level limit. Select a deeper folder directly to include its media. ${count} ${noun} skipped at the limit.`;
+}
+
+function folderImportCountSummary(found, pending, result) {
+  const skipped = result.existing + result.skipped;
+  return `${found} supported media files found; ${result.added} added, ${skipped} skipped (${result.existing} already present), ${pending} pending.`;
+}
+
+function folderImportLimitMessage(found, pending, result) {
+  return `Folder scan paused after the supported import limit. The files already added are safe; choose a smaller folder or continue with another folder. ${folderImportCountSummary(found, pending, result)}`;
 }
 
 function showDirectoryScanToast(message, options = {}) {
@@ -4721,13 +4786,31 @@ function showDirectoryScanToast(message, options = {}) {
 }
 
 async function scanAndImportDirectory(dirHandle, options = {}) {
-  const { handles, summary } = await scanDirectoryWithProgress(dirHandle);
   const directoryId = await rememberDirectoryHandle(dirHandle);
-  const result = handles.length
-    ? await addHandles(handles, { directoryId, notify: summary.status === 'complete' })
-    : { ids: [], added: 0, existing: 0, skipped: 0 };
+  const result = { ids: [], added: 0, existing: 0, skipped: 0, ambiguousDuplicates: 0, saved: true };
+  const importBatch = async (handles, notify = false) => {
+    if (!handles.length) return;
+    const batchResult = await addHandles(handles, { directoryId, notify });
+    result.ids.push(...batchResult.ids);
+    result.added += batchResult.added;
+    result.existing += batchResult.existing;
+    result.skipped += batchResult.skipped;
+    result.ambiguousDuplicates += batchResult.ambiguousDuplicates;
+    result.saved = result.saved && batchResult.saved !== false;
+    return batchResult;
+  };
+  const { handles, summary } = await scanDirectoryWithProgress(dirHandle, {
+    onMediaBatch: batch => importBatch(batch, false)
+  });
+  if (handles.length) await importBatch(handles, summary.status === 'complete');
   const retrying = options.retrying === true;
   options.onImported?.(result.ids, { retrying });
+
+  // addHandles already presents the save-retry notice. Do not replace it with
+  // a success or partial-scan message when the latest snapshot did not commit.
+  if (!result.saved || summary.status === 'persistence-failed') {
+    return { handles, summary, result };
+  }
 
   if (summary.status === 'partial') {
     const messages = [];
@@ -4736,7 +4819,11 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
       messages.push(`Folder scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read.`);
     }
     if (summary.skippedDepthBranches) messages.push(folderDepthLimitNotice(summary.skippedDepthBranches));
-    messages.push(`${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`);
+    if (summary.pending) {
+      messages.push(folderImportLimitMessage(summary.found, summary.pending, result));
+    } else {
+      messages.push(`${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`);
+    }
     if (summary.skippedBranches) messages.push('Check permissions and retry.');
 
     const actions = [];
@@ -4749,8 +4836,11 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
     if (summary.skippedDepthBranches) {
       actions.push({ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } });
     }
+    if (summary.pending) {
+      actions.push({ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } });
+    }
     showDirectoryScanToast(messages.join(' '), {
-      timeout: 12000,
+      timeout: summary.pending ? 30000 : 12000,
       actions
     });
   } else if (summary.status === 'cancelled') {
@@ -4761,12 +4851,18 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
     const depthNotice = summary.skippedDepthBranches
       ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
       : '';
-    const message = retained
-      ? `Folder scan canceled.${skipped}${depthNotice} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
-      : `Folder scan canceled.${skipped}${depthNotice} No media files were added.`;
-    const actions = summary.skippedDepthBranches
-      ? [{ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } }]
-      : [];
+    const message = summary.pending
+      ? `Folder scan canceled.${skipped}${depthNotice} ${folderImportCountSummary(summary.found, summary.pending, result)}`
+      : retained
+        ? `Folder scan canceled.${skipped}${depthNotice} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
+        : `Folder scan canceled.${skipped}${depthNotice} No media files were added.`;
+    const actions = [];
+    if (summary.skippedDepthBranches) {
+      actions.push({ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } });
+    }
+    if (summary.pending) {
+      actions.push({ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } });
+    }
     showDirectoryScanToast(message, { timeout: 6000, actions });
   } else if (summary.status === 'empty') {
     showDirectoryScanToast('No supported media found in that folder', { timeout: 2400 });
@@ -4893,7 +4989,7 @@ async function addHandles(handles, meta = {}) {
   } else if (saved && added && meta.notify !== false) {
     showToast(`Added ${added} item${added>1?'s':''}${existing || skipped ? ` (${existing + skipped} skipped)` : ''}`);
   }
-  return { ids, added, existing, skipped, ambiguousDuplicates };
+  return { ids, added, existing, skipped, ambiguousDuplicates, saved };
 }
 
 function ensureLibraryVirtualList() {
@@ -8424,7 +8520,7 @@ function cleanupRuntimeResources() {
     transitionManager.destroy();
     transitionManager = null;
   }
-  supabaseAuthClient.shutdown();
+  // The local reset already stopped refresh; keep the auth tab channel alive if this page is reused.
   storageUrlResolver.clearCache();
 }
 
@@ -8508,7 +8604,11 @@ async function clearBrowserStorage() {
   clearTimeout(saveTimer);
   try {
     try {
-      supabaseAuthClient.clearLocalSession();
+      const authReset = await supabaseAuthClient.clearLocalSessionAcrossTabs();
+      if (!authReset.confirmed) {
+        showToast('This tab is signed out, but another Blend tab may still be active. Close all Blend tabs and retry the local reset.', { timeout: 7000 });
+        return false;
+      }
     } catch (_) {
       showToast('Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.', { timeout: 6000 });
       return false;

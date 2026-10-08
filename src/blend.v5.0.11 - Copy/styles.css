@@ -1501,20 +1501,22 @@ button {
 .toast-save-failure .btn,
 .toast-save-conflict .btn,
 .toast-import-failure .btn { min-height: 36px; }
-.toast-directory-scan {
+.toast-directory-scan,
+.toast-directory-scan-progress {
   box-sizing: border-box;
   width: min(560px, calc(100vw - 32px));
   max-width: min(560px, calc(100vw - 32px));
   flex-wrap: wrap;
   align-items: flex-start;
 }
-.toast-directory-scan > span {
+.toast-directory-scan > span,
+.toast-directory-scan-progress > span {
   flex: 1 1 100%;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .toast-directory-scan .btn {
-  min-height: 36px;
+  min-height: 44px;
   white-space: normal;
 }
 .toast-directory-scan .btn:focus-visible {

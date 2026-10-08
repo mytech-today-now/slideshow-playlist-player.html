@@ -1,5 +1,8 @@
 const DEFAULT_STORAGE_KEY = 'blend-supabase-auth-session-v2';
 const LEGACY_STORAGE_KEY = 'blend-supabase-auth-session-v1';
+const LOCAL_RESET_CHANNEL_NAME = 'blend-supabase-auth-local-reset-v1';
+const LOCAL_RESET_DISCOVERY_WINDOW_MS = 100;
+const LOCAL_RESET_ACK_TIMEOUT_MS = 1500;
 const REFRESH_BUFFER_SECONDS = 75;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 const DEFAULT_REFRESH_RETRY_DELAYS_MS = Object.freeze([1_000, 2_000, 4_000, 8_000, 16_000]);
@@ -17,6 +20,13 @@ export class SupabaseAuthError extends Error {
 
 function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
+}
+
+function createLocalNonce() {
+  try {
+    if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  } catch (_) {}
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function normalizeSession(payload) {
@@ -127,7 +137,8 @@ export function createSupabaseAuthClient({
   requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
   refreshRetryDelaysMs = DEFAULT_REFRESH_RETRY_DELAYS_MS,
   setTimeoutImpl = globalThis.setTimeout.bind(globalThis),
-  clearTimeoutImpl = globalThis.clearTimeout.bind(globalThis)
+  clearTimeoutImpl = globalThis.clearTimeout.bind(globalThis),
+  broadcastChannelImpl = typeof globalThis.window === 'object' ? globalThis.BroadcastChannel : null
 } = {}) {
   const listeners = new Set();
   let session = null;
@@ -139,6 +150,11 @@ export function createSupabaseAuthClient({
   let sessionGeneration = 0;
   let retryAttempt = 0;
   let authStatus = { state: 'signed-out', code: 'auth_signed_out' };
+  const tabNonce = createLocalNonce();
+  const peerTabNonces = new Set();
+  const pendingLocalResets = new Map();
+  let localResetChannel = null;
+  let authLifecycleListenersBound = false;
 
   function getStorage() {
     if (storage !== undefined) return storage;
@@ -337,6 +353,206 @@ export function createSupabaseAuthClient({
       });
     }
     return true;
+  }
+
+  function postAuthTabMessage(type, nonce) {
+    if (!localResetChannel) return false;
+    try {
+      localResetChannel.postMessage({ type, nonce: String(nonce || '') });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function finishPendingLocalReset(nonce, confirmed) {
+    const pending = pendingLocalResets.get(nonce);
+    if (!pending || pending.settled) return;
+    pending.settled = true;
+    if (pending.timer !== null) clearTimeoutImpl(pending.timer);
+    if (pending.discoveryTimer !== null) clearTimeoutImpl(pending.discoveryTimer);
+    const resolveDiscovery = pending.resolveDiscovery;
+    pending.resolveDiscovery = null;
+    resolveDiscovery?.();
+    pendingLocalResets.delete(nonce);
+    pending.resolve({
+      confirmed,
+      expectedPeerCount: pending.expectedPeers.size,
+      acknowledgedPeerCount: pending.acknowledgedPeers.size
+    });
+  }
+
+  function maybeFinishPendingLocalReset(nonce) {
+    const pending = pendingLocalResets.get(nonce);
+    if (!pending || pending.phase !== 'resetting') return;
+    if (pending.acknowledgedPeers.size >= pending.expectedPeers.size) {
+      finishPendingLocalReset(nonce, true);
+    }
+  }
+
+  function handleAuthTabMessage(event) {
+    const message = event?.data;
+    if (!message || typeof message !== 'object' || Array.isArray(message)) return;
+    const keys = Object.keys(message);
+    if (keys.length !== 2 || !keys.includes('type') || !keys.includes('nonce')) return;
+    const type = String(message.type || '');
+    const nonce = String(message.nonce || '');
+    if (!nonce || nonce.length > 256) return;
+
+    if (type === 'tab-open') {
+      if (nonce === tabNonce || peerTabNonces.has(nonce)) return;
+      peerTabNonces.add(nonce);
+      postAuthTabMessage('tab-open', tabNonce);
+      for (const [resetNonce, pending] of pendingLocalResets) {
+        pending.expectedPeers.add(nonce);
+        if (pending.phase === 'resetting') postAuthTabMessage('local-reset', resetNonce);
+      }
+      return;
+    }
+
+    if (type === 'tab-close') {
+      peerTabNonces.delete(nonce);
+      for (const [resetNonce, pending] of pendingLocalResets) {
+        pending.expectedPeers.delete(nonce);
+        maybeFinishPendingLocalReset(resetNonce);
+      }
+      return;
+    }
+
+    if (type === 'local-reset') {
+      try {
+        clearLocalSession();
+      } catch (_) {
+        return;
+      }
+      postAuthTabMessage('local-reset-ack', `${nonce}:${tabNonce}`);
+      return;
+    }
+
+    if (type === 'tab-probe') {
+      postAuthTabMessage('tab-probe-ack', `${nonce}:${tabNonce}`);
+      return;
+    }
+
+    if (type === 'tab-probe-ack') {
+      for (const [resetNonce, pending] of pendingLocalResets) {
+        const prefix = `${resetNonce}:`;
+        if (!nonce.startsWith(prefix)) continue;
+        const peerNonce = nonce.slice(prefix.length);
+        if (peerNonce && peerNonce !== tabNonce) {
+          peerTabNonces.add(peerNonce);
+          pending.expectedPeers.add(peerNonce);
+        }
+        return;
+      }
+      return;
+    }
+
+    if (type !== 'local-reset-ack') return;
+    for (const [resetNonce, pending] of pendingLocalResets) {
+      const prefix = `${resetNonce}:`;
+      if (!nonce.startsWith(prefix)) continue;
+      const peerNonce = nonce.slice(prefix.length);
+      if (pending.expectedPeers.has(peerNonce)) pending.acknowledgedPeers.add(peerNonce);
+      maybeFinishPendingLocalReset(resetNonce);
+      return;
+    }
+  }
+
+  function startAuthCoordination() {
+    if (localResetChannel) return true;
+    if (typeof broadcastChannelImpl !== 'function') return false;
+
+    let channel = null;
+    try {
+      channel = new broadcastChannelImpl(`${LOCAL_RESET_CHANNEL_NAME}:${storageKey}`);
+      if (typeof channel.addEventListener === 'function') {
+        channel.addEventListener('message', handleAuthTabMessage);
+      } else {
+        channel.onmessage = handleAuthTabMessage;
+      }
+      localResetChannel = channel;
+      if (!postAuthTabMessage('tab-open', tabNonce)) throw new Error('Could not announce this tab.');
+      if (!authLifecycleListenersBound && typeof globalThis.addEventListener === 'function') {
+        globalThis.addEventListener('pagehide', handleAuthPageHide);
+        globalThis.addEventListener('pageshow', handleAuthPageShow);
+        authLifecycleListenersBound = true;
+      }
+      return true;
+    } catch (_) {
+      try { channel?.close?.(); } catch (_) {}
+      if (localResetChannel === channel) localResetChannel = null;
+      return false;
+    }
+  }
+
+  function handleAuthPageHide(event) {
+    // A page in the back/forward cache can resume with its in-memory session.
+    // Keep it counted as a peer so another tab's reset fails closed while it is suspended.
+    shutdown({ announceDeparture: event?.persisted !== true });
+  }
+
+  function handleAuthPageShow() {
+    startAuthCoordination();
+    if (session?.refresh_token) scheduleRefresh();
+  }
+
+  async function clearLocalSessionAcrossTabs({ timeoutMs = LOCAL_RESET_ACK_TIMEOUT_MS } = {}) {
+    let localClearError = null;
+    try {
+      clearLocalSession();
+    } catch (error) {
+      localClearError = error;
+    }
+
+    if (!startAuthCoordination()) {
+      return { confirmed: false, expectedPeerCount: peerTabNonces.size, acknowledgedPeerCount: 0 };
+    }
+
+    const nonce = createLocalNonce();
+    const pending = {
+      expectedPeers: new Set(peerTabNonces),
+      acknowledgedPeers: new Set(),
+      phase: 'probing',
+      discoveryTimer: null,
+      resolveDiscovery: null,
+      timer: null,
+      settled: false,
+      resolve: null
+    };
+    const resultPromise = new Promise(resolve => { pending.resolve = resolve; });
+    pendingLocalResets.set(nonce, pending);
+
+    if (!postAuthTabMessage('tab-probe', nonce)) {
+      finishPendingLocalReset(nonce, false);
+    } else {
+      await new Promise(resolve => {
+        pending.resolveDiscovery = resolve;
+        pending.discoveryTimer = setTimeoutImpl(() => {
+          pending.discoveryTimer = null;
+          pending.resolveDiscovery = null;
+          resolve();
+        }, LOCAL_RESET_DISCOVERY_WINDOW_MS);
+      });
+    }
+
+    if (pending.settled) return resultPromise;
+
+    const requestedTimeout = Number(timeoutMs);
+    const boundedTimeout = Number.isFinite(requestedTimeout)
+      ? Math.max(0, Math.min(5000, requestedTimeout))
+      : LOCAL_RESET_ACK_TIMEOUT_MS;
+    pending.phase = 'resetting';
+    pending.timer = setTimeoutImpl(() => finishPendingLocalReset(nonce, false), boundedTimeout);
+    if (!postAuthTabMessage('local-reset', nonce)) {
+      finishPendingLocalReset(nonce, false);
+    } else {
+      maybeFinishPendingLocalReset(nonce);
+    }
+
+    const result = await resultPromise;
+    if (result.confirmed && localClearError) throw localClearError;
+    return result;
   }
 
   function readStoredSession() {
@@ -735,11 +951,24 @@ export function createSupabaseAuthClient({
     return authRedirectUrl;
   }
 
-  function shutdown() {
+  function shutdown({ announceDeparture = true } = {}) {
     clearRefreshTimer();
     abortRefreshRequest();
     sessionGeneration += 1;
+    if (localResetChannel) {
+      const channel = localResetChannel;
+      if (announceDeparture) postAuthTabMessage('tab-close', tabNonce);
+      try { channel.removeEventListener?.('message', handleAuthTabMessage); } catch (_) {}
+      try { channel.close?.(); } catch (_) {}
+      localResetChannel = null;
+    }
+    peerTabNonces.clear();
+    for (const nonce of Array.from(pendingLocalResets.keys())) {
+      finishPendingLocalReset(nonce, false);
+    }
   }
+
+  startAuthCoordination();
 
   return {
     bootstrap,
@@ -756,6 +985,7 @@ export function createSupabaseAuthClient({
     getRedirectUrl,
     clearSession,
     clearLocalSession,
+    clearLocalSessionAcrossTabs,
     shutdown
   };
 }

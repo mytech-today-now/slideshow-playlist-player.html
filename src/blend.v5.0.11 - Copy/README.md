@@ -161,7 +161,7 @@ http://localhost:5173/src/blend.v5.0.11/index.html
 | Playback | Slideshow order | Yes | Sequential or random; sequential by default |
 | Playback | Fullscreen | Yes | `requestFullscreen()` on viewport |
 | Library | Add files | Yes | File System Access API + input fallback |
-| Library | Add folder (recursive) | Yes | Directory picker + fallback; depth limit 6 |
+| Library | Add folder (recursive) | Yes | Directory picker + fallback; depth limit 6; 250 supported media files per selection |
 | Library | Add URL | Yes | `http(s)`, `supabase://`, legacy `ipfs://` refs |
 | Library | Drag-and-drop import | Yes | Files/directories/list files |
 | Library | Search/filter/sort | Yes | Type + source filters, worker projection for large sets |
@@ -790,6 +790,7 @@ Verified in current implementation:
 ## Known Limitations
 
 - Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`). A scan that reaches this limit reports how many child folders it skipped as a partial result; choose **Choose deeper folder** in the status notice (or select the deeper folder directly) to include that media.
+- Each folder selection imports at most 250 supported media files (`MAX_FOLDER_MEDIA_FILES` in `app.js`). If more accessible files are found, the saved items stay in the library and the status notice reports added, skipped, and pending counts; choose **Choose smaller folder** to continue with a narrower folder or another folder. This limit applies to both directory-picking and directory-input fallback imports.
 - Remote URL parsing generally requires media-like filenames/extensions for text list imports.
 - Service worker intentionally does not cache media/range responses.
 - File System Access capabilities vary significantly by browser.

@@ -16,8 +16,8 @@ export class BlendAppPage {
     this.toastContainer = page.locator('#toast-container');
   }
 
-  async boot(url = '/index.html') {
-    await this.page.addInitScript(({ fixtureOrigin }) => {
+  async boot(url = '/index.html', { runtimeConfigOverrides = {} } = {}) {
+    await this.page.addInitScript(({ fixtureOrigin, runtimeConfigOverrides = {} }) => {
       localStorage.setItem('blend-welcome-v4', '1');
       localStorage.setItem('blend-install-banner-hidden-v4', '1');
       localStorage.setItem('blend-analytics-consent-v1', '0');
@@ -30,14 +30,15 @@ export class BlendAppPage {
           SUPABASE_URL: fixtureOrigin,
           SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
           SUPABASE_MEDIA_BUCKET: 'media',
-          SUPABASE_PUBLIC_BUCKETS: 'public'
+          SUPABASE_PUBLIC_BUCKETS: 'public',
+          ...runtimeConfigOverrides
         }));
       } catch (_) {}
       try {
         Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true });
         Object.defineProperty(window, 'showDirectoryPicker', { value: undefined, configurable: true });
       } catch (_) {}
-    }, { fixtureOrigin: FIXTURE_ORIGIN });
+    }, { fixtureOrigin: FIXTURE_ORIGIN, runtimeConfigOverrides });
     await this.page.goto(url);
     await this.page.waitForFunction(() => !!window.Blend && !!window.Blend.state);
     await this.page.waitForSelector('#playlist-layer video');

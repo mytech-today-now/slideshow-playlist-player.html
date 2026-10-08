@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-08
+goal: Measure synthetic breadth, then enforce and document a responsive per-scan
+  media limit without changing import formats or persistence schema.

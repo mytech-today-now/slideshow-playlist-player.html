@@ -9,7 +9,9 @@ const RESET_CONFIRMATION = 'This removes Blend browser data only: library entrie
 const RESET_SESSION_STORAGE_FAILURE = 'Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.';
 const RESET_SNAPSHOT_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept because a recovery snapshot could not be created.';
 const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept for recovery and retry after the database deletion failed. Close other Blend tabs and try again.';
+const RESET_UNCONFIRMED_FAILURE = 'This tab is signed out, but another Blend tab may still be active. Close all Blend tabs and retry the local reset.';
 const RESET_SUCCESS = 'Browser data cleared. The saved Supabase session was removed, runtime configuration was preserved, and other apps on this site were left alone.';
+const AUTH_RESET_CHANNEL = 'blend-supabase-auth-local-reset-v1:blend-supabase-auth-session-v2';
 
 async function confirmResetWithKeyboard(page) {
   const resetButton = page.locator('#clear-browser-storage');
@@ -21,6 +23,89 @@ async function confirmResetWithKeyboard(page) {
   await expect(page.locator('#experience-modal-ok')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#experience-modal')).not.toBeVisible();
+}
+
+function syntheticAccessToken(tabName, expiresInSeconds = 3600) {
+  const payload = Buffer.from(JSON.stringify({
+    sub: `synthetic-${tabName}-user`,
+    email: `${tabName}@example.test`,
+    exp: Math.floor(Date.now() / 1000) + expiresInSeconds
+  })).toString('base64url');
+  return `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${payload}.synthetic-signature`;
+}
+
+async function captureAuthTabMessages(page, { ignoreReset = false } = {}) {
+  await page.addInitScript(({ channelName, shouldIgnoreReset }) => {
+    if (typeof BroadcastChannel !== 'function') return;
+    window.__blendAuthSentMessages = [];
+    window.__blendAuthReceivedMessages = [];
+    const originalPostMessage = BroadcastChannel.prototype.postMessage;
+    const originalAddEventListener = BroadcastChannel.prototype.addEventListener;
+    BroadcastChannel.prototype.postMessage = function postMessageWithCapture(data) {
+      if (this.name === channelName && data && typeof data === 'object') {
+        window.__blendAuthSentMessages.push({ ...data });
+      }
+      return Reflect.apply(originalPostMessage, this, [data]);
+    };
+    BroadcastChannel.prototype.addEventListener = function addEventListenerWithCapture(type, listener, options) {
+      if (type !== 'message' || this.name !== channelName || typeof listener !== 'function') {
+        return Reflect.apply(originalAddEventListener, this, [type, listener, options]);
+      }
+      const channel = this;
+      const wrappedListener = function captureMessage(event) {
+        const message = event?.data && typeof event.data === 'object' ? { ...event.data } : event?.data;
+        window.__blendAuthReceivedMessages.push(message);
+        if (shouldIgnoreReset && message?.type === 'local-reset') return;
+        return listener.call(channel, event);
+      };
+      return Reflect.apply(originalAddEventListener, this, [type, wrappedListener, options]);
+    };
+  }, { channelName: AUTH_RESET_CHANNEL, shouldIgnoreReset: ignoreReset });
+}
+
+async function installSyntheticAuthRoutes(page, tabName, requestLog, logoutLog, { beforeRefresh } = {}) {
+  await page.route('**/auth/v1/**', async route => {
+    const requestUrl = new URL(route.request().url());
+    requestLog.push({ tab: tabName, path: requestUrl.pathname, method: route.request().method() });
+    if (requestUrl.pathname.endsWith('/logout')) {
+      logoutLog.push({ tab: tabName });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+    if (requestUrl.pathname.endsWith('/token') && requestUrl.searchParams.get('grant_type') === 'refresh_token') {
+      if (beforeRefresh) await beforeRefresh(route);
+      try {
+        return await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            access_token: `synthetic-${tabName}-refreshed-access-token`,
+            refresh_token: `synthetic-${tabName}-refreshed-refresh-token`,
+            expires_in: 3600
+          })
+        });
+      } catch (_) {
+        return;
+      }
+    }
+    return route.abort('failed');
+  });
+}
+
+async function connectSyntheticSession(app, { tabName, persist = false, expiresInSeconds = 3600 }) {
+  const page = app.page;
+  await app.openConfig();
+  await page.locator('#supabase-sign-in').click();
+  await expect(page.locator('#supabase-auth-modal')).toBeVisible();
+  const persistenceControl = page.locator('#supabase-auth-persist-session');
+  if (persist) await persistenceControl.check();
+  else await expect(persistenceControl).not.toBeChecked();
+  await page.locator('#supabase-auth-token').fill(syntheticAccessToken(tabName, expiresInSeconds));
+  await page.locator('#supabase-auth-refresh-token').fill(`synthetic-${tabName}-refresh-token`);
+  await page.locator('[data-auth-submit]').click();
+  await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
+  if (expiresInSeconds > 100) {
+    await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  }
 }
 
 async function storedExperienceNames(page) {
@@ -161,11 +246,167 @@ async function injectCleanupFailure(page, mode) {
       return;
     }
 
-    Object.defineProperty(navigator.serviceWorker, 'getRegistrations', {
+    Object.defineProperty(ServiceWorkerRegistration.prototype, 'unregister', {
       configurable: true,
-      value: async () => { throw new DOMException('Synthetic worker cleanup failure', 'SecurityError'); }
+      value: async () => false
     });
   }, mode);
+}
+
+for (const persistenceEnabled of [false, true]) {
+  test(`local reset clears two auth tabs (${persistenceEnabled ? 'opted-in persistence' : 'memory-only'}) without provider logout`, async ({ page }) => {
+    const peerPage = await page.context().newPage();
+    const app = new BlendAppPage(page);
+    const peerApp = new BlendAppPage(peerPage);
+    const authRequests = [];
+    const logoutRequests = [];
+    let releaseResetRefresh;
+    let releasePeerRefresh;
+    let markResetRefreshStarted;
+    let markPeerRefreshStarted;
+    const resetRefreshStarted = new Promise(resolve => { markResetRefreshStarted = resolve; });
+    const peerRefreshStarted = new Promise(resolve => { markPeerRefreshStarted = resolve; });
+
+    try {
+      await captureAuthTabMessages(page);
+      await captureAuthTabMessages(peerPage);
+      await installSyntheticAuthRoutes(page, 'reset-tab', authRequests, logoutRequests, {
+        beforeRefresh: async () => {
+          markResetRefreshStarted();
+          await new Promise(resolve => { releaseResetRefresh = resolve; });
+        }
+      });
+      await installSyntheticAuthRoutes(peerPage, 'peer-tab', authRequests, logoutRequests, {
+        beforeRefresh: async () => {
+          markPeerRefreshStarted();
+          await new Promise(resolve => { releasePeerRefresh = resolve; });
+        }
+      });
+      await app.boot('/index.html');
+      await peerApp.boot('/index.html');
+      await expect.poll(async () => page.evaluate(() => window.__blendAuthSentMessages?.filter(message => message.type === 'tab-open').length || 0))
+        .toBeGreaterThanOrEqual(2);
+      await expect.poll(async () => peerPage.evaluate(() => window.__blendAuthSentMessages?.filter(message => message.type === 'tab-open').length || 0))
+        .toBeGreaterThanOrEqual(2);
+
+      if (persistenceEnabled) {
+        await connectSyntheticSession(app, {
+          tabName: 'reset',
+          persist: true,
+          expiresInSeconds: 76
+        });
+        // A second open tab restores the same explicitly opted-in local session.
+        await peerApp.boot('/index.html');
+      } else {
+        await connectSyntheticSession(app, {
+          tabName: 'reset',
+          persist: false,
+          expiresInSeconds: 3600
+        });
+        await connectSyntheticSession(peerApp, {
+          tabName: 'peer',
+          persist: false,
+          expiresInSeconds: 76
+        });
+      }
+      if (persistenceEnabled) {
+        expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).not.toBeNull();
+      } else {
+        expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();
+      }
+
+      if (persistenceEnabled) await Promise.all([resetRefreshStarted, peerRefreshStarted]);
+      else await peerRefreshStarted;
+      await confirmResetWithKeyboard(page);
+      await expect(app.toastContainer).toContainText(RESET_SUCCESS, { timeout: 12000 });
+      await expect(page.locator('#clear-browser-storage')).toBeFocused();
+      await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+      await expect(peerPage.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+      expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();
+
+      const requestsAfterReset = authRequests.length;
+      releaseResetRefresh?.();
+      releasePeerRefresh?.();
+      await page.waitForTimeout(1200);
+      expect(authRequests).toHaveLength(requestsAfterReset);
+      expect(logoutRequests).toEqual([]);
+
+      const sentMessages = await Promise.all([
+        page.evaluate(() => window.__blendAuthSentMessages || []),
+        peerPage.evaluate(() => window.__blendAuthSentMessages || [])
+      ]);
+      const serializedMessages = JSON.stringify(sentMessages);
+      for (const message of sentMessages.flat()) {
+        expect(Object.keys(message).sort()).toEqual(['nonce', 'type']);
+      }
+      for (const token of [
+        'synthetic-reset',
+        'synthetic-peer',
+        'synthetic-reset-refreshed-access-token',
+        'synthetic-peer-refreshed-access-token'
+      ]) {
+        expect(serializedMessages).not.toContain(token);
+      }
+      expect(sentMessages.flat().some(message => message.type === 'local-reset')).toBe(true);
+      expect(sentMessages.flat().some(message => message.type === 'local-reset-ack')).toBe(true);
+    } finally {
+      releaseResetRefresh?.();
+      releasePeerRefresh?.();
+      await peerPage.close().catch(() => {});
+    }
+  });
+}
+
+for (const viewport of [
+  { name: 'desktop', width: 1366, height: 768 },
+  { name: 'mobile', width: 390, height: 844 }
+]) {
+test(`unconfirmed tab warns and retry succeeds at ${viewport.name} size`, async ({ page }) => {
+  const peerPage = await page.context().newPage();
+  const app = new BlendAppPage(page);
+  const peerApp = new BlendAppPage(peerPage);
+  const authRequests = [];
+  const logoutRequests = [];
+
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
+  await peerPage.setViewportSize({ width: viewport.width, height: viewport.height });
+  await captureAuthTabMessages(page);
+  await captureAuthTabMessages(peerPage, { ignoreReset: true });
+  await installSyntheticAuthRoutes(page, 'reset-tab', authRequests, logoutRequests);
+  await installSyntheticAuthRoutes(peerPage, 'peer-tab', authRequests, logoutRequests);
+  await app.boot('/index.html');
+  await peerApp.boot('/index.html');
+  await expect.poll(async () => page.evaluate(() => window.__blendAuthSentMessages?.filter(message => message.type === 'tab-open').length || 0))
+    .toBeGreaterThanOrEqual(2);
+  await expect.poll(async () => peerPage.evaluate(() => window.__blendAuthSentMessages?.filter(message => message.type === 'tab-open').length || 0))
+    .toBeGreaterThanOrEqual(2);
+
+  await connectSyntheticSession(app, { tabName: 'reset-unconfirmed' });
+  await connectSyntheticSession(peerApp, { tabName: 'peer-unconfirmed' });
+  await app.createExperience('Keep after unconfirmed peer');
+
+  const resetStartedAt = Date.now();
+  await confirmResetWithKeyboard(page);
+  await expect(app.toastContainer).toContainText(RESET_UNCONFIRMED_FAILURE);
+  expect(Date.now() - resetStartedAt).toBeLessThan(5000);
+  await expect(page.locator('#clear-browser-storage')).toBeFocused();
+  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+  await expect(peerPage.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name)))
+    .toContain('Keep after unconfirmed peer');
+  expect(await storedExperienceNames(page)).toContain('Keep after unconfirmed peer');
+  expect(logoutRequests).toEqual([]);
+
+  await peerPage.close();
+  await expect.poll(async () => page.evaluate(() =>
+    (window.__blendAuthReceivedMessages || []).some(message => message?.type === 'tab-close'))
+  ).toBe(true);
+  await confirmResetWithKeyboard(page);
+  await expect(app.toastContainer).toContainText(RESET_SUCCESS, { timeout: 12000 });
+  expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
+  expect(authRequests.filter(request => request.path.endsWith('/logout'))).toEqual([]);
+});
 }
 
 test('reset removes the saved Supabase session, preserves runtime config, and keeps public playback available without remote logout', async ({ page }) => {
@@ -177,14 +418,12 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
   const runtimeConfig = {
     SUPABASE_URL: 'https://reset-preserved.example.test',
     SUPABASE_ANON_KEY: 'synthetic-reset-preserved-anon-key',
-    SUPABASE_MEDIA_BUCKET: 'reset-preserved-media'
+    SUPABASE_MEDIA_BUCKET: 'reset-preserved-media',
+    SUPABASE_AUTH_REDIRECT_URL: 'http://127.0.0.1:4191/index.html',
+    SUPABASE_PUBLIC_BUCKETS: 'public'
   };
-  await page.addInitScript(({ key, value }) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, { key: RUNTIME_CONFIG_STORAGE_KEY, value: runtimeConfig });
-
   const blendPage = new BlendAppPage(page);
-  await blendPage.boot('/index.html');
+  await blendPage.boot('/index.html', { runtimeConfigOverrides: runtimeConfig });
 
   await page.evaluate(storageKey => {
     localStorage.setItem(storageKey, JSON.stringify({
@@ -373,6 +612,7 @@ test('blocked deletion keeps the current experience and a retry clears it after 
   const holderPage = await page.context().newPage();
   const holderBlendPage = new BlendAppPage(holderPage);
   await holderBlendPage.boot('/index.html');
+  await expect(holderPage.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
   await holderPage.evaluate(async () => {
     const request = indexedDB.open('player-blend-v1', 5);
     window.__heldBlendDatabase = await new Promise((resolve, reject) => {
@@ -388,6 +628,7 @@ test('blocked deletion keeps the current experience and a retry clears it after 
   await expect(page.locator('#clear-browser-storage')).toBeFocused();
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
   await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+  await expect(holderPage.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
   await expect(page.locator('#experience-select')).toHaveValue(await blendPage.activeExperienceIdByName('Keep this experience'));
   expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name))).toContain('Keep this experience');
   expect(await heldExperienceNames(holderPage)).toContain('Keep this experience');
@@ -424,8 +665,8 @@ for (const cleanupMode of ['cache-storage', 'service-worker']) {
 
     await blendPage.openConfig();
     await confirmResetWithKeyboard(page);
-    const failedStep = cleanupMode === 'cache-storage' ? 'Cache Storage' : 'service worker registrations';
-    await expect(blendPage.toastContainer).toContainText(`Saved data was cleared. Cleanup still needs attention: ${failedStep}.`);
+    const failedStep = cleanupMode === 'cache-storage' ? 'Cache Storage' : 'Blend service worker registration';
+    await expect(blendPage.toastContainer).toContainText(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${failedStep}.`);
     await expect(blendPage.toastContainer).not.toContainText(RESET_SUCCESS);
     await expect(page.locator('#clear-browser-storage')).toBeFocused();
     expect(await page.evaluate(() => ({

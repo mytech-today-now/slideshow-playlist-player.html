@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-07
+goal: Implement fail-closed cross-tab local sign-out without remote logout,
+  token broadcasts, or loss of saved Blend data on blocked reset.

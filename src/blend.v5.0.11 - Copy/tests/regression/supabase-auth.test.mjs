@@ -59,6 +59,48 @@ function createFakeTimers() {
   };
 }
 
+function createFakeBroadcastChannel() {
+  const channelsByName = new Map();
+  const sentMessages = [];
+  return class FakeBroadcastChannel {
+    static sentMessages = sentMessages;
+
+    constructor(name) {
+      this.name = name;
+      this.listeners = new Set();
+      this.closed = false;
+      if (!channelsByName.has(name)) channelsByName.set(name, new Set());
+      channelsByName.get(name).add(this);
+    }
+
+    addEventListener(type, listener) {
+      if (type === 'message' && typeof listener === 'function') this.listeners.add(listener);
+    }
+
+    removeEventListener(type, listener) {
+      if (type === 'message') this.listeners.delete(listener);
+    }
+
+    postMessage(data) {
+      if (this.closed) throw new Error('channel is closed');
+      const message = { ...data };
+      sentMessages.push(message);
+      for (const channel of channelsByName.get(this.name) || []) {
+        if (channel === this || channel.closed) continue;
+        queueMicrotask(() => {
+          if (channel.closed) return;
+          for (const listener of channel.listeners) listener({ data: message });
+        });
+      }
+    }
+
+    close() {
+      this.closed = true;
+      channelsByName.get(this.name)?.delete(this);
+    }
+  };
+}
+
 test('bootstrap restores and refreshes expiring session', async () => {
   const now = Math.floor(Date.now() / 1000);
   const storage = createMemoryStorage({
@@ -558,6 +600,172 @@ test('clearLocalSession removes the saved session, memory session, and refresh t
     client.shutdown();
     globalThis.setTimeout = originalSetTimeout;
     globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
+test('clearLocalSessionAcrossTabs clears a peer and sends nonce-only messages', async () => {
+  const BroadcastChannelFake = createFakeBroadcastChannel();
+  const storageKey = 'blend-supabase-auth-session-v2';
+  const fetchCalls = [];
+  const clientOptions = {
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseAnonKey: 'anon',
+    storageKey,
+    broadcastChannelImpl: BroadcastChannelFake,
+    fetchImpl: async (...args) => {
+      fetchCalls.push(args);
+      throw new Error('local reset must not make an auth request');
+    }
+  };
+  const first = createSupabaseAuthClient({ ...clientOptions, storage: createMemoryStorage() });
+  const second = createSupabaseAuthClient({ ...clientOptions, storage: createMemoryStorage() });
+
+  try {
+    await first.signInWithApiToken({
+      accessToken: 'synthetic-first-tab-access-token',
+      refreshToken: 'synthetic-first-tab-refresh-token',
+      expiresIn: 3600
+    });
+    await second.signInWithApiToken({
+      accessToken: 'synthetic-second-tab-access-token',
+      refreshToken: 'synthetic-second-tab-refresh-token',
+      expiresIn: 3600
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+
+    const result = await first.clearLocalSessionAcrossTabs();
+    assert.deepEqual(result, { confirmed: true, expectedPeerCount: 1, acknowledgedPeerCount: 1 });
+    assert.equal(first.getSession(), null);
+    assert.equal(second.getSession(), null);
+    assert.deepEqual(fetchCalls, []);
+
+    for (const message of BroadcastChannelFake.sentMessages) {
+      assert.deepEqual(Object.keys(message).sort(), ['nonce', 'type']);
+    }
+    const messages = JSON.stringify(BroadcastChannelFake.sentMessages);
+    for (const token of [
+      'synthetic-first-tab-access-token',
+      'synthetic-first-tab-refresh-token',
+      'synthetic-second-tab-access-token',
+      'synthetic-second-tab-refresh-token'
+    ]) {
+      assert.equal(messages.includes(token), false);
+    }
+  } finally {
+    first.shutdown();
+    second.shutdown();
+  }
+  assert.equal(BroadcastChannelFake.sentMessages.filter(message => message.type === 'tab-close').length, 2);
+});
+
+test('a page entering the back-forward cache stays counted as an open auth tab', () => {
+  const BroadcastChannelFake = createFakeBroadcastChannel();
+  const originalAddEventListener = Object.getOwnPropertyDescriptor(globalThis, 'addEventListener');
+  const lifecycleListeners = new Map();
+  Object.defineProperty(globalThis, 'addEventListener', {
+    configurable: true,
+    writable: true,
+    value: (type, listener) => lifecycleListeners.set(type, listener)
+  });
+
+  const client = createSupabaseAuthClient({
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseAnonKey: 'anon',
+    storage: createMemoryStorage(),
+    broadcastChannelImpl: BroadcastChannelFake
+  });
+
+  try {
+    lifecycleListeners.get('pagehide')({ persisted: true });
+    assert.equal(BroadcastChannelFake.sentMessages.some(message => message.type === 'tab-close'), false);
+
+    lifecycleListeners.get('pageshow')({ persisted: true });
+    assert.equal(BroadcastChannelFake.sentMessages.filter(message => message.type === 'tab-open').length, 2);
+    assert.equal(BroadcastChannelFake.sentMessages.some(message => message.type === 'tab-close'), false);
+
+    lifecycleListeners.get('pagehide')({ persisted: false });
+    assert.equal(BroadcastChannelFake.sentMessages.filter(message => message.type === 'tab-close').length, 1);
+  } finally {
+    client.shutdown();
+    if (originalAddEventListener) {
+      Object.defineProperty(globalThis, 'addEventListener', originalAddEventListener);
+    } else {
+      delete globalThis.addEventListener;
+    }
+  }
+});
+
+test('shutdown settles a cross-tab reset interrupted during peer discovery', async () => {
+  const BroadcastChannelFake = createFakeBroadcastChannel();
+  const client = createSupabaseAuthClient({
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseAnonKey: 'anon',
+    storage: createMemoryStorage(),
+    broadcastChannelImpl: BroadcastChannelFake
+  });
+
+  const reset = client.clearLocalSessionAcrossTabs({ timeoutMs: 1000 });
+  await new Promise(resolve => setImmediate(resolve));
+  client.shutdown();
+
+  assert.deepEqual(await reset, {
+    confirmed: false,
+    expectedPeerCount: 0,
+    acknowledgedPeerCount: 0
+  });
+});
+
+test('a late opted-in refresh response cannot restore session after cross-tab local reset', async () => {
+  const BroadcastChannelFake = createFakeBroadcastChannel();
+  const storageKey = 'blend-supabase-auth-session-v2';
+  const storage = createMemoryStorage();
+  let releaseRefresh;
+  let refreshRequests = 0;
+  const client = createSupabaseAuthClient({
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseAnonKey: 'anon',
+    storage,
+    storageKey,
+    broadcastChannelImpl: BroadcastChannelFake,
+    fetchImpl: async () => {
+      refreshRequests += 1;
+      return new Promise(resolve => {
+        releaseRefresh = () => resolve(new Response(JSON.stringify({
+          access_token: 'synthetic-late-refreshed-access-token',
+          refresh_token: 'synthetic-late-refreshed-refresh-token',
+          expires_in: 3600
+        }), { status: 200, headers: { 'content-type': 'application/json' } }));
+      });
+    }
+  });
+
+  try {
+    await client.signInWithApiToken({
+      accessToken: 'synthetic-opted-in-access-token',
+      refreshToken: 'synthetic-opted-in-refresh-token',
+      expiresIn: 3600,
+      persist: true
+    });
+    const refresh = client.refreshSession();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(refreshRequests, 1);
+    assert.equal(typeof releaseRefresh, 'function');
+
+    const reset = await client.clearLocalSessionAcrossTabs();
+    assert.equal(reset.confirmed, true);
+    assert.equal(await refresh, null);
+    releaseRefresh();
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(client.getSession(), null);
+    assert.equal(storage.getItem(storageKey), null);
+    assert.equal(refreshRequests, 1);
+    assert.equal(BroadcastChannelFake.sentMessages.some(message => message.type === 'local-reset-ack'), false);
+  } finally {
+    client.shutdown();
+    releaseRefresh?.();
   }
 });
 
