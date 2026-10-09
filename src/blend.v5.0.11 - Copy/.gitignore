@@ -9,3 +9,10 @@ node_modules/
 
 # Beads workspace coordination lock.
 .beads.gate.lock
+
+# Environment-specific secrets and local overrides.
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
