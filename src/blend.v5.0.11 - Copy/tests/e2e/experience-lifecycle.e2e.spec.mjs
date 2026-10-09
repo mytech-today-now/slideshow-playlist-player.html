@@ -8,7 +8,7 @@ import {
   saveDownloadWithRetry
 } from './support/experience-lifecycle-utils.mjs';
 
-const SAVE_FAILURE_MESSAGE = 'Some changes could not be saved. Retry or export a backup before closing.';
+const SAVE_FAILURE_MESSAGE = 'Changes are not saved yet. Retry or export a backup before closing.';
 
 async function setPersistedStateFixture(page, { projectName, libraryId, opacity }) {
   return page.evaluate(async ({ nextProjectName, nextLibraryId, nextOpacity }) => {

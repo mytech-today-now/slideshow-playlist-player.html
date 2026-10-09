@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-08
+goal: Version-check and label installed and online documentation while retaining
+  offline help, retry, and source-specific scroll state.

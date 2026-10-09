@@ -48,11 +48,8 @@ function isMediaRequest(request, url) {
     MEDIA_EXTENSIONS.test(url.pathname);
 }
 
-function shouldBypassWorker(request, url) {
-  const path = url.pathname.toLowerCase();
-  if (request.cache === 'no-store') return true;
-  if (path.endsWith('/readme.md')) return true;
-  return false;
+function shouldBypassWorker(request) {
+  return request.cache === 'no-store';
 }
 
 function cacheNameForPolicy(policy) {
@@ -412,7 +409,7 @@ self.addEventListener('fetch', event => {
   if (!isSupportedProtocol(url)) return;
   if (url.origin !== self.location.origin) return;
 
-  if (shouldBypassWorker(request, url)) return;
+  if (shouldBypassWorker(request)) return;
 
   if (isRangeRequest(request) || isMediaRequest(request, url)) {
     event.respondWith(fetch(request));

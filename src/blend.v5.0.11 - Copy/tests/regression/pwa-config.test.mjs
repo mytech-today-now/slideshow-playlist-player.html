@@ -43,6 +43,10 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./alias-router.js'));
 });
 
+test('same-folder README is precached in the documentation cache for offline help', () => {
+  assert.ok(config.PRECACHE_OPTIONAL.includes('./README.md'));
+});
+
 test('HTML shell uses manifest.webmanifest and the configured asset version', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
   const app = await readFile(new URL('app.js', root), 'utf8');

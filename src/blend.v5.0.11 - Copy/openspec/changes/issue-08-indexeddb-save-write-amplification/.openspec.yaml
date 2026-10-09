@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-08
+goal: Benchmark realistic snapshot sizes and commit only changed records inside
+  the existing atomic transaction.

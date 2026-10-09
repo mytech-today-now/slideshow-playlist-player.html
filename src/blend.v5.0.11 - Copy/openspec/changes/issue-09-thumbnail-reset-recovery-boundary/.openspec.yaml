@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-08
+goal: Bound reset snapshot memory by thumbnail cache size and preserve truthful
+  cache-only recovery outcomes.

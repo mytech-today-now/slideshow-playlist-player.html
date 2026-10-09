@@ -86,7 +86,7 @@ async function seedPrivateAndPublicRecords(page, {
       state.library.set('unused-secret-id-02', {
         id: 'unused-secret-id-02', name: 'Unused private media 02', type: 'video', size: 3600,
         duration: 36, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
-        pathHint: 'C:\\private\\unused-directory\\unused-secret-02.mp4',
+        pathHint: 'C:/private/unused-directory/unused-secret-02.mp4',
         sourceUrl: 'https://private.example.test/unused-secret-url-02.mp4',
         metadata: {
           marker: 'unused-secret-metadata-02',
@@ -105,6 +105,8 @@ async function seedPrivateAndPublicRecords(page, {
       ? [{ id: 'public-video', sourceUrl: publicUrl, metadata: { sourceUrl: publicUrl }, available: true }]
       : [];
     state.projectName = 'Private Media Export E2E';
+    state.activeExperienceId = 'exp-private-media-export-e2e';
+    localStorage.setItem('blend-active-experience-id', state.activeExperienceId);
     state.ui.activeList = 'playlist';
     blend.renderLibrary();
     blend.renderListEditor();
@@ -163,6 +165,8 @@ async function seedPublicSupabaseOnly(page) {
     }];
     state.slideshow = [];
     state.projectName = 'Public Supabase Share E2E';
+    state.activeExperienceId = 'exp-public-supabase-share-e2e';
+    localStorage.setItem('blend-active-experience-id', state.activeExperienceId);
     state.ui.activeList = 'playlist';
     blend.renderLibrary();
     blend.renderListEditor();
@@ -243,7 +247,7 @@ test('JSON export preserves private references while compressed sharing blocks t
   assertNoBearerData(exported);
   assertNoPathSentinels(exported);
   expect(await snapshotUserState(page)).toEqual(beforeExperienceExport);
-  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE })).toHaveText(PATH_OMISSION_NOTICE);
+  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE }).last()).toHaveText(PATH_OMISSION_NOTICE);
   expect(exported.library.items.some(item => item.id === 'unused-secret-id-02')).toBeTruthy();
   const exportedPrivate = exported.library.items.find(item => item.id === 'private-video');
   expect(exportedPrivate.path).toBe(PORTABLE_REFERENCE);
@@ -282,7 +286,7 @@ test('JSON export preserves private references while compressed sharing blocks t
   await shareTrigger.click();
   const toast = page.locator('#toast-container .toast[role="alert"]');
   await expect(toast).toHaveText(PRIVATE_POLICY_WARNING, { timeout: 7000 });
-  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE })).toHaveText(PATH_OMISSION_NOTICE);
+  await expect(page.locator('#toast-container .toast[role="status"]').filter({ hasText: PATH_OMISSION_NOTICE }).last()).toHaveText(PATH_OMISSION_NOTICE);
   const shareInput = page.locator('#url-share-url-input');
   await expect(page.locator('#url-share-modal')).not.toBeVisible();
   await expect(shareInput).toHaveValue('');

@@ -7,8 +7,8 @@ const AUTH_STORAGE_KEY = 'blend-supabase-auth-session-v2';
 const RUNTIME_CONFIG_STORAGE_KEY = 'blend-runtime-config-v1';
 const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.';
 const RESET_SESSION_STORAGE_FAILURE = 'Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.';
-const RESET_SNAPSHOT_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept because a recovery snapshot could not be created.';
-const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept for recovery and retry after the database deletion failed. Close other Blend tabs and try again.';
+const RESET_SNAPSHOT_FAILURE = 'Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.';
+const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser. Saved data recovery is in progress; the thumbnail cache may be cleared, and previews can regenerate from retained media handles when available. Close other Blend tabs and retry.';
 const RESET_UNCONFIRMED_FAILURE = 'This tab is signed out, but another Blend tab may still be active. Close all Blend tabs and retry the local reset.';
 const RESET_SUCCESS = 'Browser data cleared. The saved Supabase session was removed, runtime configuration was preserved, and other apps on this site were left alone.';
 const AUTH_RESET_CHANNEL = 'blend-supabase-auth-local-reset-v1:blend-supabase-auth-session-v2';
@@ -165,23 +165,246 @@ async function seedResetThumbnail(page) {
   }));
 }
 
-async function storedResetThumbnail(page) {
-  return page.evaluate(() => new Promise(resolve => {
+async function seedResetUserAuthoredState(page) {
+  await page.evaluate(async () => {
+    const state = window.Blend.state;
+    const libraryId = 'synthetic-library-entry';
+    const file = new File([
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="#2480a8"/></svg>'
+    ], 'synthetic-preview.svg', { type: 'image/svg+xml', lastModified: 5 });
+    state.library.set(libraryId, {
+      id: libraryId,
+      handle: {
+        kind: 'file',
+        name: file.name,
+        transient: true,
+        file,
+        getFile: async () => file
+      },
+      name: 'Synthetic media entry',
+      size: file.size,
+      type: 'image',
+      sourceUrl: null,
+      pathHint: 'synthetic-reference',
+      addedAt: 1,
+      lastVerified: 1,
+      stale: true
+    });
+    state.playlist = [{ id: libraryId, name: 'Synthetic media entry', path: 'synthetic-reference', type: 'image', available: false, order: 0 }];
+    state.slideshow = [{ id: libraryId, name: 'Synthetic media entry', path: 'synthetic-reference', type: 'image', available: false, displayDuration: 4, order: 0 }];
+    state.settings.masterVolume = 0.42;
+    state.directoryHandles.set('synthetic-directory-entry', {
+      id: 'synthetic-directory-entry',
+      name: 'Synthetic directory entry',
+      addedAt: 1,
+      handle: { synthetic: true }
+    });
+    if (!(await window.Blend.saveStateNow())) throw new Error('Synthetic user state did not persist');
+  });
+}
+
+async function seedSyntheticThumbnailProfile(page, { count, bytesPerBlob }) {
+  return page.evaluate(({ count: recordCount, bytesPerBlob: blobSize }) => new Promise((resolve, reject) => {
     const request = indexedDB.open('player-blend-v1', 5);
     request.onsuccess = () => {
       const connection = request.result;
-      if (!connection.objectStoreNames.contains('thumbnails')) {
-        connection.close();
-        resolve(null);
-        return;
+      const transaction = connection.transaction('thumbnails', 'readwrite');
+      const store = transaction.objectStore('thumbnails');
+      const payload = new Uint8Array(blobSize);
+      for (let index = 0; index < recordCount; index += 1) {
+        store.put({
+          key: `synthetic-cache-${index}`,
+          blob: new Blob([payload], { type: 'image/webp' }),
+          at: index
+        });
       }
-      const transaction = connection.transaction('thumbnails', 'readonly');
-      const result = transaction.objectStore('thumbnails').get('reset-rollback-marker');
-      result.onsuccess = () => resolve(result.result?.value || null);
-      transaction.oncomplete = () => connection.close();
-      transaction.onerror = () => { connection.close(); resolve(null); };
+      const countRequest = store.count();
+      let storedCount = 0;
+      countRequest.onsuccess = () => { storedCount = countRequest.result || 0; };
+      transaction.oncomplete = () => {
+        connection.close();
+        resolve({ recordCount: storedCount, totalBlobBytes: storedCount * blobSize });
+      };
+      transaction.onerror = () => { connection.close(); reject(transaction.error); };
+      transaction.onabort = () => { connection.close(); reject(transaction.error || new Error('Synthetic thumbnail seed aborted')); };
     };
-    request.onerror = () => resolve(null);
+    request.onerror = () => reject(request.error);
+  }), { count, bytesPerBlob });
+}
+
+async function clearSyntheticThumbnailStore(page) {
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const transaction = connection.transaction('thumbnails', 'readwrite');
+      transaction.objectStore('thumbnails').clear();
+      transaction.oncomplete = () => { connection.close(); resolve(); };
+      transaction.onerror = () => { connection.close(); reject(transaction.error); };
+    };
+    request.onerror = () => reject(request.error);
+  }));
+}
+
+async function storedThumbnailCount(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const transaction = connection.transaction('thumbnails', 'readonly');
+      const count = transaction.objectStore('thumbnails').count();
+      count.onsuccess = () => resolve(count.result || 0);
+      transaction.oncomplete = () => connection.close();
+      transaction.onerror = () => { connection.close(); reject(transaction.error); };
+    };
+    request.onerror = () => reject(request.error);
+  }));
+}
+
+async function installSnapshotReadMetrics(page) {
+  await page.evaluate(() => {
+    const requiredStores = ['library', 'dirHandles', 'experiences', 'playlist', 'slideshow', 'settings', 'aliases', 'aliasMeta'];
+    const trackedTransactions = new WeakSet();
+    const metrics = {
+      active: false,
+      transactionCount: 0,
+      storeNames: [],
+      getAllRequests: 0,
+      getAllKeysRequests: 0,
+      readRecords: 0,
+      thumbnailValueRequests: 0,
+      thumbnailKeyRequests: 0,
+      thumbnailRecordsRead: 0,
+      thumbnailBlobBytesRead: 0,
+      heapBeforeBytes: null,
+      heapAfterBytes: null
+    };
+    window.__resetSnapshotMetrics = metrics;
+    const isSnapshotTransaction = transaction => {
+      if (!metrics.active || !transaction || transaction.mode !== 'readonly') return false;
+      const names = Array.from(transaction.objectStoreNames);
+      return requiredStores.every(name => names.includes(name));
+    };
+    const trackRequest = (store, kind, request) => {
+      if (!isSnapshotTransaction(store.transaction)) return request;
+      if (!trackedTransactions.has(store.transaction)) {
+        trackedTransactions.add(store.transaction);
+        metrics.transactionCount += 1;
+        metrics.storeNames = Array.from(store.transaction.objectStoreNames).sort();
+      }
+      if (kind === 'values') metrics.getAllRequests += 1;
+      else metrics.getAllKeysRequests += 1;
+      if (store.name === 'thumbnails') {
+        if (kind === 'values') metrics.thumbnailValueRequests += 1;
+        else metrics.thumbnailKeyRequests += 1;
+      }
+      request.addEventListener('success', () => {
+        const rows = request.result || [];
+        metrics.readRecords += rows.length;
+        if (store.name === 'thumbnails') {
+          metrics.thumbnailRecordsRead += rows.length;
+          if (kind === 'values') {
+            metrics.thumbnailBlobBytesRead += rows.reduce((sum, row) => sum + Number(row?.blob?.size || 0), 0);
+          }
+        }
+      }, { once: true });
+      return request;
+    };
+    window.__nativeSnapshotGetAll = IDBObjectStore.prototype.getAll;
+    window.__nativeSnapshotGetAllKeys = IDBObjectStore.prototype.getAllKeys;
+    IDBObjectStore.prototype.getAll = function getAllWithSnapshotMetrics(...args) {
+      return trackRequest(this, 'values', Reflect.apply(window.__nativeSnapshotGetAll, this, args));
+    };
+    IDBObjectStore.prototype.getAllKeys = function getAllKeysWithSnapshotMetrics(...args) {
+      return trackRequest(this, 'keys', Reflect.apply(window.__nativeSnapshotGetAllKeys, this, args));
+    };
+  });
+}
+
+async function startSnapshotReadMetrics(page) {
+  await page.evaluate(() => {
+    const metrics = window.__resetSnapshotMetrics;
+    metrics.heapBeforeBytes = Number.isFinite(performance.memory?.usedJSHeapSize)
+      ? performance.memory.usedJSHeapSize
+      : null;
+    metrics.active = true;
+  });
+}
+
+async function stopSnapshotReadMetrics(page) {
+  return page.evaluate(() => {
+    const metrics = window.__resetSnapshotMetrics;
+    metrics.active = false;
+    metrics.heapAfterBytes = Number.isFinite(performance.memory?.usedJSHeapSize)
+      ? performance.memory.usedJSHeapSize
+      : null;
+    return {
+      ...metrics,
+      heapDeltaBytes: metrics.heapBeforeBytes == null || metrics.heapAfterBytes == null
+        ? null
+        : metrics.heapAfterBytes - metrics.heapBeforeBytes
+    };
+  });
+}
+
+async function restoreSnapshotReadMetrics(page) {
+  await page.evaluate(() => {
+    if (window.__nativeSnapshotGetAll) IDBObjectStore.prototype.getAll = window.__nativeSnapshotGetAll;
+    if (window.__nativeSnapshotGetAllKeys) IDBObjectStore.prototype.getAllKeys = window.__nativeSnapshotGetAllKeys;
+    delete window.__nativeSnapshotGetAll;
+    delete window.__nativeSnapshotGetAllKeys;
+    delete window.__resetSnapshotMetrics;
+  });
+}
+
+async function persistedResetState(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const names = ['library', 'playlist', 'slideshow', 'settings', 'experiences', 'dirHandles', 'thumbnails'];
+      const transaction = connection.transaction(names, 'readonly');
+      const state = {};
+      for (const name of names) {
+        if (name === 'thumbnails') {
+          const count = transaction.objectStore(name).count();
+          count.onsuccess = () => { state.thumbnailCount = count.result || 0; };
+          continue;
+        }
+        const rows = transaction.objectStore(name).getAll();
+        rows.onsuccess = () => {
+          const records = rows.result || [];
+          if (name === 'library') {
+            state.libraryCount = records.length;
+            state.libraryIds = records.map(row => row.id).sort();
+            state.libraryNames = records.map(row => row.name).sort();
+          }
+          if (name === 'playlist') {
+            const items = records.find(row => row.key === 'default')?.items || [];
+            state.playlistItemCount = items.length;
+            state.playlistItemIds = items.map(item => item.id);
+          }
+          if (name === 'slideshow') {
+            const items = records.find(row => row.key === 'default')?.items || [];
+            state.slideshowItemCount = items.length;
+            state.slideshowItemIds = items.map(item => item.id);
+          }
+          if (name === 'settings') state.masterVolume = records.find(row => row.key === 'global')?.masterVolume ?? null;
+          if (name === 'experiences') {
+            state.experienceCount = records.length;
+            state.experienceNames = records.map(row => row.name).sort();
+          }
+          if (name === 'dirHandles') {
+            state.directoryHandleCount = records.length;
+            state.directoryHandleNames = records.map(row => row.name).sort();
+          }
+        };
+      }
+      transaction.oncomplete = () => { connection.close(); resolve(state); };
+      transaction.onerror = () => { connection.close(); reject(transaction.error); };
+      transaction.onabort = () => { connection.close(); reject(transaction.error || new Error('Synthetic reset-state read aborted')); };
+    };
+    request.onerror = () => reject(request.error);
   }));
 }
 
@@ -189,7 +412,7 @@ async function injectDeleteFailure(page, mode) {
   await page.evaluate(failureMode => {
     const factory = IDBFactory.prototype;
     window.__nativeDeleteDatabase = factory.deleteDatabase;
-    factory.deleteDatabase = function deleteDatabaseWithFailure() {
+    factory.deleteDatabase = function deleteDatabaseWithFailure(...args) {
       const request = {};
       if (failureMode === 'error') {
         setTimeout(() => {
@@ -214,6 +437,14 @@ async function injectSnapshotFailure(page) {
       }
       return Reflect.apply(window.__nativeDatabaseTransaction, this, args);
     };
+
+    const factory = IDBFactory.prototype;
+    window.__nativeDeleteDatabase = factory.deleteDatabase;
+    window.__resetDeleteDatabaseAttempts = 0;
+    factory.deleteDatabase = function countedDeleteDatabase(...args) {
+      window.__resetDeleteDatabaseAttempts += 1;
+      return Reflect.apply(window.__nativeDeleteDatabase, this, args);
+    };
   });
 }
 
@@ -222,6 +453,10 @@ async function restoreSnapshotFailure(page) {
     if (window.__nativeDatabaseTransaction) {
       IDBDatabase.prototype.transaction = window.__nativeDatabaseTransaction;
       delete window.__nativeDatabaseTransaction;
+    }
+    if (window.__nativeDeleteDatabase) {
+      IDBFactory.prototype.deleteDatabase = window.__nativeDeleteDatabase;
+      delete window.__nativeDeleteDatabase;
     }
   });
 }
@@ -550,7 +785,7 @@ test('reset reports a saved-session removal failure and keeps existing Blend dat
   expect(authRequests).toBe(0);
 });
 
-test('snapshot failure reports local sign-out and kept data, then retry completes without restoring the session', async ({ page }) => {
+test('snapshot failure keeps saved data and the local session, then retry completes', async ({ page }) => {
   let authRequests = 0;
   await page.route('**/auth/v1/**', async route => {
     authRequests += 1;
@@ -573,8 +808,10 @@ test('snapshot failure reports local sign-out and kept data, then retry complete
   await blendPage.openConfig();
   await confirmResetWithKeyboard(page);
   await expect(blendPage.toastContainer).toContainText(RESET_SNAPSHOT_FAILURE);
-  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
-  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
+  await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY))
+    .toContain('synthetic-snapshot-reset-access-token');
+  expect(await page.evaluate(() => window.__resetDeleteDatabaseAttempts)).toBe(0);
   expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name)))
     .toContain('Keep after snapshot failure');
   await expect.poll(() => storedExperienceNames(page)).toContain('Keep after snapshot failure');
@@ -583,9 +820,277 @@ test('snapshot failure reports local sign-out and kept data, then retry complete
   await restoreSnapshotFailure(page);
   await confirmResetWithKeyboard(page);
   await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS);
+  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
   expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
   expect(authRequests).toBe(0);
+});
+
+test('measures small, typical, and large thumbnail caches while recovering every user-authored store', async ({ browser }) => {
+  test.setTimeout(120000);
+  const profiles = [
+    { name: 'small', count: 10, bytesPerBlob: 1024 },
+    { name: 'typical', count: 512, bytesPerBlob: 8192 },
+    { name: 'large', count: 4096, bytesPerBlob: 16384 }
+  ];
+  const measurements = [];
+  for (const profile of profiles) {
+    const context = await browser.newContext({
+      baseURL: FIXTURE_ORIGIN,
+      viewport: { width: 1366, height: 900 }
+    });
+    try {
+      const page = await context.newPage();
+      const blendPage = new BlendAppPage(page);
+      await blendPage.boot('/index.html');
+      await blendPage.createExperience('Synthetic rollback experience');
+      await seedResetUserAuthoredState(page);
+      const expectedUserState = await persistedResetState(page);
+      expect(expectedUserState).toMatchObject({
+        libraryCount: 1,
+        libraryIds: ['synthetic-library-entry'],
+        libraryNames: ['Synthetic media entry'],
+        playlistItemCount: 1,
+        playlistItemIds: ['synthetic-library-entry'],
+        slideshowItemCount: 1,
+        slideshowItemIds: ['synthetic-library-entry'],
+        masterVolume: 0.42,
+        directoryHandleCount: 1,
+        directoryHandleNames: ['Synthetic directory entry'],
+        thumbnailCount: 0
+      });
+      expect(expectedUserState.experienceCount).toBeGreaterThan(0);
+      expect(expectedUserState.experienceNames).toContain('Synthetic rollback experience');
+      const expectedUserAuthoredState = Object.fromEntries(
+        Object.entries(expectedUserState).filter(([key]) => key !== 'thumbnailCount')
+      );
+
+      const seeded = await seedSyntheticThumbnailProfile(page, profile);
+      expect(seeded).toEqual({
+        recordCount: profile.count,
+        totalBlobBytes: profile.count * profile.bytesPerBlob
+      });
+
+      await installSnapshotReadMetrics(page);
+      await startSnapshotReadMetrics(page);
+      await injectDeleteFailure(page, 'timeout');
+      await blendPage.openConfig();
+      await confirmResetWithKeyboard(page);
+      await expect(blendPage.toastContainer).toContainText(RESET_DELETE_FAILURE, { timeout: 12000 });
+      const snapshot = await stopSnapshotReadMetrics(page);
+      await restoreSnapshotReadMetrics(page);
+      await restoreDeleteDatabase(page);
+
+      expect(snapshot.transactionCount).toBe(1);
+      expect(snapshot.storeNames).toHaveLength(8);
+      expect(snapshot.storeNames).not.toContain('thumbnails');
+      expect(snapshot.getAllRequests).toBe(8);
+      expect(snapshot.getAllKeysRequests).toBe(8);
+      expect(snapshot.thumbnailValueRequests).toBe(0);
+      expect(snapshot.thumbnailKeyRequests).toBe(0);
+      expect(snapshot.thumbnailRecordsRead).toBe(0);
+      expect(snapshot.thumbnailBlobBytesRead).toBe(0);
+
+      await expect.poll(async () => {
+        const persisted = await persistedResetState(page);
+        return Object.fromEntries(Object.entries(persisted).filter(([key]) => key !== 'thumbnailCount'));
+      }, { timeout: 15000 }).toEqual(expectedUserAuthoredState);
+      const stateAfterFailedReset = await persistedResetState(page);
+      expect(stateAfterFailedReset.thumbnailCount).toBeGreaterThanOrEqual(seeded.recordCount);
+      expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();
+
+      if (profile.name === 'small') {
+        const retainedHandle = await page.evaluate(async () => {
+          const item = window.Blend.state.library.get('synthetic-library-entry');
+          const file = await item?.handle?.getFile?.();
+          return { available: !!file, bytes: file?.size || 0 };
+        });
+        expect(retainedHandle.available).toBe(true);
+        expect(retainedHandle.bytes).toBeGreaterThan(0);
+      }
+
+      const measurement = {
+        profile: profile.name,
+        thumbnailRecords: seeded.recordCount,
+        thumbnailRecordsAfterFailedReset: stateAfterFailedReset.thumbnailCount,
+        thumbnailBlobBytes: seeded.totalBlobBytes,
+        snapshotStoreCount: snapshot.storeNames.length,
+        snapshotReadRecords: snapshot.readRecords,
+        snapshotValueRequests: snapshot.getAllRequests,
+        snapshotKeyRequests: snapshot.getAllKeysRequests,
+        snapshotThumbnailRecords: snapshot.thumbnailRecordsRead,
+        snapshotThumbnailBlobBytes: snapshot.thumbnailBlobBytesRead,
+        heapBeforeBytes: snapshot.heapBeforeBytes,
+        heapAfterBytes: snapshot.heapAfterBytes,
+        heapDeltaBytes: snapshot.heapDeltaBytes
+      };
+      measurements.push(measurement);
+      console.log(`RESET_SNAPSHOT_METRICS ${JSON.stringify(measurement)}`);
+    } finally {
+      await context.close();
+    }
+  }
+  expect(measurements.map(item => item.thumbnailRecords)).toEqual([10, 512, 4096]);
+  expect(measurements.map(item => item.thumbnailBlobBytes)).toEqual([10240, 4194304, 67108864]);
+  expect(measurements.every(item => item.snapshotThumbnailRecords === 0 && item.snapshotThumbnailBlobBytes === 0)).toBe(true);
+});
+
+test('a missing thumbnail cache regenerates lazily from a retained handle and uses an icon fallback without one', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  await clearSyntheticThumbnailStore(page);
+  await blendPage.openConfig();
+
+  await page.evaluate(() => {
+    const syntheticSvg = new File([
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="#2480a8"/></svg>'
+    ], 'synthetic-preview.svg', { type: 'image/svg+xml', lastModified: 5 });
+    const id = 'synthetic-preview-rebuild';
+    window.Blend.state.library.set(id, {
+      id,
+      name: syntheticSvg.name,
+      size: syntheticSvg.size,
+      type: 'image',
+      sourceUrl: null,
+      pathHint: 'synthetic-preview',
+      stale: false,
+      handle: { getFile: async () => syntheticSvg }
+    });
+    window.Blend.renderLibrary();
+  });
+
+  const previewRow = page.locator('[data-id="synthetic-preview-rebuild"]');
+  await previewRow.scrollIntoViewIfNeeded();
+  const generatedPreview = previewRow.locator('.thumb img');
+  await expect(generatedPreview).toBeVisible({ timeout: 12000 });
+  const generatedCache = await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const transaction = connection.transaction('thumbnails', 'readonly');
+      const result = transaction.objectStore('thumbnails').getAll();
+      result.onsuccess = () => resolve((result.result || []).map(record => ({
+        blobBytes: record?.blob?.size || 0,
+        mimeType: record?.blob?.type || ''
+      })));
+      transaction.oncomplete = () => connection.close();
+      transaction.onerror = () => { connection.close(); reject(transaction.error); };
+    };
+    request.onerror = () => reject(request.error);
+  }));
+  expect(generatedCache).toHaveLength(1);
+  expect(generatedCache[0].blobBytes).toBeGreaterThan(0);
+  expect(generatedCache[0].mimeType).toMatch(/^image\//);
+
+  await page.evaluate(() => {
+    const id = 'synthetic-preview-fallback';
+    window.Blend.state.library.set(id, {
+      id,
+      name: 'synthetic-unavailable-preview',
+      size: 0,
+      type: 'image',
+      sourceUrl: null,
+      pathHint: 'synthetic-unavailable-preview',
+      stale: true,
+      handle: null
+    });
+    window.Blend.renderLibrary();
+  });
+  await expect(page.locator('[data-id="synthetic-preview-fallback"] .thumb')).toHaveText('🖼️');
+});
+
+test('reset confirmation and partial-failure copy fit the established viewport matrix', async ({ page }) => {
+  const viewports = [
+    { width: 3840, height: 2160 },
+    { width: 1920, height: 1080 },
+    { width: 1024, height: 768 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 360, height: 800 }
+  ];
+  const blendPage = new BlendAppPage(page);
+  await page.setViewportSize(viewports[0]);
+  await blendPage.boot('/index.html');
+  await blendPage.openConfig();
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => { document.body.style.fontSize = '200%'; });
+    const resetButton = page.locator('#clear-browser-storage');
+    await resetButton.scrollIntoViewIfNeeded();
+    await resetButton.focus();
+    await page.keyboard.press('Enter');
+    const okButton = page.locator('#experience-modal-ok');
+    await expect(page.locator('#experience-modal')).toBeVisible();
+    await expect(okButton).toBeFocused();
+    await expect(okButton).toHaveAccessibleName('✓ Clear Browser Storage');
+
+    const layout = await page.evaluate(() => {
+      const dialog = document.querySelector('#experience-modal');
+      const message = document.querySelector('#experience-modal-message');
+      const button = document.querySelector('#experience-modal-ok');
+      const toastContainer = document.documentElement;
+      const rect = node => {
+        const bounds = node.getBoundingClientRect();
+        return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom, width: bounds.width, height: bounds.height };
+      };
+      const buttonStyle = getComputedStyle(button);
+      const messageStyle = getComputedStyle(message);
+      return {
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        documentWidth: toastContainer.scrollWidth,
+        bodyFontSize: getComputedStyle(document.body).fontSize,
+        dialog: rect(dialog),
+        message: { ...rect(message), scrollWidth: message.scrollWidth, clientWidth: message.clientWidth, lineHeight: parseFloat(messageStyle.lineHeight) || 0 },
+        button: rect(button),
+        buttonOutlineStyle: buttonStyle.outlineStyle,
+        fontSize: messageStyle.fontSize
+      };
+    });
+    expect(layout.dialog.left).toBeGreaterThanOrEqual(-2);
+    expect(layout.dialog.right).toBeLessThanOrEqual(viewport.width + 2);
+    expect(layout.dialog.top).toBeGreaterThanOrEqual(-2);
+    expect(layout.dialog.bottom).toBeLessThanOrEqual(viewport.height + 2);
+    expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width + 2);
+    expect(layout.message.scrollWidth).toBeLessThanOrEqual(layout.message.clientWidth + 1);
+    expect(layout.message.height).toBeGreaterThan(layout.message.lineHeight);
+    expect(layout.button.height).toBeGreaterThanOrEqual(44);
+    expect(layout.button.width).toBeGreaterThanOrEqual(44);
+    expect(layout.button.top).toBeGreaterThanOrEqual(-2);
+    expect(layout.button.bottom).toBeLessThanOrEqual(viewport.height + 2);
+    expect(layout.buttonOutlineStyle).not.toBe('none');
+    expect(layout.bodyFontSize).toBe('26px');
+    expect(layout.fontSize).toBe(layout.bodyFontSize);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#experience-modal')).not.toBeVisible();
+    await expect(resetButton).toBeFocused();
+    await page.evaluate(() => { document.body.style.removeProperty('font-size'); });
+  }
+
+  await page.evaluate(() => { document.body.style.fontSize = '200%'; });
+  await injectDeleteFailure(page, 'error');
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer).toContainText(RESET_DELETE_FAILURE);
+  const resetButton = page.locator('#clear-browser-storage');
+  await expect(resetButton).toBeVisible();
+  await expect(resetButton).toBeFocused();
+  await expect(resetButton).toHaveAccessibleName('Clear Browser Storage');
+  const toastLayout = await page.locator('#toast-container .toast').last().evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      scrollWidth: node.scrollWidth,
+      clientWidth: node.clientWidth,
+      viewportWidth: window.innerWidth
+    };
+  });
+  expect(toastLayout.left).toBeGreaterThanOrEqual(-2);
+  expect(toastLayout.right).toBeLessThanOrEqual(toastLayout.viewportWidth + 2);
+  expect(toastLayout.scrollWidth).toBeLessThanOrEqual(toastLayout.clientWidth + 1);
+  await restoreDeleteDatabase(page);
 });
 
 test('blocked deletion keeps the current experience and a retry clears it after reload', async ({ page }) => {
@@ -637,7 +1142,6 @@ test('blocked deletion keeps the current experience and a retry clears it after 
   await holderPage.evaluate(() => window.__heldBlendDatabase.close());
   await holderPage.close();
   await expect.poll(() => storedExperienceNames(page), { timeout: 12000 }).toContain('Keep this experience');
-  await expect.poll(() => storedResetThumbnail(page), { timeout: 12000 }).toBe('preserve-me');
 
   await confirmResetWithKeyboard(page);
   await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS, { timeout: 12000 });

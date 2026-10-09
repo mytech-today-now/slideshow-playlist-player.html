@@ -18,6 +18,22 @@ export default defineConfig({
     ['list'],
     ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }]
   ],
+  projects: [
+    {
+      name: 'chromium',
+      use: { browserName: 'chromium' }
+    },
+    {
+      name: 'firefox',
+      testMatch: /browser-compatibility\.e2e\.spec\.mjs$/,
+      use: { browserName: 'firefox' }
+    },
+    {
+      name: 'webkit',
+      testMatch: /browser-compatibility\.e2e\.spec\.mjs$/,
+      use: { browserName: 'webkit' }
+    }
+  ],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     headless: true,

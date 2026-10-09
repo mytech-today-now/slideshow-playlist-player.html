@@ -100,6 +100,13 @@ async function installDirectoryPicker(page, mode) {
       window.__directoryPickerCalls = () => pickCount;
       window.showDirectoryPicker = async () => (pickCount++ === 0 ? root : level7);
       return;
+    } else if (scanMode === 'depth-empty') {
+      let nested = makeDirectory('Level7', async function* () {});
+      for (let depth = 6; depth >= 1; depth--) {
+        const child = nested;
+        nested = makeDirectory(`Level${depth}`, async function* () { yield child; });
+      }
+      root = makeDirectory('EmptyDepth', async function* () { yield nested; });
     } else if (scanMode === 'partial-retry') {
       const before = makeFile('before.mp4', 'before');
       const middle = makeFile('middle.mp4', 'middle');
@@ -576,6 +583,23 @@ test('depth-limit scans report truncation and recover from a deeper folder witho
     const video = document.querySelector('#playlist-layer video');
     return !!video && video.readyState >= 2 && video.videoWidth > 0 && !video.paused;
   }, undefined, { timeout: 20000 });
+});
+
+test('a depth-truncated scan with no discovered media reports partial instead of empty', async ({ page }) => {
+  await bootApp(page);
+  await installDirectoryPicker(page, 'depth-empty');
+
+  await page.locator('#add-folder').click();
+
+  const status = page.locator('#config-panel > .toast-directory-scan');
+  await expect(status).toHaveAttribute('role', 'status');
+  await expect(status).toContainText('Folder scan stopped at the six-level limit. Select a deeper folder directly to include its media.');
+  await expect(status).toContainText('1 folder was skipped at the limit.');
+  await expect(status).toContainText('0 media files found; 0 added, 0 already present.');
+  await expect(status.getByRole('button', { name: 'Choose deeper folder' })).toHaveCount(1);
+  await expect(page.getByText('No supported media found in that folder', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.Blend.state.library.size)).toBe(0);
 });
 
 test('an empty complete folder scan explains that no supported media was found', async ({ page }) => {

@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261008-v5.0.11-issue07-directory-walk-file-limit';
-  const CACHE_VERSION = '20261008-v5.0.11-issue07-directory-walk-file-limit';
+  const ASSET_VERSION = '20261008-v5.0.11-issue13-information-readme-version';
+  const CACHE_VERSION = '20261008-v5.0.11-issue13-information-readme-version';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -72,6 +72,7 @@
   ]);
 
   const PRECACHE_OPTIONAL = Object.freeze([
+    './README.md',
     './manifest.json',
     './about-hero-dark-full.png',
     './assets/icon.svg',

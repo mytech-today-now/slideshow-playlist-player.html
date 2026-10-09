@@ -1,0 +1,353 @@
+{
+  "benchmark": "experience-persistence-synthetic-node",
+  "environment": {
+    "runtime": "v24.14.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "syntheticOnly": true,
+  "results": [
+    {
+      "libraryItemCount": 1000,
+      "fixture": {
+        "recordCountsByStore": {
+          "library": 1000,
+          "dirHandles": 4,
+          "experiences": 10,
+          "playlist": 1,
+          "slideshow": 1,
+          "settings": 1
+        },
+        "recordCount": 1017,
+        "payloadBytes": 275364
+      },
+      "mergeEntriesPerSave": 1017,
+      "scenarios": [
+        {
+          "scenario": "setting",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            1017,
+            1017,
+            1017
+          ],
+          "queuedWritesPerSave": [
+            1018,
+            1018,
+            1018
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 1000,
+            "dirHandles": 4,
+            "experiences": 10,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 25.633,
+          "p95DurationMs": 51.09,
+          "heapBeforeBytes": 6636624,
+          "heapAfterBytes": 16472168,
+          "heapDeltaBytesMedian": 1073688
+        },
+        {
+          "scenario": "list-entry",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            1017,
+            1017,
+            1017
+          ],
+          "queuedWritesPerSave": [
+            1018,
+            1018,
+            1018
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 1000,
+            "dirHandles": 4,
+            "experiences": 10,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 27.274,
+          "p95DurationMs": 38.284,
+          "heapBeforeBytes": 15046240,
+          "heapAfterBytes": 26991136,
+          "heapDeltaBytesMedian": 1433440
+        },
+        {
+          "scenario": "library-item",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            1017,
+            1017,
+            1017
+          ],
+          "queuedWritesPerSave": [
+            1018,
+            1018,
+            1018
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 1000,
+            "dirHandles": 4,
+            "experiences": 10,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 25.159,
+          "p95DurationMs": 25.264,
+          "heapBeforeBytes": 21972192,
+          "heapAfterBytes": 29942240,
+          "heapDeltaBytesMedian": -5957304
+        }
+      ]
+    },
+    {
+      "libraryItemCount": 10000,
+      "fixture": {
+        "recordCountsByStore": {
+          "library": 10000,
+          "dirHandles": 40,
+          "experiences": 100,
+          "playlist": 1,
+          "slideshow": 1,
+          "settings": 1
+        },
+        "recordCount": 10143,
+        "payloadBytes": 2749678
+      },
+      "mergeEntriesPerSave": 10143,
+      "scenarios": [
+        {
+          "scenario": "setting",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            10143,
+            10143,
+            10143
+          ],
+          "queuedWritesPerSave": [
+            10144,
+            10144,
+            10144
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 10000,
+            "dirHandles": 40,
+            "experiences": 100,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 295.402,
+          "p95DurationMs": 302.365,
+          "heapBeforeBytes": 50435240,
+          "heapAfterBytes": 119961064,
+          "heapDeltaBytesMedian": 52769032
+        },
+        {
+          "scenario": "list-entry",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            10143,
+            10143,
+            10143
+          ],
+          "queuedWritesPerSave": [
+            10144,
+            10144,
+            10144
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 10000,
+            "dirHandles": 40,
+            "experiences": 100,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 287.554,
+          "p95DurationMs": 293.394,
+          "heapBeforeBytes": 65324504,
+          "heapAfterBytes": 133330760,
+          "heapDeltaBytesMedian": -1828800
+        },
+        {
+          "scenario": "library-item",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            10143,
+            10143,
+            10143
+          ],
+          "queuedWritesPerSave": [
+            10144,
+            10144,
+            10144
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 10000,
+            "dirHandles": 40,
+            "experiences": 100,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 306.722,
+          "p95DurationMs": 414.929,
+          "heapBeforeBytes": 86389768,
+          "heapAfterBytes": 123952272,
+          "heapDeltaBytesMedian": -2709024
+        }
+      ]
+    },
+    {
+      "libraryItemCount": 20000,
+      "fixture": {
+        "recordCountsByStore": {
+          "library": 20000,
+          "dirHandles": 80,
+          "experiences": 200,
+          "playlist": 1,
+          "slideshow": 1,
+          "settings": 1
+        },
+        "recordCount": 20283,
+        "payloadBytes": 5499218
+      },
+      "mergeEntriesPerSave": 20283,
+      "scenarios": [
+        {
+          "scenario": "setting",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            20283,
+            20283,
+            20283
+          ],
+          "queuedWritesPerSave": [
+            20284,
+            20284,
+            20284
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 20000,
+            "dirHandles": 80,
+            "experiences": 200,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 735.698,
+          "p95DurationMs": 804.103,
+          "heapBeforeBytes": 110198440,
+          "heapAfterBytes": 170224552,
+          "heapDeltaBytesMedian": 36389096
+        },
+        {
+          "scenario": "list-entry",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            20283,
+            20283,
+            20283
+          ],
+          "queuedWritesPerSave": [
+            20284,
+            20284,
+            20284
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 20000,
+            "dirHandles": 80,
+            "experiences": 200,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 632.274,
+          "p95DurationMs": 760.376,
+          "heapBeforeBytes": 129072616,
+          "heapAfterBytes": 191340480,
+          "heapDeltaBytesMedian": -20888064
+        },
+        {
+          "scenario": "library-item",
+          "sampleCount": 3,
+          "getAllReadsPerSave": [
+            6,
+            6,
+            6
+          ],
+          "mergeEntriesVisitedPerSave": [
+            20283,
+            20283,
+            20283
+          ],
+          "queuedWritesPerSave": [
+            20284,
+            20284,
+            20284
+          ],
+          "queuedWritesByStorePerSave": {
+            "library": 20000,
+            "dirHandles": 80,
+            "experiences": 200,
+            "playlist": 1,
+            "slideshow": 1,
+            "settings": 2
+          },
+          "p50DurationMs": 595.171,
+          "p95DurationMs": 678.204,
+          "heapBeforeBytes": 154018104,
+          "heapAfterBytes": 230315424,
+          "heapDeltaBytesMedian": 30845456
+        }
+      ]
+    }
+  ]
+}

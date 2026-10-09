@@ -23,7 +23,7 @@ jobs:
     - name: Run regression tests
       run: npm run test:regression
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: npx playwright install --with-deps chromium firefox webkit
     - name: Run Playwright tests
       id: playwright
       run: npm run test:e2e

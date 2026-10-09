@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-08
+goal: Align documented support claims with repeatable browser-engine evidence
+  and accessible API fallbacks.

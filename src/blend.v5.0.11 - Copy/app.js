@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './experience-persistence.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './storage-url-resolver.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './transition-manager.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './playback-clock.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { fetchReadme } from './readme-fetcher.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+import { renderMarkdown } from './markdown.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { fetchReadme } from './readme-fetcher.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './url-share.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './url-share-diagnostics.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './timeline-analysis.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './shared-experience-download.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit';
+} from './local-import-limits.js?v=20261008-v5.0.11-issue13-information-readme-version';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261008-v5.0.11-issue07-directory-walk-file-limit';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261008-v5.0.11-issue13-information-readme-version';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -3202,7 +3202,9 @@ async function openDB({ onBlocked } = {}) {
 }
 
 async function snapshotIndexedDBConnection(connection) {
-  const storeNames = Array.from(connection.objectStoreNames);
+  // Thumbnail Blobs are derived from retained media handles and generated lazily.
+  // Excluding only this store keeps cache size out of the rollback snapshot.
+  const storeNames = Array.from(connection.objectStoreNames).filter(name => name !== 'thumbnails');
   if (!storeNames.length) return [];
 
   return new Promise((resolve, reject) => {
@@ -4529,17 +4531,22 @@ function pickFilesWithInput({ directory = false, withStatus = false } = {}) {
     input.type = 'file';
     input.multiple = true;
     input.accept = inputAcceptForMedia();
+    input.setAttribute('aria-label', directory ? 'Choose a folder containing media files' : 'Choose media files');
+    const finish = (handles, status, details = {}) => {
+      input.remove();
+      resolve(withStatus ? { handles, status, ...details } : handles);
+    };
     if (directory) {
+      if (typeof input.webkitdirectory !== 'boolean') {
+        finish([], 'unsupported');
+        return;
+      }
       input.webkitdirectory = true;
       input.directory = true;
     }
     input.style.position = 'fixed';
     input.style.left = '-9999px';
     document.body.appendChild(input);
-    const finish = (handles, status, details = {}) => {
-      input.remove();
-      resolve(withStatus ? { handles, status, ...details } : handles);
-    };
     input.onchange = () => {
       const handles = [];
       let found = 0;
@@ -4561,12 +4568,31 @@ function pickFilesWithInput({ directory = false, withStatus = false } = {}) {
   });
 }
 
+function fileInputImportStatus(result, { includeSummary = true } = {}) {
+  if (!result.saved) {
+    return 'Blend could not save the selected media in browser storage. The files are available for this session only; keep the originals and select them again after reload.';
+  }
+  const added = includeSummary && result.added
+    ? `Added ${result.added} media file${result.added === 1 ? '' : 's'}. `
+    : includeSummary ? 'Selected media is already in the library. ' : '';
+  return `${added}Blend saved the selected file data in this browser. Source-folder access is not retained.`;
+}
+
+async function addFilesWithInputFallback() {
+  const selection = await pickFilesWithInput({ withStatus: true });
+  if (selection.status === 'cancelled') return;
+  if (!selection.handles.length) {
+    showToast('No media files selected', { timeout: 1800 });
+    return;
+  }
+  const result = await addHandles(selection.handles, { notify: false });
+  showToast(fileInputImportStatus(result), { role: 'status', timeout: 10000 });
+}
+
 async function addFilesFromPicker() {
   try {
     if (typeof window.showOpenFilePicker !== 'function') {
-      const handles = await pickFilesWithInput();
-      if (handles.length) await addHandles(handles);
-      else showToast('No media files selected', { timeout: 1800 });
+      await addFilesWithInputFallback();
       return;
     }
     const handles = await window.showOpenFilePicker({ multiple: true, types: MEDIA_PICKER_TYPES });
@@ -4591,19 +4617,33 @@ async function addFolderFromPicker() {
     if (typeof window.showDirectoryPicker !== 'function') {
       const scan = await pickFilesWithInput({ directory: true, withStatus: true });
       if (scan.status === 'cancelled') return;
-      const handles = scan.handles;
-      const result = await addHandles(handles, { directoryId: null, notify: false });
+      if (scan.status === 'unsupported') {
+        showToast('Folder selection is unavailable in this browser. Use Add Files to select media individually.', {
+          role: 'status',
+          timeout: 10000
+        });
+        return;
+      }
       if (scan.status === 'empty') {
         showToast('No supported media found in that folder', { timeout: 2400 });
-      } else if (scan.pending > 0 && result.saved) {
-        showDirectoryScanToast(folderImportLimitMessage(scan.found, scan.pending, result), {
+        return;
+      }
+      const handles = scan.handles;
+      const result = await addHandles(handles, { directoryId: null, notify: false });
+      const persistenceNote = fileInputImportStatus(result, { includeSummary: false });
+      if (scan.pending > 0) {
+        const limitMessage = result.saved
+          ? folderImportLimitMessage(scan.found, scan.pending, result)
+          : folderImportCountSummary(scan.found, scan.pending, result);
+        showDirectoryScanToast(`${limitMessage} ${persistenceNote}`, {
           timeout: 30000,
           actions: [{ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } }]
         });
       } else {
-        if (result.saved) {
-          showToast(`Added ${result.added} item${result.added === 1 ? '' : 's'} from selected folder (${result.existing} already present)`);
-        }
+        showToast(`Added ${result.added} item${result.added === 1 ? '' : 's'} from selected folder (${result.existing} already present). ${persistenceNote}`, {
+          role: 'status',
+          timeout: 10000
+        });
       }
       return;
     }
@@ -8603,6 +8643,17 @@ async function clearBrowserStorage() {
   saveStateDebounced.cancel?.();
   clearTimeout(saveTimer);
   try {
+    let recoverySnapshot = [];
+    if (db) {
+      try {
+        recoverySnapshot = await snapshotIndexedDBConnection(db);
+      } catch (error) {
+        log.warn('browser storage clear: could not prepare rollback snapshot', error);
+        showToast('Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.', { timeout: 6500 });
+        return false;
+      }
+    }
+
     try {
       const authReset = await supabaseAuthClient.clearLocalSessionAcrossTabs();
       if (!authReset.confirmed) {
@@ -8612,17 +8663,6 @@ async function clearBrowserStorage() {
     } catch (_) {
       showToast('Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.', { timeout: 6000 });
       return false;
-    }
-
-    let recoverySnapshot = [];
-    if (db) {
-      try {
-        recoverySnapshot = await snapshotIndexedDBConnection(db);
-      } catch (error) {
-        log.warn('browser storage clear: could not prepare rollback snapshot', error);
-        showToast('Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept because a recovery snapshot could not be created.', { timeout: 6500 });
-        return false;
-      }
     }
 
     if (db) {
@@ -8640,7 +8680,7 @@ async function clearBrowserStorage() {
       // retained database snapshot and screen state before a retry can continue.
       const timedOut = String(error?.code || '').includes('timeout');
       void recoverDatabaseAfterFailedReset(recoverySnapshot, timedOut);
-      showToast('Browser reset incomplete. The saved Supabase session was removed from this browser, but saved Blend data was kept for recovery and retry after the database deletion failed. Close other Blend tabs and try again.', { timeout: 7000 });
+      showToast('Browser reset incomplete. The saved Supabase session was removed from this browser. Saved data recovery is in progress; the thumbnail cache may be cleared, and previews can regenerate from retained media handles when available. Close other Blend tabs and retry.', { timeout: 7000 });
       return false;
     }
 
@@ -8897,10 +8937,36 @@ function wireTransport() {
     setBlend(parseInt(blend.value, 10) / 100);
   };
 
-  $('#btn-fullscreen').onclick = () => {
+  const fullscreenButton = $('#btn-fullscreen');
+  fullscreenButton.onclick = async () => {
     const v = $('#viewport');
-    if (document.fullscreenElement) document.exitFullscreen();
-    else v.requestFullscreen().catch(()=>{});
+    if (document.fullscreenElement) {
+      if (typeof document.exitFullscreen !== 'function') {
+        showToast('Fullscreen cannot be exited with this browser API. Press Escape to leave fullscreen.', {
+          role: 'status'
+        });
+        return;
+      }
+      try {
+        await document.exitFullscreen();
+      } catch (_) {
+        showToast('Fullscreen could not be exited. Press Escape to leave fullscreen.', { role: 'status' });
+      }
+      return;
+    }
+    if (typeof v.requestFullscreen !== 'function') {
+      showToast('Fullscreen is unavailable in this browser. Playback remains available in the current window.', {
+        role: 'status'
+      });
+      return;
+    }
+    try {
+      await v.requestFullscreen();
+    } catch (_) {
+      showToast('Fullscreen could not be started. Playback remains available in the current window.', {
+        role: 'status'
+      });
+    }
   };
 
   $('#btn-mute').onclick = toggleMute;
@@ -9267,7 +9333,10 @@ function closeConfig() {
 // ====================== INFORMATION DIALOG ======================
 const INFO_SCROLL_KEY = 'blend-info-scroll-v1';
 const INFO_ACTIVE_TAB_KEY = 'blend-info-active-tab-v1';
-let infoReadmeLoaded = false;
+const INFO_README_SOURCE_SCROLL_KEY = 'blend-info-readme-source-scroll-v1';
+let infoReadmeSource = 'local';
+const infoReadmeModels = { local: null, online: null };
+let infoReadmeLoadSequence = 0;
 let infoScrollSaveTimer = null;
 
 function wireInfoDialog() {
@@ -9277,6 +9346,16 @@ function wireInfoDialog() {
   if (openBtn) openBtn.onclick = () => { void openInfoDialog(); };
   const closeBtn = $('#info-close');
   if (closeBtn) closeBtn.onclick = () => modal.close();
+
+  const readmeSource = $('#info-readme-source');
+  if (readmeSource) {
+    const localOption = readmeSource.querySelector('option[value="local"]');
+    if (localOption) localOption.textContent = `Installed version (v${VERSION})`;
+    readmeSource.value = infoReadmeSource;
+    readmeSource.addEventListener('change', () => {
+      void ensureReadmeRendered({ source: readmeSource.value });
+    });
+  }
 
   $all('.info-tab', modal).forEach(tab => {
     tab.onclick = () => activateInfoTab(tab.dataset.tab, { focusTab: true });
@@ -9314,36 +9393,156 @@ async function openInfoDialog() {
   }
   // Restore banked scroll positions after the dialog has laid out.
   requestAnimationFrame(() => restoreInfoScroll(activeTab));
-  // Fetch the README in the background so the dialog opens immediately.
-  // The README panel shows "Loading README…" while the request is in flight.
+  // Load the installed-version guide by default; online documentation is
+  // fetched only after the user selects that source.
   void ensureReadmeRendered();
 }
 
-// forceRefresh=true bypasses the localStorage cache (used by the retry button).
-async function ensureReadmeRendered(forceRefresh = false) {
-  if (infoReadmeLoaded && !forceRefresh) return;
+async function ensureReadmeRendered({ source = infoReadmeSource, forceRefresh = false } = {}) {
   const target = $('#info-readme-content');
   if (!target) return;
 
-  target.innerHTML = '<p class="info-readme-status">Loading README…</p>';
+  const requestedSource = source === 'online' ? 'online' : 'local';
+  const requestId = ++infoReadmeLoadSequence;
+  if (requestedSource !== infoReadmeSource) {
+    saveInfoReadmeSourceScroll(infoReadmeSource);
+    // A pending panel-scroll debounce reads the currently selected source.
+    // Cancel it before changing sources so a delayed save cannot assign the
+    // outgoing document's scroll position to the incoming document.
+    clearTimeout(infoScrollSaveTimer);
+    infoScrollSaveTimer = null;
+  }
+  infoReadmeSource = requestedSource;
+  const sourceSelect = $('#info-readme-source');
+  if (sourceSelect) sourceSelect.value = requestedSource;
+  const sourceStatus = $('#info-readme-source-status');
+  if (sourceStatus) {
+    if (requestedSource === 'local') {
+      sourceStatus.textContent = `Loading installed version guide for v${VERSION}…`;
+      sourceStatus.dataset.source = 'local';
+      sourceStatus.dataset.version = '';
+      sourceStatus.dataset.versionStatus = 'loading';
+    } else {
+      sourceStatus.textContent = 'Checking current online documentation; the displayed guide remains available…';
+      target.querySelector('.info-readme-status--notice')?.remove();
+    }
+  }
+
+  if (requestedSource === 'local' && infoReadmeModels.local && !forceRefresh) {
+    renderInfoReadme(infoReadmeModels.local);
+    return;
+  }
+
+  if (requestedSource === 'local' && !target.firstChild) {
+    target.innerHTML = '<p class="info-readme-status" role="status">Loading documentation…</p>';
+  }
 
   try {
-    const markdown = await fetchReadme({ forceRefresh });
-    target.innerHTML = renderMarkdown(markdown);
-    infoReadmeLoaded = true;
+    const viewModel = await fetchReadme({
+      source: requestedSource,
+      forceRefresh,
+      appVersion: VERSION,
+      onLocal: requestedSource === 'online' ? localViewModel => {
+        if (requestId !== infoReadmeLoadSequence) return;
+        infoReadmeModels.local = localViewModel;
+        renderInfoReadme({ ...localViewModel, onlinePending: true }, { preservePanelScroll: true });
+      } : undefined
+    });
+    if (requestId !== infoReadmeLoadSequence) return;
+
+    if (viewModel.source === 'online' && !viewModel.onlineUnavailable && infoReadmeModels.local?.onlineUnavailable) {
+      infoReadmeModels.local = { ...infoReadmeModels.local, onlineUnavailable: false };
+    }
+    infoReadmeModels[viewModel.source] = viewModel;
+    infoReadmeSource = viewModel.source;
+    if (sourceSelect) sourceSelect.value = viewModel.source;
+    renderInfoReadme(viewModel);
   } catch (error) {
+    if (requestId !== infoReadmeLoadSequence) return;
     log.warn('README load failed', error);
-    target.innerHTML =
-      '<p class="info-readme-status">'
-      + 'The README could not be loaded. '
-      + '<button type="button" class="info-readme-retry">Retry</button>'
-      + ' or visit <a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a>.'
+    if (requestedSource === 'online' && infoReadmeModels.local) {
+      const fallback = { ...infoReadmeModels.local, onlineUnavailable: true, onlinePending: false };
+      infoReadmeModels.local = fallback;
+      infoReadmeSource = 'local';
+      if (sourceSelect) sourceSelect.value = 'local';
+      renderInfoReadme(fallback, { preservePanelScroll: true });
+      return;
+    }
+    infoReadmeSource = 'local';
+    if (sourceSelect) sourceSelect.value = 'local';
+    if (sourceStatus) {
+      sourceStatus.textContent = requestedSource === 'online'
+        ? `Online documentation and the installed guide are unavailable (app v${VERSION}).`
+        : `Installed version guide v${VERSION} is unavailable.`;
+      sourceStatus.dataset.source = 'local';
+      sourceStatus.dataset.version = '';
+      sourceStatus.dataset.versionStatus = 'unavailable';
+    }
+    target.innerHTML = '<p class="info-readme-status" role="status">'
+      + 'The installed version guide could not be loaded. '
+      + '<button type="button" class="info-readme-retry info-readme-retry-local">Retry installed guide</button>'
+      + (requestedSource === 'online'
+        ? ' <button type="button" class="info-readme-retry info-readme-retry-online">Retry online documentation</button>'
+        : '')
       + '</p>';
-    // Wire the retry button once; clicking it forces a fresh network fetch.
-    target.querySelector('.info-readme-retry')?.addEventListener('click', () => {
-      void ensureReadmeRendered(true);
+    target.querySelector('.info-readme-retry-local')?.addEventListener('click', () => {
+      void ensureReadmeRendered({ source: 'local', forceRefresh: true });
+    }, { once: true });
+    target.querySelector('.info-readme-retry-online')?.addEventListener('click', () => {
+      void ensureReadmeRendered({ source: 'online', forceRefresh: true });
     }, { once: true });
   }
+}
+
+function renderInfoReadme(viewModel, { preservePanelScroll = false } = {}) {
+  const target = $('#info-readme-content');
+  if (!target) return;
+  const panel = $('#info-panel-readme');
+  const previousScrollTop = preservePanelScroll ? panel?.scrollTop : null;
+  const sourceStatus = $('#info-readme-source-status');
+  if (sourceStatus) {
+    const documentVersion = viewModel.documentVersion;
+    const versionLabel = documentVersion ? `v${documentVersion}` : 'version not stated';
+    const appVersionLabel = `running app v${VERSION}`;
+    if (viewModel.onlinePending && viewModel.source === 'local') {
+      sourceStatus.textContent = `Checking current online documentation; showing installed version guide ${versionLabel} (${appVersionLabel})`;
+    } else if (viewModel.source === 'local') {
+      sourceStatus.textContent = viewModel.versionStatus === 'match'
+        ? `Installed version guide · ${versionLabel} (matches ${appVersionLabel})`
+        : viewModel.versionStatus === 'mismatch'
+          ? `Installed version guide · ${versionLabel} (does not match ${appVersionLabel})`
+          : `Installed version guide · ${versionLabel} (${appVersionLabel})`;
+    } else {
+      const fetchedAt = Number.isFinite(viewModel.fetchedAt)
+        ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+          .format(new Date(viewModel.fetchedAt))
+        : '';
+      sourceStatus.textContent = `Current online documentation · ${versionLabel} (${appVersionLabel})`
+        + (fetchedAt ? ` · ${viewModel.fromCache ? 'cached' : 'fetched'} ${fetchedAt}` : '');
+    }
+    sourceStatus.dataset.source = viewModel.source;
+    sourceStatus.dataset.version = documentVersion || '';
+    sourceStatus.dataset.versionStatus = viewModel.versionStatus;
+    sourceStatus.dataset.versionMatches = String(viewModel.versionMatchesApp);
+  }
+
+  const fallbackNotice = viewModel.onlineUnavailable
+    ? '<p class="info-readme-status info-readme-status--notice" role="status">'
+      + 'Offline or online documentation is unavailable; this local guide remains available. '
+      + '<button type="button" class="info-readme-retry info-readme-retry-online">Retry online documentation</button>'
+      + '</p>'
+    : '';
+  target.innerHTML = fallbackNotice + renderMarkdown(viewModel.markdown);
+  target.querySelector('.info-readme-retry-online')?.addEventListener('click', () => {
+    void ensureReadmeRendered({ source: 'online', forceRefresh: true });
+  }, { once: true });
+  requestAnimationFrame(() => {
+    if (preservePanelScroll && panel && Number.isFinite(previousScrollTop)) {
+      panel.scrollTop = previousScrollTop;
+      return;
+    }
+    restoreInfoReadmeSourceScroll(viewModel.source);
+  });
 }
 
 function activateInfoTab(name, { focusTab = false } = {}) {
@@ -9384,6 +9583,40 @@ function readInfoScrollStore() {
   catch (_) { return {}; }
 }
 
+function readInfoReadmeSourceScrollStore() {
+  try { return JSON.parse(localStorage.getItem(INFO_README_SOURCE_SCROLL_KEY)) || {}; }
+  catch (_) { return {}; }
+}
+
+function saveInfoReadmeSourceScroll(source = infoReadmeSource) {
+  const panel = $('#info-panel-readme');
+  if (!panel || panel.hidden || panel.clientHeight <= 0) return;
+  const store = readInfoReadmeSourceScrollStore();
+  store[source === 'online' ? 'online' : 'local'] = Math.round(panel.scrollTop);
+  try { localStorage.setItem(INFO_README_SOURCE_SCROLL_KEY, JSON.stringify(store)); } catch (_) {}
+}
+
+function restoreInfoReadmeSourceScroll(source = infoReadmeSource) {
+  const panel = $('#info-panel-readme');
+  if (!panel) return;
+  const selectedSource = source === 'online' ? 'online' : 'local';
+  requestAnimationFrame(() => {
+    if (selectedSource !== infoReadmeSource) return;
+    const sourcePositions = readInfoReadmeSourceScrollStore();
+    if (Object.keys(sourcePositions).length) {
+      panel.scrollTop = typeof sourcePositions[selectedSource] === 'number'
+        ? sourcePositions[selectedSource]
+        : 0;
+      return;
+    }
+    // Preserve scroll saved by older app builds for the installed guide.
+    const legacyReadmeScroll = readInfoScrollStore().readme;
+    if (selectedSource === 'local' && typeof legacyReadmeScroll === 'number') {
+      panel.scrollTop = legacyReadmeScroll;
+    }
+  });
+}
+
 function saveInfoScrollPositions() {
   const modal = $('#info-modal');
   if (!modal) return;
@@ -9401,9 +9634,14 @@ function saveInfoScrollPositions() {
   if (changed) {
     try { localStorage.setItem(INFO_SCROLL_KEY, JSON.stringify(store)); } catch (_) {}
   }
+  saveInfoReadmeSourceScroll();
 }
 
 function restoreInfoScroll(name) {
+  if (name === 'readme') {
+    restoreInfoReadmeSourceScroll(infoReadmeSource);
+    return;
+  }
   const modal = $('#info-modal');
   const panel = modal?.querySelector(`.info-panel[data-tab="${name}"]`);
   if (!panel) return;

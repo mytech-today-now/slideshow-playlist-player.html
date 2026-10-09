@@ -2,7 +2,9 @@
 
 Blend is a local-first, browser-based dual-layer media studio. It lets you run a **Playlist layer** (video/audio) and a **Slideshow layer** (image/video) at the same time, then blend them live with independent controls.
 
-> Source of truth for this README: `src/blend.v5.0.11/`
+> This README documents the self-contained `blend.v5.0.11 - Copy` project in this directory. Run project commands from the directory containing this file and `package.json`.
+>
+> The neighboring `../blend.v5.0.11/` is a separate version folder. This folder is a standalone review target. Confirm its release destination before copying changes to another version.
 
 ## Table of Contents
 
@@ -81,16 +83,17 @@ You can play both at once, mix visibility using a blend slider, and control each
 
 ## Current Version Information
 
-- **Recommended implementation directory:** `src/blend.v5.0.11/`
-- **Authoritative app entry:** `src/blend.v5.0.11/index.html`
-- **Compatibility redirect entry:** `src/blend.v5.0.11/slideshow-playlist-player.html`
+- **Active project root for this checkout:** this directory (`blend.v5.0.11 - Copy`)
+- **Authoritative app entry:** `index.html`
+- **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261006-v5.0.11-idb-startup-recovery`
+- **Cache/app shell version key:** `20261008-v5.0.11-issue13-information-readme-version`
+- **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 Latest source location:
 
 - [Repository root](https://github.com/mytech-today-now/slideshow-playlist-player.html)
-- [Current implementation folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.11)
+- [Canonical upstream release folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.11)
 
 ## Screenshots
 
@@ -103,7 +106,7 @@ Latest source location:
 
 ## Quick Start
 
-1. Open `src/blend.v5.0.11/index.html` from a local server.
+1. Open `index.html` from a local server started in this project directory.
 2. Press `C` (or click the gear icon) to open the configuration panel.
 3. Add media using one of these actions:
    - `Add Files` for individual files
@@ -116,7 +119,7 @@ Latest source location:
 
 No build step is required for normal playback.
 
-For testing/dev in `src/blend.v5.0.11`:
+For testing and development, run these commands from this project root:
 
 ```bash
 npm install
@@ -124,10 +127,9 @@ npm install
 
 ## Running Locally
 
-### Option A: serve the implementation folder directly
+### Option A: serve this project folder directly
 
 ```bash
-cd src/blend.v5.0.11
 npx serve -l 5173 --cors
 ```
 
@@ -137,7 +139,7 @@ Then open:
 http://localhost:5173/index.html
 ```
 
-### Option B: serve from repository root
+### Option B: serve from the parent repository root
 
 ```bash
 python -m http.server 5173
@@ -146,7 +148,7 @@ python -m http.server 5173
 Then open:
 
 ```text
-http://localhost:5173/src/blend.v5.0.11/index.html
+http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 ```
 
 ## Feature Matrix
@@ -666,7 +668,9 @@ Use **Clear Browser Storage** to remove browser-side data:
 - operator-managed runtime configuration (`blend-runtime-config-v1`) is retained, including Supabase endpoint, key, and bucket overrides, so configured service access can be restored after reset
 - Blend service worker/cache entries across `blend-shell-*`, `blend-static-*`, `blend-docs-*`, `blend-api-*`, and `blend-alias-*`
 
-Media files on disk are not deleted, and reset does not send a remote logout request. The local Supabase session is cleared before Blend data is deleted. The runtime configuration override is connection configuration rather than resettable player data, so the confirmation identifies it as preserved. If session storage cannot be fully cleared, Blend signs out in the current tab, reports that removal of all saved session data could not be confirmed, and keeps the other Blend data. If the recovery snapshot or IndexedDB deletion fails after local sign-out, the reset reports that the session was removed and keeps the saved Blend data for recovery and retry. A success message appears only after the requested local cleanup steps finish.
+Media files on disk are not deleted, and reset does not send a remote logout request. Before changing the saved local Supabase session or deleting IndexedDB, reset prepares a recovery snapshot of every database store except `thumbnails`. Thumbnail Blobs are derived previews; they are generated lazily from retained media handles, while unavailable sources use the existing media icon. Excluding this cache keeps the snapshot's thumbnail record and Blob-byte counts at zero, even for a large cache. Snapshot memory still scales with the user-authored records it protects.
+
+If the recovery snapshot cannot be prepared, deletion does not begin and the current Blend state, saved data, and local Supabase session remain unchanged. The user sees: “Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.” After a snapshot succeeds, the local Supabase session is cleared and IndexedDB deletion begins. The in-memory screen is committed only after IndexedDB confirms deletion. If deletion fails or times out, the session is reported as removed and recovery of saved records is attempted before retry. A timed-out deletion may remove the database before recovery finishes, so the thumbnail cache may be empty afterward; the incomplete-reset message explicitly says the cache may be cleared. Previews can regenerate from retained handles when available. This is cache cleanup, not media-file loss, and the reset reports an incomplete outcome rather than success. The runtime configuration override is connection configuration rather than resettable player data, so the confirmation identifies it as preserved. If session storage cannot be fully cleared, Blend signs out in the current tab, reports that removal of all saved session data could not be confirmed, and keeps the other Blend data. A success message appears only after the requested local cleanup steps finish.
 
 ## Architecture Documentation
 
@@ -727,7 +731,7 @@ Single in-memory `state` object manages:
 | File System Access API | File and directory pickers, persistent handles |
 | File input fallback | Browser fallback when File System Access unavailable |
 | Drag and Drop API | OS file/folder drops and list imports |
-| Media APIs (`<video>`, `<img>`, media events) | Playback and slideshow rendering |
+| Media APIs (video elements, image elements, and media events) | Playback and slideshow rendering |
 | Fullscreen API | Viewport fullscreen |
 | Service Worker + Cache Storage | App shell caching |
 | Web Share API | Native share sheet |
@@ -750,24 +754,28 @@ Remote services (optional/by configuration):
 - Supabase Auth endpoints
 - Supabase Storage public/signed URL endpoints
 
-Dev/test (`src/blend.v5.0.11/package.json`):
+Dev/test (`package.json` in this project root):
 
 - `@playwright/test`
 - `esbuild`
 
 ## Browser Compatibility
 
-| Browser | Expected Support | Notes |
-|---|---|---|
-| Chrome (desktop) | Best | Full feature set, best File System Access support |
-| Edge (desktop) | Best | Full feature set, Chromium parity |
-| Firefox | Partial | Uses fallback file input flows; no full directory handle persistence |
-| Safari (desktop) | Partial | Fallback flows; fullscreen and file APIs vary |
-| iOS Safari | Partial | Install guidance provided; file/folder flows constrained by platform APIs |
-| Android Chrome | Good | Core workflows + install banner supported |
+| Browser | Support statement | Automated evidence | Limits |
+|---|---|---|---|
+| Chrome (desktop) | Primary desktop target | Full E2E suite is configured for Playwright Chromium | The Chromium project is not a run of Google's branded Chrome build; the last 189-test full run, before the added auth-failure smoke case, had 171 passes and 18 failures outside the compatibility smoke spec. |
+| Edge (desktop) | Chromium-family behavior is expected | No branded Edge run | Edge-specific behavior is not independently verified. |
+| Firefox (desktop) | Partial | Focused Playwright Firefox compatibility smoke | File-input fallback is covered; this does not certify every Firefox release or platform. |
+| Safari (desktop) | Partial | Focused Playwright WebKit compatibility smoke | WebKit engine coverage is not a run of the Safari application; fallback import save failures are announced as session-only. |
+| iOS Safari | Partial | No iOS or mobile Safari run | Install guidance is provided; mobile picker, fullscreen, and PWA behavior remain unverified. |
+| Android Chrome | Partial | No Android device run | Desktop Chromium results do not verify Android-specific behavior. |
 
 Compatibility notes:
 
+- CI runs the full suite in Chromium and focused fallback, accessibility, viewport, and service-worker shell smoke checks in Playwright Firefox and WebKit. Each compatibility result records the Playwright project and runtime engine version in the HTML report.
+- The last full-suite HTML report, before the added auth-failure smoke case, recorded all 24 compatibility cases passing (8 per project) and 18 failures in other Chromium tests (171 passed out of 189). The current focused HTML report passes 27/27 cases (9 per project) and records Chromium 153.0.8010.12, Firefox 155.0, and WebKit 26.6; every result attaches its project and runtime version.
+- These results describe Playwright browser-engine builds. They do not establish branded Chrome, Edge, Firefox, or Safari application coverage, or mobile-device coverage.
+- File-input fallback imports remain available in memory if browser storage rejects the selected file data. Blend reports that outcome as session-only and the files must be selected again after reload; it does not report a successful save.
 - Actual media decode depends on browser codec support.
 - HEIC/HEIF and some MKV/AVI/FLAC/AAC combinations may vary by browser/platform.
 
@@ -797,8 +805,8 @@ Verified in current implementation:
 
 ## Known Issues
 
-- Root-level helper script `scripts/Start-PlayerDev.ps1` may still reference legacy `src/v/...` paths; use `src/blend.v5.0.11/index.html` URLs instead.
-- Repository root `VERSION` and older README sections may not match runtime versioning used by `src/blend.v5.0.11`.
+- A parent-repository helper script may still reference legacy paths; serve this project folder and open its local `index.html` instead.
+- The parent repository's `VERSION` and README may not match this app's runtime version. Use this project's package and PWA configuration for its local version facts.
 
 ## Troubleshooting Guide
 
@@ -860,7 +868,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 ### Project Structure
 
 ```text
-src/blend.v5.0.11/
+.
   index.html
   slideshow-playlist-player.html
   styles.css
@@ -918,7 +926,7 @@ src/blend.v5.0.11/
 
 ### Validation and Tests
 
-From `src/blend.v5.0.11`:
+From this project root, the directory containing `package.json`:
 
 ```bash
 npm run check
@@ -931,48 +939,12 @@ npm run test
 
 1. Add optional codec diagnostics in UI for failed media loads.
 2. Add first-class screenshot assets and GIF demos to documentation.
-3. Update root helper scripts and root version metadata to match `src/blend.v5.0.11` conventions.
+3. Update parent-repository helper scripts and root version metadata to match the app's current conventions.
 
 ## Changelog Reference
 
-### 5.0.11 (2026-10-06)
-
-- Added `pwa-config.js` as the shared source for app version, cache version, database version, precache assets, and route cache policies.
-- Moved service worker registration, install prompt handling, update prompts, cache status messages, and alias snapshot sync into `pwa-client.js`.
-- Replaced the single-cache service worker with split shell/static/docs/API/alias caches, robust precache, navigation preload, offline fallback, cache cleanup, and message commands.
-- Added IndexedDB-backed alias metadata with `alias-router.js`, `alias-store.js`, `alias-sync.js`, and `alias-manifest.json`.
-- Added regression coverage for PWA config invariants and alias validation/routing, plus PWA offline and alias routing e2e smoke specs.
-- Refined library/list selection with range, toggle, keyboard navigation, keyboard batch removal, and mouse marquee selection; batch removals are undoable.
-- Simplified per-row shared-link validation to status badges while retaining exact measurements in the Share URL dialog.
-- Added eager media-duration metadata probing and compact, backward-compatible `blend-share` URL serialization that preserves export settings, list metadata, media order, and durable editor state.
-- Added bounded IndexedDB startup recovery. Blocked opens explain how to close older Blend tabs, open failures offer a retry, and late connections close without starting the app twice.
-
-### 5.0.6 (2026-06-25)
-
-- **Exact-position pause/resume.** Pause now freezes the playlist video/audio and
-  the slideshow at their precise current positions without unloading them; Play
-  resumes everything from exactly where it left off — video/audio `currentTime`,
-  the image-display countdown, and Ken Burns progress are all banked and restored.
-- **True Stop / restart.** Stop fully tears down both layers to a blank screen and
-  rewinds to the first item; the next Play restarts the whole experience.
-- New pure, unit-tested module `playback-clock.js` (`PausableTimer`, `ElapsedClock`,
-  transport state machine) backs the resume logic.
-- **Configuration dialog** is now a centered ~90vw × 90vh modal that scrolls
-  vertically only (no horizontal shift), with focus trapping and a sticky header.
-- New **Information dialog** (opened from the ⓘ icon in the config header) with two
-  independently-scrollable tabs — *About myTech.Today* and a live Markdown render of
-  this README — whose scroll positions and last-active tab persist via LocalStorage.
-  External links open in a new tab. New `markdown.js` safe renderer (XSS-escaped).
-- Responsive breakpoints spanning 8K/4K/UHD/HD desktop, tablet (portrait/landscape),
-  and mobile (portrait/landscape), plus a container query for the config body.
-- Added `S` keyboard shortcut for Stop; play button exposes `aria-pressed`.
-- New regression tests (`playback-clock`, `markdown`) and e2e specs
-  (`player-controls`, `information-dialog`, `responsiveness`).
-
-Use also:
-
-- [`src/blend.v5.0.6/MIGRATION_NOTES.md`](src/blend.v5.0.6/MIGRATION_NOTES.md)
-- [Commit history for `src/blend.v5.0.6`](https://github.com/mytech-today-now/slideshow-playlist-player.html/commits/main/src/blend.v5.0.6)
+- [CHANGELOG.md](CHANGELOG.md) records the documented Blend v5 changes and identifies version snapshots without separate release notes.
+- [VERSIONS.md](VERSIONS.md) lists the available version folders and the verified app, cache, and database version values.
 
 ## Contributing
 
@@ -986,7 +958,7 @@ Please prioritize:
 
 Suggested workflow:
 
-1. Work in `src/blend.v5.0.11/`.
+1. Work in this project directory.
 2. Run regression tests.
 3. Run targeted e2e scenarios for changed workflows.
 4. Validate import/export roundtrips with real sample media.
@@ -994,7 +966,7 @@ Suggested workflow:
 ## Credits
 
 - Project lineage references an earlier player concept from [`pseudosavant/player.html`](https://github.com/pseudosavant/player.html).
-- Fork/reference snapshot preserved at `src/player.original/player.html`.
+- Fork/reference snapshot preserved at `../player.original/player.html`.
 
 ## License
 

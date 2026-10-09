@@ -6,17 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Blend is a local-first, browser-based dual-layer media studio. It runs a **Playlist layer** (video/audio) and a **Slideshow layer** (image/video) simultaneously and blends them live. It is a zero-framework, no-build static web app: ES modules + browser-native APIs (IndexedDB, File System Access, Media, Fullscreen, Service Worker), served as static files. There is no bundler step for normal playback.
 
-## Repository layout — versioned implementation folders
+## Local project layout and sibling versions
 
-The repo ships one self-contained copy of the app per release under `src/`, e.g. `src/blend.v5.0.4/`, `src/blend.v5.0.11/`, plus older `src/slideshow-playlist-player.v4.x/`. Each folder is a complete standalone app with its own `package.json`, tests, and assets — they are **siblings, not a shared codebase**. Work happens inside the latest folder; the current working directory (`src/blend.v5.0.11`) is the active one.
+The directory containing this file, `AGENTS.md`, and `package.json` is a self-contained Blend Player v5.0.11 project. For this checkout, this directory is the active project root and `index.html` is its app entry point.
 
-Both the root `README.md` (source of truth) and `.github/workflows/sanity-tests.yml` (CI) may trail the active folder. Beware of other stale cross-references: root `VERSION` and `scripts/Start-PlayerDev.ps1` can reference legacy paths.
+The neighboring `../blend.v5.0.11/` directory is a separate version folder with its own package, tests, and assets. Work for this checkout stays in this project root. This folder is a standalone review target. Confirm its release destination before copying changes to another version.
 
-When changing the app, edit files in the active version folder and verify which folder any tooling/CI actually targets before assuming a change is covered.
+The parent repository may have its own root documentation, workflows, and helper scripts. When changing or validating this app, work in this project root and verify that any parent-level tooling actually targets this folder.
 
 ## Commands
 
-All commands run from **inside a version folder** (e.g. `cd src/blend.v5.0.11`), which holds its own `package.json`.
+Run every command below from this project root, the directory containing this `CLAUDE.md` and its `package.json`.
 
 ```bash
 npm install              # dev deps only: @playwright/test, esbuild (app itself has no runtime deps)
@@ -79,4 +79,4 @@ Path handling sanitizes control chars and rejects `..` traversal; folder scan de
 ## Conventions when extending
 - No build step and no runtime dependencies — keep the app loadable as plain static ES modules. Add new logic as a small importable module so it can be regression-tested without `app.js`.
 - Add a regression test for any change to persistence, import/export, or media resolution; add a targeted e2e spec for changed UI workflows.
-- On a release, copy the active folder to the next `src/blend.vX.Y.Z/`, then bump the version/cache/schema constants together.
+- Before preparing a release, confirm this review target's destination. In the confirmed release copy, update the version/cache/schema constants together.

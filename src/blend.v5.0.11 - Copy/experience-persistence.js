@@ -50,8 +50,9 @@ function toComparable(value, { ignoreUpdatedAt = false, root = true } = {}) {
 }
 
 function recordsEqual(left, right, { ignoreUpdatedAt = false } = {}) {
-  return JSON.stringify(toComparable(left, { ignoreUpdatedAt })) ===
-    JSON.stringify(toComparable(right, { ignoreUpdatedAt }));
+  const normalizedLeft = JSON.stringify(toComparable(left, { ignoreUpdatedAt }));
+  if (left === right) return true;
+  return normalizedLeft === JSON.stringify(toComparable(right, { ignoreUpdatedAt }));
 }
 
 function optionalRecordsEqual(leftExists, left, rightExists, right, options) {
@@ -76,7 +77,8 @@ function mergeStore({
   protectRemoteDeletion = false,
   equalityOptions = {},
   conflicts,
-  remoteUpdatedStores
+  remoteUpdatedStores,
+  changedOperations
 }) {
   const base = toRecordMap(baseRecords);
   const local = toRecordMap(localRecords);
@@ -112,6 +114,23 @@ function mergeStore({
     const resultExists = useLocal ? localExists : currentExists;
     const resultRecord = useLocal ? localRecord : currentRecord;
     if (resultExists) merged.push(resultRecord);
+
+    if (localChanged && !currentChanged) {
+      if (localExists) changedOperations.push({ operation: 'put', record: localRecord });
+      else if (currentExists) changedOperations.push({ operation: 'delete', key });
+    } else if (localChanged && useLocal && !optionalRecordsEqual(
+      localExists,
+      localRecord,
+      currentExists,
+      currentRecord,
+      {}
+    )) {
+      // Experience comparisons ignore updatedAt for conflict detection. When
+      // both tabs made the same logical edit, retain the prior write behavior
+      // if the selected local row still differs from the persisted row.
+      if (localExists) changedOperations.push({ operation: 'put', record: localRecord });
+      else if (currentExists) changedOperations.push({ operation: 'delete', key });
+    }
   }
 
   return merged;
@@ -125,6 +144,7 @@ export function mergeExperienceSnapshotRecords({
 } = {}) {
   const conflicts = [];
   const remoteUpdatedStores = new Set();
+  const changedOperationsByStore = {};
   const keepKeys = keepLibraryKeys == null
     ? null
     : new Set(keepLibraryKeys);
@@ -135,6 +155,7 @@ export function mergeExperienceSnapshotRecords({
     const localRecords = storeName === 'library' && keepKeys
       ? localLibrary.filter(record => keepKeys.has(recordKey(record)))
       : recordsByStore[storeName];
+    const changedOperations = [];
     mergedRecordsByStore[storeName] = mergeStore({
       storeName,
       baseRecords: baseRecordsByStore[storeName],
@@ -144,14 +165,17 @@ export function mergeExperienceSnapshotRecords({
       protectRemoteDeletion: storeName === 'experiences',
       equalityOptions: storeName === 'experiences' ? { ignoreUpdatedAt: true } : {},
       conflicts,
-      remoteUpdatedStores
+      remoteUpdatedStores,
+      changedOperations
     });
+    changedOperationsByStore[storeName] = changedOperations;
   }
 
   return {
     recordsByStore: mergedRecordsByStore,
     conflicts,
-    remoteUpdatedStores: Array.from(remoteUpdatedStores)
+    remoteUpdatedStores: Array.from(remoteUpdatedStores),
+    changedOperationsByStore
   };
 }
 
@@ -292,24 +316,27 @@ export function persistExperienceSnapshotAtomically({
           return;
         }
 
-        const currentLibraryKeys = new Set((currentRecordsByStore.library || []).map(recordKey));
-        const mergedLibraryKeys = new Set((merged.recordsByStore.library || []).map(recordKey));
-        for (const key of currentLibraryKeys) {
-          if (!mergedLibraryKeys.has(key)) queueWrite('library', 'delete', key);
-        }
-
-        for (const storeName of EXPERIENCE_SNAPSHOT_STORE_NAMES) {
-          for (const record of merged.recordsByStore[storeName] || []) {
-            queueWrite(storeName, 'put', record);
-          }
-        }
-
         const deletedExperienceIds = new Set((deleteExperienceIds || []).map(id => String(id)));
         if (deletedExperienceIds.size) {
           merged.recordsByStore.experiences = (merged.recordsByStore.experiences || [])
             .filter(record => !deletedExperienceIds.has(String(recordKey(record))));
-          for (const id of deletedExperienceIds) queueWrite('experiences', 'delete', id);
         }
+
+        for (const storeName of EXPERIENCE_SNAPSHOT_STORE_NAMES) {
+          for (const operation of merged.changedOperationsByStore[storeName] || []) {
+            if (
+              storeName === 'experiences' &&
+              operation.operation === 'put' &&
+              deletedExperienceIds.has(String(recordKey(operation.record)))
+            ) continue;
+            queueWrite(
+              storeName,
+              operation.operation,
+              operation.operation === 'put' ? operation.record : operation.key
+            );
+          }
+        }
+        for (const id of deletedExperienceIds) queueWrite('experiences', 'delete', id);
 
         const nextRevision = Math.max(currentRevision, baseRevision) + 1;
         queueWrite('settings', 'put', {

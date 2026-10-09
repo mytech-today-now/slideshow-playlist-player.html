@@ -26,7 +26,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=20261008-v5.0.11-issue07-directory-walk-file-limit">
+  <link rel="stylesheet" href="./styles.css?v=20261008-v5.0.11-issue13-information-readme-version">
 </head>
 <body>
   <a class="skip-link" href="#transport">Skip to controls</a>
@@ -122,7 +122,7 @@
         <span id="blend-value">50%</span>
       </div>
 
-      <button id="btn-fullscreen" title="Fullscreen viewport (F)">⛶</button>
+      <button id="btn-fullscreen" type="button" title="Fullscreen viewport (F)" aria-label="Toggle fullscreen viewport">⛶</button>
       <div class="master-volume" id="master-volume-control" data-muted="false">
         <button id="btn-mute" type="button" title="Mute master volume (M)" aria-label="Mute master volume">🔊</button>
         <div class="master-volume__popover">
@@ -547,6 +547,16 @@
 
       <!-- TAB 2: README (rendered Markdown) -->
       <section id="info-panel-readme" class="info-panel" role="tabpanel" aria-labelledby="info-tab-readme" data-tab="readme" tabindex="0" hidden>
+        <div class="info-readme-controls">
+          <label for="info-readme-source">Documentation source</label>
+          <select id="info-readme-source" aria-describedby="info-readme-source-status">
+            <option value="local">Installed version</option>
+            <option value="online">Current online documentation</option>
+          </select>
+          <p id="info-readme-source-status" class="info-readme-source-status" role="status" aria-live="polite">
+            Installed version guide for v5.0.11
+          </p>
+        </div>
         <div class="markdown-body" id="info-readme-content">
           <p class="info-readme-status">Loading README…</p>
         </div>
@@ -622,6 +632,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261008-v5.0.11-issue07-directory-walk-file-limit"></script>
+  <script type="module" src="./app.js?v=20261008-v5.0.11-issue13-information-readme-version"></script>
 </body>
 </html>

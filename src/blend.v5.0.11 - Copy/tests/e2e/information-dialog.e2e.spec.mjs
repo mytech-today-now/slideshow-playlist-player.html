@@ -8,26 +8,14 @@ import { BlendAppPage } from './support/blend-app-page.mjs';
 //  • at least one external link (target="_blank")
 //  • enough lines to make the panel taller than its viewport
 // ---------------------------------------------------------------------------
-const README_FIXTURE = [
-  '# Blend Player',
+const ONLINE_README_FIXTURE = [
+  '# Blend Player Online',
   '',
-  '> A local-first media studio that keeps your files on your own machine.',
+  '- **Runtime app version string in code/UI:** `5.1.0`',
   '',
-  '## Features',
+  'Current online guide marker.',
   '',
-  '- [Visit mytech.today](https://mytech.today/) for full documentation.',
-  '- Local-first: all media stays on your device.',
-  '- Playlist + Slideshow layers blended live.',
-  '',
-  '## Getting Started',
-  '',
-  'Serve the folder over HTTP, then open `index.html`:',
-  '',
-  '```bash',
-  'npx serve -l 5173 --cors',
-  '```',
-  '',
-  ...Array.from({ length: 60 }, (_, i) => `Paragraph line ${i + 1}: lorem ipsum dolor sit amet.`),
+  ...Array.from({ length: 60 }, (_, i) => `Online paragraph line ${i + 1}: consectetur adipiscing elit.`),
 ].join('\n');
 
 test.describe('Configuration dialog', () => {
@@ -89,7 +77,7 @@ test.describe('Information dialog', () => {
       route.fulfill({
         status: 200,
         contentType: 'text/plain; charset=utf-8',
-        body: README_FIXTURE,
+        body: ONLINE_README_FIXTURE,
       });
     });
   });
@@ -103,8 +91,12 @@ test.describe('Information dialog', () => {
     return blendPage;
   }
 
-  test('opens from the config info icon with About active and README rendered', async ({ page }) => {
+  test('opens with the installed guide by default and loads online docs only when selected', async ({ page }) => {
     test.setTimeout(60000);
+    const onlineRequests = [];
+    page.on('request', request => {
+      if (request.url().startsWith('https://raw.githubusercontent.com/')) onlineRequests.push(request.url());
+    });
     await openInfo(page);
 
     const aboutPanel = page.locator('#info-panel-about');
@@ -148,9 +140,25 @@ test.describe('Information dialog', () => {
       return el && el.querySelector('h1, h2');
     }, null, { timeout: 8000 });
     await expect(readmePanel.locator('h1, h2').first()).toBeVisible();
+    await expect(readmePanel).toContainText('Current Version Information');
+    await expect(page.locator('#info-readme-source-status'))
+      .toHaveAttribute('data-source', 'local');
+    await expect(page.locator('#info-readme-source-status'))
+      .toHaveAttribute('data-version', '5.0.11');
+    await expect(page.locator('#info-readme-source-status'))
+      .toHaveAttribute('data-version-matches', 'true');
+    expect(onlineRequests).toHaveLength(0);
+
     // README external links are rendered with a new-tab target.
     const readmeExternal = readmePanel.locator('a[target="_blank"]');
     expect(await readmeExternal.count()).toBeGreaterThan(0);
+
+    await page.locator('#info-readme-source').selectOption('online');
+    await expect(readmePanel).toContainText('Current online guide marker');
+    await expect(page.locator('#info-readme-source-status')).toContainText('Current online documentation');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.1.0');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version-matches', 'false');
+    expect(onlineRequests).toHaveLength(1);
   });
 
   test('each tab scrolls independently and remembers its position', async ({ page }) => {
@@ -190,6 +198,25 @@ test.describe('Information dialog', () => {
     // Active tab is remembered (README) and its scroll position restored.
     expect(await page.locator('#info-tab-readme').getAttribute('aria-selected')).toBe('true');
     expect(reopened).toBeGreaterThan(100);
+
+    const localSourceScroll = await page.locator('#info-panel-readme').evaluate(el => el.scrollTop);
+    await page.locator('#info-readme-source').selectOption('online');
+    await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+    await page.locator('#info-panel-readme').evaluate(el => { el.scrollTop = 260; });
+    const onlineSourceScroll = await page.locator('#info-panel-readme').evaluate(el => el.scrollTop);
+
+    await page.locator('#info-readme-source').selectOption('local');
+    await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+    await page.waitForTimeout(100);
+    const restoredLocalSourceScroll = await page.locator('#info-panel-readme').evaluate(el => el.scrollTop);
+    expect(Math.abs(restoredLocalSourceScroll - localSourceScroll)).toBeLessThan(40);
+    await expect(page.locator('#info-tab-readme')).toHaveAttribute('aria-selected', 'true');
+
+    await page.locator('#info-readme-source').selectOption('online');
+    await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+    await page.waitForTimeout(100);
+    const restoredOnlineSourceScroll = await page.locator('#info-panel-readme').evaluate(el => el.scrollTop);
+    expect(Math.abs(restoredOnlineSourceScroll - onlineSourceScroll)).toBeLessThan(40);
   });
 
   test('is dismissible and returns focus to the info button', async ({ page }) => {
@@ -216,50 +243,307 @@ test.describe('Information dialog', () => {
     await expect(page.locator('#info-tab-about')).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('shows a retry button on network failure and re-renders on click', async ({ page }) => {
+  test('documentation source has an accessible name, visible focus, and keyboard selection', async ({ page }) => {
     test.setTimeout(60000);
-    // Override the beforeEach mock to simulate total failure (GitHub + local).
-    await page.unroute('https://raw.githubusercontent.com/**');
-    await page.route('https://raw.githubusercontent.com/**', route => route.abort());
-    // Also block the local fallback served by the fixture server.
-    await page.route('**/README.md', route => {
-      const url = route.request().url();
-      // Let index.html, app.js, etc. through; only intercept README.md itself.
-      if (url.endsWith('/README.md') || url.includes('README.md?')) {
-        route.abort();
-      } else {
-        route.continue();
-      }
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    const source = page.getByLabel('Documentation source');
+    await expect(source).toBeVisible();
+    await source.focus();
+    await source.press('ArrowDown');
+    await source.press('Enter');
+    await expect(source).toHaveValue('online');
+    await expect(page.locator('#info-readme-source-status')).toContainText('Current online documentation');
+    const focusState = await source.evaluate(node => ({
+      focused: document.activeElement === node,
+      focusVisible: node.matches(':focus-visible'),
+      outlineStyle: getComputedStyle(node).outlineStyle,
+      outlineWidth: getComputedStyle(node).outlineWidth
+    }));
+    expect(focusState.focused).toBe(true);
+    expect(focusState.focusVisible).toBe(true);
+    expect(focusState.outlineStyle).not.toBe('none');
+    expect(parseFloat(focusState.outlineWidth)).toBeGreaterThan(0);
+  });
+
+  test('an older online cache never replaces the installed guide by default', async ({ page }) => {
+    test.setTimeout(60000);
+    const cachedGuide = [
+      '# Cached Online Guide',
+      '',
+      '- **Runtime app version string in code/UI:** `5.0.10`',
+      '',
+      'Cached old online marker.'
+    ].join('\n');
+    await page.addInitScript(({ cacheKey, markdown }) => {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        source: 'online',
+        markdown,
+        version: '5.0.10',
+        fetchedAt: Date.now() - 5000
+      }));
+    }, { cacheKey: 'blend-readme-online-cache-v2', markdown: cachedGuide });
+    const onlineRequests = [];
+    page.on('request', request => {
+      if (request.url().startsWith('https://raw.githubusercontent.com/')) onlineRequests.push(request.url());
     });
 
     await openInfo(page);
     await page.locator('#info-tab-readme').click();
+    await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+    expect(onlineRequests).toHaveLength(0);
 
-    // Wait for the error state with the retry button.
-    const retryBtn = page.locator('.info-readme-retry');
-    await expect(retryBtn).toBeVisible({ timeout: 15000 });
+    await page.locator('#info-readme-source').selectOption('online');
+    await expect(page.locator('#info-readme-content')).toContainText('Cached old online marker');
+    await expect(page.locator('#info-readme-source-status')).toContainText('Current online documentation');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.0.10');
+    await expect(page.locator('#info-readme-source-status')).toContainText('cached');
+    expect(onlineRequests).toHaveLength(0);
+  });
 
-    // Restore a working GitHub route so the retry succeeds.
+  test('an expired online cache is fetched only after selecting online documentation', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.addInitScript(cacheKey => {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        source: 'online',
+        markdown: '# Expired\n\n- **Runtime app version string in code/UI:** `5.0.9`',
+        version: '5.0.9',
+        fetchedAt: Date.now() - 60 * 60 * 1000 - 1
+      }));
+    }, 'blend-readme-online-cache-v2');
+    const onlineRequests = [];
+    page.on('request', request => {
+      if (request.url().startsWith('https://raw.githubusercontent.com/')) onlineRequests.push(request.url());
+    });
+
+    await openInfo(page);
+    expect(onlineRequests).toHaveLength(0);
+    await page.locator('#info-tab-readme').click();
+    await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+    await page.locator('#info-readme-source').selectOption('online');
+    await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.1.0');
+    await expect(page.locator('#info-readme-source-status')).toContainText('fetched');
+    expect(onlineRequests).toHaveLength(1);
+  });
+
+  test('keeps installed help visible and focused during a delayed online refresh', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.unroute('https://raw.githubusercontent.com/**');
+    let markRemoteStarted;
+    const remoteStarted = new Promise(resolve => { markRemoteStarted = resolve; });
+    await page.route('https://raw.githubusercontent.com/**', async route => {
+      markRemoteStarted();
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain; charset=utf-8',
+        body: ONLINE_README_FIXTURE,
+      });
+    });
+
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    const content = page.locator('#info-readme-content');
+    const panel = page.locator('#info-panel-readme');
+    await expect(content).toContainText('Current Version Information');
+    const source = page.getByLabel('Documentation source');
+    await source.focus();
+    const localScrollTop = await panel.evaluate(node => {
+      node.scrollTop = Math.min(180, node.scrollHeight - node.clientHeight);
+      return node.scrollTop;
+    });
+    await page.evaluate(() => {
+      const target = document.querySelector('#info-readme-content');
+      window.__infoReadmeEmptyCommits = [];
+      new MutationObserver(() => {
+        if (!target.textContent.trim()) window.__infoReadmeEmptyCommits.push(true);
+      }).observe(target, { childList: true, subtree: true, characterData: true });
+    });
+
+    await source.press('ArrowDown');
+    await source.press('Enter');
+    await remoteStarted;
+
+    // This assertion must pass before the delayed remote response is released.
+    await expect(content).toContainText('Current Version Information', { timeout: 500 });
+    await expect(page.locator('#info-readme-content .info-readme-status')).toHaveCount(0);
+    await expect(page.locator('#info-readme-source-status'))
+      .toContainText('Checking current online documentation');
+    await expect(page.locator('#info-tab-readme')).toHaveAttribute('aria-selected', 'true');
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('info-readme-source');
+    expect(await panel.evaluate(node => node.scrollTop)).toBe(localScrollTop);
+
+    await expect(content.locator('h1')).toHaveText('Blend Player Online');
+    await expect(content).toContainText('Current online guide marker');
+    await expect(content).not.toContainText('Current Version Information');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-source', 'online');
+    expect(await page.evaluate(() => window.__infoReadmeEmptyCommits)).toEqual([]);
+  });
+
+  test('source selector remains usable across the responsiveness matrix and scaled text', async ({ page }) => {
+    test.setTimeout(90000);
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    const source = page.getByLabel('Documentation source');
+    await expect(source).toBeVisible();
+
+    const viewports = [
+      { width: 3840, height: 2160 },
+      { width: 1920, height: 1080 },
+      { width: 1024, height: 768 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+      { width: 844, height: 390 },
+      { width: 360, height: 800 }
+    ];
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect(source).toBeVisible();
+      const metrics = await page.evaluate(() => {
+        const panel = document.querySelector('#info-panel-readme');
+        const select = document.querySelector('#info-readme-source');
+        const label = document.querySelector('#info-readme-source-status');
+        return {
+          viewportWidth: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          panelWidth: panel.clientWidth,
+          selectWidth: select.getBoundingClientRect().width,
+          selectHeight: select.getBoundingClientRect().height,
+          requiredTouchHeight: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--touch')),
+          labelWidth: label.getBoundingClientRect().width,
+          labelScrollWidth: label.scrollWidth,
+          labelClientWidth: label.clientWidth
+        };
+      });
+      expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+      expect(metrics.selectWidth).toBeLessThanOrEqual(metrics.panelWidth + 1);
+      expect(metrics.selectHeight).toBeGreaterThanOrEqual(metrics.requiredTouchHeight - 1);
+      expect(metrics.labelWidth).toBeLessThanOrEqual(metrics.panelWidth + 1);
+      expect(metrics.labelScrollWidth).toBeLessThanOrEqual(metrics.labelClientWidth + 1);
+
+      await source.selectOption('local');
+      await source.focus();
+      await source.press('ArrowDown');
+      await source.press('Enter');
+      await expect(source).toHaveValue('online');
+      await expect(page.locator('#info-readme-source-status')).toContainText('Current online documentation');
+    }
+
+    await page.evaluate(() => { document.body.style.fontSize = '24px'; });
+    const scaledMetrics = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      selectorHeight: document.querySelector('#info-readme-source').getBoundingClientRect().height,
+      statusWidth: document.querySelector('#info-readme-source-status').clientWidth,
+      statusScrollWidth: document.querySelector('#info-readme-source-status').scrollWidth
+    }));
+    expect(scaledMetrics.documentWidth).toBeLessThanOrEqual(scaledMetrics.viewportWidth + 1);
+    expect(scaledMetrics.selectorHeight).toBeGreaterThanOrEqual(44);
+    expect(scaledMetrics.statusScrollWidth).toBeLessThanOrEqual(scaledMetrics.statusWidth + 1);
+  });
+
+  test('documentation source remains operable by touch on a narrow viewport', async ({ browser }) => {
+    const context = await browser.newContext({
+      baseURL: 'http://127.0.0.1:4191',
+      viewport: { width: 360, height: 800 },
+      hasTouch: true,
+      isMobile: true
+    });
+    const page = await context.newPage();
+    await page.route('https://raw.githubusercontent.com/**', route => route.fulfill({
+      status: 200,
+      contentType: 'text/plain; charset=utf-8',
+      body: ONLINE_README_FIXTURE,
+    }));
+    try {
+      await openInfo(page);
+      await page.locator('#info-tab-readme').tap();
+      const source = page.getByLabel('Documentation source');
+      await expect(source).toBeVisible();
+      const height = await source.evaluate(node => node.getBoundingClientRect().height);
+      expect(height).toBeGreaterThanOrEqual(40);
+      await source.tap();
+      await source.selectOption('online');
+      await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('installed README remains available when the app shell is offline', async ({ page, context }) => {
+    test.setTimeout(90000);
+    await page.unroute('https://raw.githubusercontent.com/**');
+    const onlineRequests = [];
+    page.on('request', request => {
+      if (request.url().startsWith('https://raw.githubusercontent.com/')) onlineRequests.push(request.url());
+    });
+
+    const blendPage = new BlendAppPage(page);
+    await blendPage.boot('/index.html');
+    const serviceWorkerUrl = await page.evaluate(() => new URL('./service-worker.js', location.href).href);
+    await page.waitForFunction(expected => (
+      navigator.serviceWorker?.controller?.scriptURL === expected
+    ), serviceWorkerUrl, { timeout: 20000 });
+    await page.waitForFunction(async () => {
+      const config = window.BlendPwaConfig;
+      if (!config?.CACHE_NAMES?.docs) return false;
+      const cache = await caches.open(config.CACHE_NAMES.docs);
+      const readmeUrl = new URL('./README.md', location.href).href;
+      return Boolean(await cache.match(readmeUrl));
+    }, null, { timeout: 20000 });
+
+    await context.setOffline(true);
+    try {
+      await blendPage.openConfig();
+      await page.locator('#open-info').click();
+      await expect(page.locator('#info-modal')).toBeVisible();
+      await page.locator('#info-tab-readme').click();
+      await expect(page.locator('#info-readme-source-status'))
+        .toHaveAttribute('data-version', '5.0.11');
+      await expect(page.locator('#info-readme-source-status'))
+        .toHaveAttribute('data-version-matches', 'true');
+      await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+      expect(onlineRequests).toHaveLength(0);
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  test('keeps the installed guide after online failure and retries online on user action', async ({ page }) => {
+    test.setTimeout(60000);
+    // Fail online requests while keeping the installed guide available.
+    await page.unroute('https://raw.githubusercontent.com/**');
+    await page.route('https://raw.githubusercontent.com/**', route => route.abort());
+
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    await page.locator('#info-readme-source').selectOption('online');
+
+    const fallbackNotice = page.getByRole('status').filter({
+      hasText: 'Offline or online documentation is unavailable; this local guide remains available.'
+    });
+    await expect(fallbackNotice).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+    await expect(page.locator('#info-readme-source')).toHaveValue('local');
+
+    // Retry explicitly after restoring the online source.
     await page.unroute('https://raw.githubusercontent.com/**');
     await page.route('https://raw.githubusercontent.com/**', route => {
       route.fulfill({
         status: 200,
         contentType: 'text/plain; charset=utf-8',
-        body: README_FIXTURE,
+        body: ONLINE_README_FIXTURE,
       });
     });
-    // Also restore README.md requests so the local fallback works again.
-    await page.unroute('**/README.md');
 
-    await retryBtn.click();
+    const retry = page.getByRole('button', { name: 'Retry online documentation' });
+    await retry.focus();
+    await page.keyboard.press('Enter');
 
-    // After retry the README should render real headings.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('#info-readme-content');
-      return el && el.querySelector('h1, h2');
-    }, null, { timeout: 10000 });
-    await expect(page.locator('#info-panel-readme').locator('h1, h2').first()).toBeVisible();
-    // Retry button should be gone once the README loaded successfully.
-    await expect(retryBtn).toBeHidden();
+    await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+    await expect(page.locator('#info-readme-source')).toHaveValue('online');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.1.0');
+    await expect(page.locator('.info-readme-retry-online')).toHaveCount(0);
   });
 });

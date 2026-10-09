@@ -111,6 +111,124 @@ test('merges disjoint library additions and reports an overlapping list edit', (
   assert.deepEqual(result.conflicts, [{ storeName: 'playlist', key: 'default' }]);
 });
 
+test('queues writes only for changed rows and the snapshot revision', async () => {
+  const baseRecordsByStore = sampleRecords();
+  const localRecordsByStore = structuredClone(baseRecordsByStore);
+  localRecordsByStore.settings[0].projectName = 'Updated settings';
+  const fake = createFakeTransaction(baseRecordsByStore);
+
+  const result = await persistExperienceSnapshotAtomically({
+    db: {},
+    recordsByStore: localRecordsByStore,
+    baseRecordsByStore,
+    expectedRevision: 0,
+    transactionFactory: () => fake.transaction
+  });
+
+  assert.deepEqual(fake.operations, [
+    { storeName: 'settings', operation: 'put', record: localRecordsByStore.settings[0] },
+    {
+      storeName: 'settings',
+      operation: 'put',
+      record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 1 }
+    }
+  ]);
+  assert.equal(result.revision, 1);
+  assert.deepEqual(fake.databaseRecordsByStore.library, baseRecordsByStore.library);
+  assert.deepEqual(fake.databaseRecordsByStore.dirHandles, baseRecordsByStore.dirHandles);
+  assert.deepEqual(fake.databaseRecordsByStore.experiences, baseRecordsByStore.experiences);
+  assert.deepEqual(fake.databaseRecordsByStore.playlist, baseRecordsByStore.playlist);
+  assert.deepEqual(fake.databaseRecordsByStore.slideshow, baseRecordsByStore.slideshow);
+  assert.deepEqual(fake.databaseRecordsByStore.settings.find(record => record.key === 'global'), localRecordsByStore.settings[0]);
+});
+
+test('does not rewrite a row when both tabs made the same edit', async () => {
+  const baseRecordsByStore = emptyRecords();
+  baseRecordsByStore.settings = [{ key: 'global', opacity: 0.5 }];
+  const sameEdit = { key: 'global', opacity: 0.7 };
+  const localRecordsByStore = emptyRecords();
+  localRecordsByStore.settings = [sameEdit];
+  const currentRecordsByStore = emptyRecords();
+  currentRecordsByStore.settings = [sameEdit];
+  const fake = createFakeTransaction(currentRecordsByStore);
+
+  const result = await persistExperienceSnapshotAtomically({
+    db: {},
+    recordsByStore: localRecordsByStore,
+    baseRecordsByStore,
+    expectedRevision: 0,
+    transactionFactory: () => fake.transaction
+  });
+
+  assert.deepEqual(fake.operations, [{
+    storeName: 'settings',
+    operation: 'put',
+    record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 1 }
+  }]);
+  assert.deepEqual(result.recordsByStore.settings, [sameEdit]);
+});
+
+test('does not rewrite unchanged catalog rows omitted from an ordinary local snapshot', async () => {
+  const activeExperience = { id: 'active', name: 'Active', payload: { settings: { opacity: 0.5 } } };
+  const savedExperience = { id: 'saved', name: 'Saved', payload: { settings: { opacity: 0.8 } } };
+  const baseRecordsByStore = emptyRecords();
+  baseRecordsByStore.experiences = [activeExperience, savedExperience];
+  const localRecordsByStore = emptyRecords();
+  localRecordsByStore.experiences = [activeExperience];
+  const fake = createFakeTransaction(baseRecordsByStore);
+
+  const result = await persistExperienceSnapshotAtomically({
+    db: {},
+    recordsByStore: localRecordsByStore,
+    baseRecordsByStore,
+    expectedRevision: 0,
+    transactionFactory: () => fake.transaction
+  });
+
+  assert.deepEqual(fake.operations, [{
+    storeName: 'settings',
+    operation: 'put',
+    record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 1 }
+  }]);
+  assert.deepEqual(fake.databaseRecordsByStore.experiences, baseRecordsByStore.experiences);
+  assert.deepEqual(result.recordsByStore.experiences, baseRecordsByStore.experiences);
+});
+
+test('persists a same-result experience row when its ignored updatedAt differs', async () => {
+  const baseRecordsByStore = emptyRecords();
+  const localRecord = {
+    id: 'same-experience',
+    name: 'Same Experience',
+    updatedAt: '2026-01-02T00:00:00.000Z',
+    payload: { settings: { opacity: 0.7 } }
+  };
+  const currentRecord = { ...localRecord, updatedAt: '2026-01-03T00:00:00.000Z' };
+  const localRecordsByStore = emptyRecords();
+  localRecordsByStore.experiences = [localRecord];
+  const currentRecordsByStore = emptyRecords();
+  currentRecordsByStore.experiences = [currentRecord];
+  const fake = createFakeTransaction(currentRecordsByStore);
+
+  const result = await persistExperienceSnapshotAtomically({
+    db: {},
+    recordsByStore: localRecordsByStore,
+    baseRecordsByStore,
+    expectedRevision: 0,
+    transactionFactory: () => fake.transaction
+  });
+
+  assert.deepEqual(fake.operations, [
+    { storeName: 'experiences', operation: 'put', record: localRecord },
+    {
+      storeName: 'settings',
+      operation: 'put',
+      record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 1 }
+    }
+  ]);
+  assert.deepEqual(fake.databaseRecordsByStore.experiences, [localRecord]);
+  assert.deepEqual(result.recordsByStore.experiences, [localRecord]);
+});
+
 test('does not restore an experience that another tab deleted', () => {
   const active = { id: 'active', name: 'Current', updatedAt: '2026-01-01T00:00:00.000Z' };
   const base = emptyRecords();
@@ -160,10 +278,14 @@ test('persists all experience stores and prunes a library deletion from the hydr
   assert.equal(calls[0].mode, 'readwrite');
   assert.deepEqual(result.recordsByStore.library.map(record => record.id), ['keep']);
   assert.equal(result.revision, 4);
-  assert.deepEqual(fake.operations.find(item => item.operation === 'delete'), {
-    storeName: 'library', operation: 'delete', key: 'stale'
-  });
-  assert.equal(fake.operations.some(item => item.storeName === 'settings' && item.operation === 'put' && item.record.key === EXPERIENCE_SNAPSHOT_REVISION_KEY), true);
+  assert.deepEqual(fake.operations, [
+    { storeName: 'library', operation: 'delete', key: 'stale' },
+    {
+      storeName: 'settings',
+      operation: 'put',
+      record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 4 }
+    }
+  ]);
   assert.deepEqual(fake.databaseRecordsByStore.library.map(record => record.id), ['keep']);
   assert.equal(queuedWrites[0].storeName, 'library');
   assert.equal(fake.wasAborted(), false);
@@ -192,6 +314,14 @@ test('atomically merges a stale library addition with the current revision', asy
   assert.equal(result.revision, 2);
   assert.equal(result.revisionChanged, true);
   assert.equal(fake.operations.some(item => item.operation === 'delete'), false);
+  assert.deepEqual(fake.operations, [
+    { storeName: 'library', operation: 'put', record: { id: 'tab-b', name: 'tab-b.jpg' } },
+    {
+      storeName: 'settings',
+      operation: 'put',
+      record: { key: EXPERIENCE_SNAPSHOT_REVISION_KEY, revision: 2 }
+    }
+  ]);
 });
 
 test('aborts the transaction on a queued-write failure and keeps the snapshot atomic', async () => {
@@ -228,6 +358,7 @@ test('faults after writes are queued in every experience store leave the old sna
   const oldRecords = sampleRecords();
   const nextRecords = sampleRecords();
   nextRecords.library = [...oldRecords.library, { id: 'imported-library', name: 'imported.png' }];
+  nextRecords.dirHandles = [...oldRecords.dirHandles, { id: 'imported-directory', name: 'Imported Directory' }];
   nextRecords.experiences = [...oldRecords.experiences, { id: 'imported-experience', name: 'Imported' }];
   nextRecords.playlist = [{ key: 'default', items: [{ id: 'imported-library' }] }];
   nextRecords.slideshow = [{ key: 'default', items: [{ id: 'imported-library' }] }];

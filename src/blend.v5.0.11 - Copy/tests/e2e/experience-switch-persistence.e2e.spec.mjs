@@ -304,7 +304,7 @@ test('retry waits for the outgoing write, switches once, and reload retains both
     activeExperienceId: targetId
   });
 
-  await blendPage.switchExperience(SOURCE_NAME);
+  await blendPage.switchExperience(sourceState.projectName);
   await expect(blendPage.experienceSelect).toHaveValue(sourceId);
   await expect(blendPage.toastContainer).toContainText(`Switched to ${sourceState.projectName}`);
   expect(await blendPage.toastContainer.locator('.toast').filter({ hasText: `Switched to ${sourceState.projectName}` }).count()).toBe(1);

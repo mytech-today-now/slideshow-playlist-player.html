@@ -228,8 +228,14 @@ export async function registerPwa(options = {}) {
   setupInstallBanner(options);
 
   const log = options.log || console;
-  if (location.protocol === 'file:' || !('serviceWorker' in navigator)) {
+  if (location.protocol === 'file:' || !navigator.serviceWorker || typeof navigator.serviceWorker.register !== 'function') {
     lastStatus = { ...lastStatus, supported: false, registered: false };
+    setPwaStatus(
+      location.protocol === 'file:'
+        ? 'Offline shell caching requires Blend to be served over HTTP or HTTPS.'
+        : 'Offline shell caching is unavailable in this browser.',
+      { state: 'unavailable' }
+    );
     return lastStatus;
   }
 
@@ -259,6 +265,9 @@ export async function registerPwa(options = {}) {
   } catch (error) {
     log?.warn?.('service worker registration failed', error);
     lastStatus = { ...lastStatus, registered: false, error: error?.message || String(error) };
+    setPwaStatus('Offline shell caching could not be enabled. Core playback remains available online.', {
+      state: 'unavailable'
+    });
   }
 
   return lastStatus;
