@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './experience-persistence.js?v=20261010-v5.0.11-config-diagnostics';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-diagnostics';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-diagnostics';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-diagnostics';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-diagnostics';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-diagnostics';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './storage-url-resolver.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './transition-manager.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './playback-clock.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-diagnostics';
+import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './url-share.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './timeline-analysis.js?v=20261010-v5.0.11-config-diagnostics';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-playback-toolbar';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './shared-experience-download.js?v=20261010-v5.0.11-config-diagnostics';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-diagnostics';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-diagnostics';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261010-v5.0.11-config-playback-toolbar';
+} from './local-import-limits.js?v=20261010-v5.0.11-config-diagnostics';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -97,12 +97,31 @@ import {
 } from './resume-on-load.js?v=20260927-v5.0.11-resume';
 
 const log = createLogger('Blend', {
+  level: 'debug',
   storageKey: 'blend-debug-log-v1',
   persist: true,
   maxEntries: 500
 });
 
+let bootstrapPromise = null;
+let bootstrapCompleted = false;
+let bootstrapStage = 'module_initialization';
+let welcomeDecisionCompleted = false;
+let configOpenedBeforeWelcomeDecision = false;
+
 attachGlobalErrorHandlers(log);
+
+if (typeof window !== 'undefined') {
+  window.BlendDebug = Object.freeze({
+    getStatus: () => configDiagnosticSnapshot(),
+    getRecentEvents: (limit = 50) => {
+      const safeLimit = Math.max(1, Math.min(200, Math.floor(Number(limit) || 50)));
+      return log.entries()
+        .filter(entry => /^\[(?:config|startup|storage)\]/.test(entry.message))
+        .slice(-safeLimit);
+    }
+  });
+}
 
 // =====================================================
 // Blend version 4.12  (Experience UX + Source Filtering, June 2026)
@@ -169,7 +188,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-playback-toolbar';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-diagnostics';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -3179,32 +3198,73 @@ const DB_STORE_KEY_PATHS = Object.freeze({
 });
 
 async function openDB({ onBlocked } = {}) {
-  const connection = await openIndexedDBCompatible({
-    indexedDB,
-    name: DB_NAME,
-    version: DB_VERSION,
+  log.debug('[storage] opening IndexedDB', {
+    database: DB_NAME,
+    requestedVersion: DB_VERSION,
     timeoutMs: 15_000,
-    onBlocked,
-    onUpgrade: event => {
-      const d = event.target.result;
-      if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('playlist')) d.createObjectStore('playlist', { keyPath: 'key' });
-      if (!d.objectStoreNames.contains('slideshow')) d.createObjectStore('slideshow', { keyPath: 'key' });
-      if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
-      if (!d.objectStoreNames.contains(EXPERIENCE_STORE)) d.createObjectStore(EXPERIENCE_STORE, { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
-      if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
-      ensureAliasObjectStores(d);
-    },
-    validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, DB_STORE_KEY_PATHS)
+    stage: bootstrapStage
   });
+  let connection;
+  try {
+    connection = await openIndexedDBCompatible({
+      indexedDB,
+      name: DB_NAME,
+      version: DB_VERSION,
+      timeoutMs: 15_000,
+      onDiagnostic: diagnostic => {
+        const level = diagnostic.event === 'version_error_fallback' || diagnostic.event === 'schema_validation_failed'
+          ? 'warn'
+          : 'debug';
+        log[level](`[storage] IndexedDB ${diagnostic.event}`, {
+          ...diagnostic,
+          stage: bootstrapStage
+        });
+      },
+      onBlocked: event => {
+        log.warn('[storage] IndexedDB open is blocked', {
+          database: DB_NAME,
+          requestedVersion: DB_VERSION,
+          oldVersion: Number.isFinite(event?.oldVersion) ? event.oldVersion : null,
+          newVersion: Number.isFinite(event?.newVersion) ? event.newVersion : null,
+          stage: bootstrapStage
+        });
+        onBlocked?.(event);
+      },
+      onUpgrade: event => {
+        const d = event.target.result;
+        if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
+        if (!d.objectStoreNames.contains('playlist')) d.createObjectStore('playlist', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains('slideshow')) d.createObjectStore('slideshow', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains(EXPERIENCE_STORE)) d.createObjectStore(EXPERIENCE_STORE, { keyPath: 'id' });
+        if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
+        if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
+        ensureAliasObjectStores(d);
+      },
+      validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, DB_STORE_KEY_PATHS)
+    });
+  } catch (error) {
+    log.error('[storage] IndexedDB open failed', {
+      database: DB_NAME,
+      requestedVersion: DB_VERSION,
+      stage: bootstrapStage,
+      error
+    });
+    throw error;
+  }
   if (connection.version > DB_VERSION) {
     log.info('opened a compatible newer database schema', {
       requestedVersion: DB_VERSION,
       actualVersion: connection.version
     });
   }
-  connection.onversionchange = () => {
+  connection.onversionchange = event => {
+    log.warn('[storage] IndexedDB connection received a version change', {
+      database: DB_NAME,
+      oldVersion: Number.isFinite(event?.oldVersion) ? event.oldVersion : null,
+      newVersion: Number.isFinite(event?.newVersion) ? event.newVersion : null,
+      stage: bootstrapStage
+    });
     if (db === connection) db = null;
     connection.close();
     if (bootstrapCompleted) {
@@ -9311,38 +9371,129 @@ function trapFocusWithin(event, container) {
   }
 }
 
+function configDiagnosticSnapshot() {
+  const gear = $('#config-gear');
+  const panel = $('#config-panel');
+  const backdrop = $('#config-backdrop');
+  const notice = $('#config-startup-notice');
+  let hitTestTarget = null;
+  if (gear) {
+    try {
+      const rect = gear.getBoundingClientRect();
+      hitTestTarget = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    } catch (_) {}
+  }
+  let panelStyle = null;
+  if (panel) {
+    try {
+      const style = getComputedStyle(panel);
+      panelStyle = {
+        display: style.display,
+        visibility: style.visibility,
+        opacity: style.opacity,
+        pointerEvents: style.pointerEvents
+      };
+    } catch (_) {}
+  }
+  return {
+    startup: {
+      stage: bootstrapStage,
+      completed: bootstrapCompleted,
+      inProgress: Boolean(bootstrapPromise) && !bootstrapCompleted,
+      welcomeDecisionCompleted,
+      configOpenedBeforeWelcomeDecision
+    },
+    gear: {
+      present: Boolean(gear),
+      handlerBound: gear?.dataset.blendConfigHandler === 'ready',
+      expanded: gear?.getAttribute('aria-expanded') || null,
+      hitTestTarget: hitTestTarget ? {
+        tag: hitTestTarget.tagName.toLowerCase(),
+        id: hitTestTarget.id || null,
+        receivesPointer: Boolean(gear && (hitTestTarget === gear || gear.contains(hitTestTarget)))
+      } : null
+    },
+    panel: {
+      present: Boolean(panel),
+      open: Boolean(panel?.classList.contains('open')),
+      ariaHidden: panel?.getAttribute('aria-hidden') || null,
+      startupLocked: Boolean(panel?.classList.contains('config-startup-locked')),
+      startupNoticeVisible: Boolean(notice && !notice.hidden),
+      style: panelStyle
+    },
+    backdropOpen: Boolean(backdrop?.classList.contains('open')),
+    documentVisibility: document.visibilityState
+  };
+}
+
 function openConfig() {
   const panel = $('#config-panel');
-  if (panel.classList.contains('open')) return;
+  if (!panel) {
+    log.error('[config] open failed because the panel element is missing', configDiagnosticSnapshot());
+    return false;
+  }
+  if (!welcomeDecisionCompleted) configOpenedBeforeWelcomeDecision = true;
+  if (panel.classList.contains('open')) {
+    log.debug('[config] open ignored because the panel is already open', configDiagnosticSnapshot());
+    return true;
+  }
   configFocusReturn = document.activeElement;
   panel.classList.add('open');
   panel.style.removeProperty('transform');
   panel.setAttribute('aria-hidden', 'false');
-  $('#config-backdrop').classList.add('open');
+  const backdrop = $('#config-backdrop');
+  if (backdrop) backdrop.classList.add('open');
+  else log.warn('[config] backdrop element is missing while opening the panel');
   const gear = $('#config-gear');
   gear?.setAttribute('aria-expanded', 'true');
   gear?.setAttribute('aria-label', 'Close configuration panel');
   gear?.setAttribute('title', 'Close configuration panel (C)');
   document.body.classList.add('config-open');
-  syncExperienceControls();
-  renderExperiencePicker();
-  renderLibrary();
-  renderListEditor();
-  configTrapHandler = (event) => trapFocusWithin(event, panel);
-  panel.addEventListener('keydown', configTrapHandler);
+  try {
+    syncExperienceControls();
+    renderExperiencePicker();
+    renderLibrary();
+    renderListEditor();
+  } catch (error) {
+    log.error('[config] panel opened but content refresh failed', {
+      stage: bootstrapStage,
+      panel: configDiagnosticSnapshot().panel,
+      error
+    });
+  }
+  try {
+    configTrapHandler = (event) => trapFocusWithin(event, panel);
+    panel.addEventListener('keydown', configTrapHandler);
+  } catch (error) {
+    configTrapHandler = null;
+    log.warn('[config] keyboard focus trap could not be installed', { error });
+  }
   const experienceSelect = $('#experience-select');
   const focusTarget = experienceSelect && !experienceSelect.disabled && !experienceSelect.closest('[inert]')
     ? experienceSelect
     : $('#close-config') || panel;
-  requestAnimationFrame(() => { try { focusTarget.focus(); } catch (_) {} });
+  requestAnimationFrame(() => {
+    try { focusTarget.focus(); }
+    catch (error) { log.warn('[config] focus could not move into the panel', { error }); }
+  });
+  log.info('[config] panel opened', configDiagnosticSnapshot());
+  return true;
 }
 
 function closeConfig() {
   const panel = $('#config-panel');
-  if (!panel.classList.contains('open')) return;
+  if (!panel) {
+    log.error('[config] close failed because the panel element is missing', configDiagnosticSnapshot());
+    return false;
+  }
+  if (!panel.classList.contains('open')) {
+    log.debug('[config] close ignored because the panel is already closed', configDiagnosticSnapshot());
+    return true;
+  }
   panel.classList.remove('open');
   panel.setAttribute('aria-hidden', 'true');
-  $('#config-backdrop').classList.remove('open');
+  const backdrop = $('#config-backdrop');
+  backdrop?.classList.remove('open');
   const gear = $('#config-gear');
   gear?.setAttribute('aria-expanded', 'false');
   gear?.setAttribute('aria-label', 'Open configuration panel');
@@ -9353,9 +9504,12 @@ function closeConfig() {
     configTrapHandler = null;
   }
   if (configFocusReturn && typeof configFocusReturn.focus === 'function') {
-    try { configFocusReturn.focus(); } catch (_) {}
+    try { configFocusReturn.focus(); }
+    catch (error) { log.warn('[config] focus could not return after closing the panel', { error }); }
   }
   configFocusReturn = null;
+  log.info('[config] panel closed', configDiagnosticSnapshot());
+  return true;
 }
 
 // ====================== INFORMATION DIALOG ======================
@@ -9679,16 +9833,61 @@ function restoreInfoScroll(name) {
 
 function wireConfigPanelControls() {
   const gear = $('#config-gear');
-  if (gear) {
-    gear.onclick = () => {
-      if ($('#config-panel').classList.contains('open')) closeConfig();
-      else openConfig();
-    };
+  if (!gear) {
+    log.error('[config] could not bind gear handler because the gear element is missing', configDiagnosticSnapshot());
+  } else if (gear.dataset.blendConfigHandler !== 'ready') {
+    if (document.documentElement.dataset.blendConfigProbeBound !== 'ready') {
+      document.addEventListener('click', event => {
+        const currentGear = $('#config-gear');
+        if (!currentGear) return;
+        const rect = currentGear.getBoundingClientRect();
+        const nearGear = event.clientX >= rect.left && event.clientX <= rect.right
+          && event.clientY >= rect.top && event.clientY <= rect.bottom;
+        if (!nearGear || currentGear === event.target || currentGear.contains(event.target)) return;
+        log.warn('[config] click at gear coordinates was intercepted', {
+          targetTag: event.target?.tagName?.toLowerCase() || null,
+          targetId: event.target?.id || null,
+          state: configDiagnosticSnapshot()
+        });
+      }, true);
+      document.documentElement.dataset.blendConfigProbeBound = 'ready';
+    }
+    gear.addEventListener('click', event => {
+      log.info('[config] gear activation received', {
+        trusted: Boolean(event.isTrusted),
+        clickDetail: Number(event.detail) || 0,
+        before: configDiagnosticSnapshot()
+      });
+      try {
+        if ($('#config-panel')?.classList.contains('open')) closeConfig();
+        else openConfig();
+      } catch (error) {
+        log.error('[config] gear activation handler failed', {
+          state: configDiagnosticSnapshot(),
+          error
+        });
+      }
+      requestAnimationFrame(() => {
+        log.info('[config] gear activation settled', configDiagnosticSnapshot());
+      });
+    });
+    gear.dataset.blendConfigHandler = 'ready';
+    log.info('[config] gear handler bound', configDiagnosticSnapshot());
   }
   const closeButton = $('#close-config');
-  if (closeButton) closeButton.onclick = closeConfig;
+  if (closeButton && closeButton.dataset.blendConfigHandler !== 'ready') {
+    closeButton.addEventListener('click', closeConfig);
+    closeButton.dataset.blendConfigHandler = 'ready';
+  } else if (!closeButton) {
+    log.warn('[config] close button element is missing');
+  }
   const backdrop = $('#config-backdrop');
-  if (backdrop) backdrop.onclick = closeConfig;
+  if (backdrop && backdrop.dataset.blendConfigHandler !== 'ready') {
+    backdrop.addEventListener('click', closeConfig);
+    backdrop.dataset.blendConfigHandler = 'ready';
+  } else if (!backdrop) {
+    log.warn('[config] backdrop element is missing');
+  }
 }
 
 function wireConfig() {
@@ -11813,10 +12012,27 @@ async function setupPWA() {
 
 // ====================== FIRST RUN / WELCOME ======================
 function maybeShowWelcome() {
-  const seen = localStorage.getItem(WELCOME_KEY);
+  if (welcomeDecisionCompleted) return;
+  welcomeDecisionCompleted = true;
+  let seen = false;
+  try { seen = Boolean(localStorage.getItem(WELCOME_KEY)); }
+  catch (error) { log.warn('[startup] welcome preference could not be read', { error }); }
   if (seen) return;
+  if (configOpenedBeforeWelcomeDecision) {
+    log.info('[startup] welcome dialog skipped after configuration was opened', configDiagnosticSnapshot());
+    return;
+  }
   const m = $('#welcome-modal');
-  m.showModal();
+  if (!m || typeof m.showModal !== 'function') {
+    log.warn('[startup] welcome dialog could not open because its dialog element is missing');
+    return;
+  }
+  try { m.showModal(); }
+  catch (error) {
+    log.error('[startup] welcome dialog failed to open', { error });
+    return;
+  }
+  log.info('[startup] welcome dialog opened', configDiagnosticSnapshot());
   $('#welcome-dismiss').onclick = () => { localStorage.setItem(WELCOME_KEY, '1'); m.close(); };
   $('#welcome-example-list').onclick = () => downloadExampleList();
   $('#welcome-add-folder').onclick = async () => {
@@ -11826,7 +12042,14 @@ function maybeShowWelcome() {
 }
 
 // ====================== INIT ======================
+function setBootstrapStage(stage) {
+  const previousStage = bootstrapStage;
+  bootstrapStage = stage;
+  log.debug('[startup] phase started', { stage, previousStage });
+}
+
 async function runBootstrap() {
+  setBootstrapStage('read_startup_request');
   pendingDeepLinkRequest = parseDeepLinkRequest();
   pendingIpfsExperienceRequest = parseIpfsExperienceRequest();
   pendingUrlShareRequest = parseUrlShareRequest();
@@ -11837,11 +12060,15 @@ async function runBootstrap() {
   analyticsConsentGranted = readStoredAnalyticsConsent();
   updateAnalyticsConsentState({ consent: analyticsConsentGranted });
 
+  setBootstrapStage('indexeddb_open');
   await openDB({ onBlocked: showBlockedDatabaseStartup });
+  setBootstrapStage('state_hydration');
   await hydrateState();
+  setBootstrapStage('auth_restore');
   await bootstrapAuthSession({ waitForRefresh: false });
   resetShareWarningFromUrlIfRequested();
 
+  setBootstrapStage('wire_controls');
   setupMediaLayers();
   setupTransitionManager();
   wireTransport();
@@ -11853,10 +12080,12 @@ async function runBootstrap() {
   // is enabled, prepare its saved indices in a paused state below.
   applyTransportMode(transportMode);
   window.addEventListener('focus', () => updateAnalyticsConsentState({ consent: analyticsConsentGranted }), { passive: true });
+  setBootstrapStage('pwa_setup');
   await setupPWA();
   window.addEventListener('pagehide', handlePageHide, { once: true });
 
   // initial renders
+  setBootstrapStage('initial_render');
   renderLibrary();
   renderListEditor();
   setBlend(state.settings.opacity || 0.5);
@@ -11868,6 +12097,7 @@ async function runBootstrap() {
   // restore last indices visually
   updateHUD();
 
+  setBootstrapStage('restore_requested_experience');
   if (pendingUrlShareRequest) {
     await loadUrlSharedExperience(pendingUrlShareRequest);
     pendingUrlShareRequest = null;
@@ -11935,12 +12165,18 @@ async function runBootstrap() {
     transitionManager,
     log
   };
+  setBootstrapStage('ready');
+  log.info('[startup] app ready', configDiagnosticSnapshot());
 }
 
-let bootstrapPromise = null;
-let bootstrapCompleted = false;
-
-function showBlockedDatabaseStartup() {
+function showBlockedDatabaseStartup(event) {
+  log.warn('[storage] showing blocked database recovery state', {
+    database: DB_NAME,
+    requestedVersion: DB_VERSION,
+    oldVersion: Number.isFinite(event?.oldVersion) ? event.oldVersion : null,
+    newVersion: Number.isFinite(event?.newVersion) ? event.newVersion : null,
+    stage: bootstrapStage
+  });
   const panel = $('#database-startup-recovery');
   const message = $('#database-startup-message');
   const retry = $('#database-startup-retry');
@@ -11956,6 +12192,13 @@ function setConfigStartupState(message = '') {
   const panel = $('#config-panel');
   const notice = $('#config-startup-notice');
   const locked = Boolean(message);
+  const wasLocked = Boolean(panel?.classList.contains('config-startup-locked'));
+  if (locked !== wasLocked) {
+    log.info(`[startup] configuration controls ${locked ? 'locked' : 'unlocked'}`, {
+      stage: bootstrapStage,
+      reason: locked ? message : null
+    });
+  }
   if (notice) {
     notice.hidden = !locked;
     notice.textContent = message;
@@ -11997,27 +12240,46 @@ function showDatabaseStartupFailure(error) {
     retry.dataset.action = 'reload';
   }
   setConfigStartupState(`Saved data is not loaded. ${message.textContent} Configuration controls are read-only until startup succeeds.`);
+  log.warn('[startup] recovery interface shown', {
+    stage: bootstrapStage,
+    errorCode: error?.code || error?.name || 'startup_error',
+    retryAction: retry.dataset.action
+  });
   retry.focus({ preventScroll: true });
 }
 
 function bootstrap() {
-  if (bootstrapCompleted) return Promise.resolve(true);
-  if (bootstrapPromise) return bootstrapPromise;
+  if (bootstrapCompleted) {
+    log.debug('[startup] bootstrap request ignored because startup is complete', { stage: bootstrapStage });
+    return Promise.resolve(true);
+  }
+  if (bootstrapPromise) {
+    log.debug('[startup] bootstrap request joined the active attempt', { stage: bootstrapStage });
+    return bootstrapPromise;
+  }
 
+  log.info('[startup] bootstrap attempt started', { previousStage: bootstrapStage });
   bootstrapPromise = runBootstrap().then(() => {
     bootstrapCompleted = true;
+    bootstrapStage = 'ready';
     setConfigStartupState('');
     const panel = $('#database-startup-recovery');
     if (panel) panel.hidden = true;
+    log.info('[startup] bootstrap attempt completed', configDiagnosticSnapshot());
     return true;
   }).catch(error => {
-    log.warn('app startup failed', {
-      code: error?.code || error?.name || 'startup_error'
+    const failedStage = bootstrapStage;
+    bootstrapStage = 'failed';
+    log.error('[startup] bootstrap attempt failed', {
+      failedStage,
+      retryAction: error?.code === 'idb_schema_incompatible' ? 'reload' : 'retry_or_reload',
+      error
     });
     showDatabaseStartupFailure(error);
     return false;
   }).finally(() => {
     bootstrapPromise = null;
+    log.debug('[startup] bootstrap attempt settled', { stage: bootstrapStage, completed: bootstrapCompleted });
   });
   return bootstrapPromise;
 }

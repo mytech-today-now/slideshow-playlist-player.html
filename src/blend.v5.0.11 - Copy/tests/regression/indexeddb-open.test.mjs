@@ -190,10 +190,12 @@ test('a higher schema version opens without requesting a downgrade when its stor
   const timers = makeTimers();
   const keyPaths = { library: 'id', aliases: 'id', aliasMeta: 'key' };
   const database = makeDatabase(keyPaths);
+  const diagnostics = [];
   const opened = openIndexedDBCompatible({
     indexedDB,
     name: 'player-blend-v1',
     version: 5,
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
     validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, keyPaths),
     setTimer: timers.setTimer,
     clearTimer: timers.clearTimer
@@ -207,6 +209,14 @@ test('a higher schema version opens without requesting a downgrade when its stor
 
   assert.equal(await opened, database);
   assert.deepEqual(calls, [['player-blend-v1', 5], ['player-blend-v1']]);
+  assert.deepEqual(diagnostics.map(diagnostic => diagnostic.event), [
+    'version_error_fallback',
+    'versionless_fallback_opened'
+  ]);
+  assert.equal(diagnostics[0].error.name, 'IndexedDBOpenError');
+  assert.equal(diagnostics[0].error.cause.name, 'VersionError');
+  assert.equal(diagnostics[0].requestedVersion, 5);
+  assert.equal(diagnostics[1].actualVersion, 6);
   assert.equal(timers.pendingCount, 0);
 });
 
@@ -220,12 +230,14 @@ test('a higher schema version with incompatible stores is rejected and its conne
   };
   const keyPaths = { library: 'url' };
   let closeCount = 0;
+  const diagnostics = [];
   const database = makeDatabase(keyPaths);
   database.close = () => { closeCount += 1; };
   const opened = openIndexedDBCompatible({
     indexedDB,
     name: 'player-blend-v1',
     version: 5,
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
     validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, { library: 'id' })
   });
 
@@ -241,4 +253,7 @@ test('a higher schema version with incompatible stores is rejected and its conne
     return true;
   });
   assert.equal(closeCount, 1);
+  assert.equal(diagnostics.at(-1).event, 'schema_validation_failed');
+  assert.equal(diagnostics.at(-1).actualVersion, 6);
+  assert.match(diagnostics.at(-1).cause.message, /key path/);
 });

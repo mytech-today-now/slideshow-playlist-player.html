@@ -92,10 +92,19 @@ test('bootstrap catches an open error and a deliberate retry initializes the app
   await expect(page.getByRole('button', { name: 'Retry startup' })).toBeVisible();
   expect(await page.evaluate(() => Boolean(window.Blend))).toBe(false);
 
+  const startupFailure = await page.evaluate(() => window.BlendDebug?.getRecentEvents(50)
+    .find(event => event.message === '[startup] bootstrap attempt failed'));
+  expect(startupFailure?.args?.[1]?.failedStage).toBe('indexeddb_open');
+  expect(startupFailure?.args?.[1]?.error?.code).toBe('idb_open_error');
+  expect(startupFailure?.args?.[1]?.error?.cause?.name).toBe('UnknownError');
+
   await page.locator('#config-gear').click();
   await expect(page.locator('#config-panel')).toHaveClass(/open/);
   await expect(page.locator('#transport')).toHaveAttribute('inert', '');
   await expect(page.locator('#transport')).toHaveAttribute('aria-disabled', 'true');
+  const lockedConfig = await page.evaluate(() => window.BlendDebug?.getStatus());
+  expect(lockedConfig?.panel.open).toBe(true);
+  expect(lockedConfig?.panel.startupLocked).toBe(true);
   await page.locator('#close-config').click();
 
   await page.getByRole('button', { name: 'Retry startup' }).click();

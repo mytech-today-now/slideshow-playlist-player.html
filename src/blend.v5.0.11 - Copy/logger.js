@@ -15,7 +15,22 @@ function levelName(level) {
   return Object.prototype.hasOwnProperty.call(LEVEL_ORDER, normalized) ? normalized : 'info';
 }
 
-function serializeValue(value, seen = new WeakSet()) {
+function sanitizeErrorText(value) {
+  return String(value ?? '')
+    .replace(/\bhttps?:\/\/[^\s"'`<>]+/gi, urlText => {
+      try {
+        const url = new URL(urlText);
+        return `${url.origin}${url.pathname}`;
+      } catch (_) {
+        return urlText.split(/[?#]/, 1)[0];
+      }
+    })
+    .replace(/\b(Bearer\s+)[^\s]+/gi, '$1[redacted]')
+    .replace(/\b((?:access|refresh)[_-]?token|token|api[_-]?key|password|secret|authorization)\s*[:=]\s*([^\s,;]+)/gi, '$1=[redacted]')
+    .slice(0, 8000);
+}
+
+function serializeValue(value, seen = new WeakSet(), depth = 0) {
   if (value == null) return value;
   const type = typeof value;
   if (type === 'string' || type === 'number' || type === 'boolean') return value;
@@ -23,11 +38,28 @@ function serializeValue(value, seen = new WeakSet()) {
   if (type === 'function') return `[Function ${value.name || 'anonymous'}]`;
   if (type === 'symbol') return value.toString();
   if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack || ''
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+    const summary = {
+      name: sanitizeErrorText(value.name || 'Error'),
+      message: sanitizeErrorText(value.message || value),
+      stack: sanitizeErrorText(value.stack || '')
     };
+    try {
+      if (value.code != null) summary.code = sanitizeErrorText(value.code);
+    } catch (_) {
+      summary.code = '[Unserializable]';
+    }
+    try {
+      if (value.cause != null) {
+        summary.cause = depth < 5
+          ? serializeValue(value.cause, seen, depth + 1)
+          : '[MaxDepth]';
+      }
+    } catch (_) {
+      summary.cause = '[Unserializable]';
+    }
+    return summary;
   }
   if (value instanceof Date) return value.toISOString();
   if (value instanceof RegExp) return value.toString();
@@ -39,15 +71,16 @@ function serializeValue(value, seen = new WeakSet()) {
     };
   }
   if (type !== 'object') return String(value);
+  if (depth >= 8) return '[MaxDepth]';
   if (seen.has(value)) return '[Circular]';
   seen.add(value);
   if (Array.isArray(value)) {
-    return value.map(item => serializeValue(item, seen));
+    return value.map(item => serializeValue(item, seen, depth + 1));
   }
   const out = {};
   for (const key of Object.keys(value)) {
     try {
-      out[key] = serializeValue(value[key], seen);
+      out[key] = serializeValue(value[key], seen, depth + 1);
     } catch (_) {
       out[key] = '[Unserializable]';
     }
@@ -106,12 +139,15 @@ export function createLogger(namespace = 'app', options = {}) {
     const normalizedLevel = levelName(level);
     if ((LEVEL_ORDER[normalizedLevel] ?? LEVEL_ORDER.info) < threshold) return null;
     const ts = nowIso();
+    const serializedArgs = summarizeArgs(args);
     const entry = {
       ts,
       level: normalizedLevel,
       namespace: normalizedNamespace,
-      message: args.length ? String(args[0] instanceof Error ? args[0].message : args[0]) : '',
-      args: summarizeArgs(args)
+      message: args.length
+        ? (args[0] instanceof Error ? sanitizeErrorText(args[0].message) : String(args[0]))
+        : '',
+      args: serializedArgs
     };
     entries.push(entry);
     if (entries.length > maxEntries) entries = entries.slice(-maxEntries);
@@ -121,9 +157,9 @@ export function createLogger(namespace = 'app', options = {}) {
       const prefix = formatConsolePrefix(normalizedNamespace, normalizedLevel, ts);
       const method = typeof console[normalizedLevel] === 'function' ? normalizedLevel : 'log';
       try {
-        console[method](prefix, ...args);
+        console[method](prefix, ...serializedArgs);
       } catch (_) {
-        try { console.log(prefix, ...args); } catch (_) {}
+        try { console.log(prefix, ...serializedArgs); } catch (_) {}
       }
     }
     return entry;

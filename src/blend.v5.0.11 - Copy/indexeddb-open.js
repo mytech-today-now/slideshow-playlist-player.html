@@ -10,6 +10,12 @@ function isVersionError(error) {
   return error?.name === 'VersionError' || error?.cause?.name === 'VersionError';
 }
 
+function reportDiagnostic(options, event, details = {}) {
+  try {
+    options?.onDiagnostic?.({ event, ...details });
+  } catch (_) {}
+}
+
 export function assertIndexedDBObjectStoreKeyPaths(database, expectedKeyPaths = {}) {
   const entries = Object.entries(expectedKeyPaths);
   const names = Array.from(database?.objectStoreNames || []);
@@ -34,11 +40,18 @@ export function assertIndexedDBObjectStoreKeyPaths(database, expectedKeyPaths = 
 
 export async function openIndexedDBCompatible(options = {}) {
   let connection;
+  let usedVersionlessFallback = false;
   try {
     connection = await openIndexedDB(options);
   } catch (error) {
     if (options.version === undefined || !isVersionError(error)) throw error;
 
+    usedVersionlessFallback = true;
+    reportDiagnostic(options, 'version_error_fallback', {
+      database: options.name || '',
+      requestedVersion: options.version,
+      error
+    });
     connection = await openIndexedDB({
       ...options,
       version: undefined,
@@ -55,12 +68,25 @@ export async function openIndexedDBCompatible(options = {}) {
     const valid = await options.validateConnection?.(connection);
     if (valid === false) throw new Error('The database schema did not pass compatibility validation.');
   } catch (cause) {
+    reportDiagnostic(options, 'schema_validation_failed', {
+      database: options.name || '',
+      requestedVersion: options.version ?? null,
+      actualVersion: Number.isFinite(connection.version) ? connection.version : null,
+      cause
+    });
     try { connection.close(); } catch (_) {}
     throw new IndexedDBOpenError(
       'idb_schema_incompatible',
       'The local Blend database schema is not compatible with this release.',
       { cause }
     );
+  }
+  if (usedVersionlessFallback) {
+    reportDiagnostic(options, 'versionless_fallback_opened', {
+      database: options.name || '',
+      requestedVersion: options.version,
+      actualVersion: Number.isFinite(connection.version) ? connection.version : null
+    });
   }
   return connection;
 }
