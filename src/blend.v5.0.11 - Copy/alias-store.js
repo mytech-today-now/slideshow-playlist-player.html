@@ -1,6 +1,6 @@
 import './pwa-config.js';
 import './alias-router.js';
-import { assertIndexedDBObjectStoreKeyPaths, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { assertIndexedDBObjectStoreKeyPaths, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-startup-access';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;

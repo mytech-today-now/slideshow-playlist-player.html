@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-startup-access';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './experience-persistence.js?v=20261010-v5.0.11-config-startup-access';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-startup-access';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-startup-access';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-startup-access';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-startup-access';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-startup-access';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-startup-access';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './storage-url-resolver.js?v=20261010-v5.0.11-config-startup-access';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './transition-manager.js?v=20261010-v5.0.11-config-startup-access';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './playback-clock.js?v=20261010-v5.0.11-config-startup-access';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-startup-access';
+import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-startup-access';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './url-share.js?v=20261010-v5.0.11-config-startup-access';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-startup-access';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './timeline-analysis.js?v=20261010-v5.0.11-config-startup-access';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-startup-access';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './shared-experience-download.js?v=20261010-v5.0.11-config-startup-access';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-startup-access';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-startup-access';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-startup-access';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+} from './local-import-limits.js?v=20261010-v5.0.11-config-startup-access';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-indexeddb-manifest-paths';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-startup-access';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -9290,7 +9290,7 @@ function focusableWithin(container) {
     '[tabindex]:not([tabindex="-1"])'
   ].join(',');
   return $all(selector, container).filter(el => {
-    if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.hidden || el.getAttribute('aria-hidden') === 'true' || el.closest('[inert]')) return false;
     // offsetParent is null for display:none; allow position:fixed elements too.
     return el.offsetParent !== null || getComputedStyle(el).position === 'fixed';
   });
@@ -9321,6 +9321,7 @@ function openConfig() {
   panel.style.removeProperty('transform');
   panel.setAttribute('aria-hidden', 'false');
   $('#config-backdrop').classList.add('open');
+  $('#config-gear')?.setAttribute('aria-expanded', 'true');
   document.body.classList.add('config-open');
   syncExperienceControls();
   renderExperiencePicker();
@@ -9328,7 +9329,10 @@ function openConfig() {
   renderListEditor();
   configTrapHandler = (event) => trapFocusWithin(event, panel);
   panel.addEventListener('keydown', configTrapHandler);
-  const focusTarget = $('#experience-select') || $('#close-config') || panel;
+  const experienceSelect = $('#experience-select');
+  const focusTarget = experienceSelect && !experienceSelect.disabled && !experienceSelect.closest('[inert]')
+    ? experienceSelect
+    : $('#close-config') || panel;
   requestAnimationFrame(() => { try { focusTarget.focus(); } catch (_) {} });
 }
 
@@ -9338,6 +9342,7 @@ function closeConfig() {
   panel.classList.remove('open');
   panel.setAttribute('aria-hidden', 'true');
   $('#config-backdrop').classList.remove('open');
+  $('#config-gear')?.setAttribute('aria-expanded', 'false');
   document.body.classList.remove('config-open');
   if (configTrapHandler) {
     panel.removeEventListener('keydown', configTrapHandler);
@@ -9668,14 +9673,21 @@ function restoreInfoScroll(name) {
   if (typeof store[name] === 'number') panel.scrollTop = store[name];
 }
 
-function wireConfig() {
-  $('#config-gear').onclick = () => {
-    if ($('#config-panel').classList.contains('open')) closeConfig();
-    else openConfig();
-  };
-  $('#close-config').onclick = closeConfig;
-  $('#config-backdrop').onclick = closeConfig;
+function wireConfigPanelControls() {
+  const gear = $('#config-gear');
+  if (gear) {
+    gear.onclick = () => {
+      if ($('#config-panel').classList.contains('open')) closeConfig();
+      else openConfig();
+    };
+  }
+  const closeButton = $('#close-config');
+  if (closeButton) closeButton.onclick = closeConfig;
+  const backdrop = $('#config-backdrop');
+  if (backdrop) backdrop.onclick = closeConfig;
+}
 
+function wireConfig() {
   const experienceSelect = $('#experience-select');
   experienceSelect.onchange = async (e) => {
     const targetId = String(e.target.value || '');
@@ -11832,6 +11844,7 @@ async function runBootstrap() {
   wireConfig();
   wireInfoDialog();
   wireKeyboard();
+  setConfigStartupState('');
   // Keep the transport stopped while app wiring is installed. If saved resume
   // is enabled, prepare its saved indices in a paused state below.
   applyTransportMode(transportMode);
@@ -11931,7 +11944,30 @@ function showBlockedDatabaseStartup() {
   panel.hidden = false;
   message.textContent = 'An older Blend tab is holding the local database update. Close the other Blend tab; this page will continue automatically when the database is available.';
   retry.hidden = true;
+  setConfigStartupState('Blend is waiting for saved data. Configuration controls will unlock when the database is available.');
   message.focus({ preventScroll: true });
+}
+
+function setConfigStartupState(message = '') {
+  const panel = $('#config-panel');
+  const notice = $('#config-startup-notice');
+  const locked = Boolean(message);
+  if (notice) {
+    notice.hidden = !locked;
+    notice.textContent = message;
+  }
+  panel?.classList.toggle('config-startup-locked', locked);
+  for (const selector of ['.experience-panel', '.config-body', '.global-settings', '#open-info']) {
+    const section = panel?.querySelector(selector);
+    if (!section) continue;
+    if (locked) {
+      section.setAttribute('inert', '');
+      section.setAttribute('aria-disabled', 'true');
+    } else {
+      section.removeAttribute('inert');
+      section.removeAttribute('aria-disabled');
+    }
+  }
 }
 
 function showDatabaseStartupFailure(error) {
@@ -11956,6 +11992,7 @@ function showDatabaseStartupFailure(error) {
     retry.textContent = 'Reload Blend';
     retry.dataset.action = 'reload';
   }
+  setConfigStartupState(`Saved data is not loaded. ${message.textContent} Configuration controls are read-only until startup succeeds.`);
   retry.focus({ preventScroll: true });
 }
 
@@ -11965,6 +12002,7 @@ function bootstrap() {
 
   bootstrapPromise = runBootstrap().then(() => {
     bootstrapCompleted = true;
+    setConfigStartupState('');
     const panel = $('#database-startup-recovery');
     if (panel) panel.hidden = true;
     return true;
@@ -11992,6 +12030,9 @@ if (databaseStartupRetry) {
     void bootstrap();
   });
 }
+
+wireConfigPanelControls();
+setConfigStartupState('Loading saved data. Configuration controls will unlock when startup finishes.');
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bootstrap);

@@ -13,6 +13,7 @@ These changes are present in the current review checkout. The app version remain
 
 ### Changed
 
+- The configuration shell opens before storage initialization. Database recovery no longer covers the whole screen, and settings stay read-only until saved data is ready.
 - Startup can open a higher IndexedDB version when all stores and key paths required by this release match; incompatible schemas fail closed without changing saved data.
 - PWA manifests and required icon precache entries use the versioned app-root paths; the worker no longer requests legacy `/assets/icon.svg` files.
 - Experience saves now queue writes for changed records and explicit deletions while preserving the existing multi-store transaction, merge, conflict, and recovery behavior.
