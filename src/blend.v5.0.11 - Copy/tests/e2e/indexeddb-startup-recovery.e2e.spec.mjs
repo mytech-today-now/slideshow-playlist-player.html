@@ -37,9 +37,16 @@ test('blocked version upgrade shows recovery guidance and continues with saved l
   await expect(page.locator('#database-startup-retry')).toBeHidden();
   expect(await page.evaluate(() => Boolean(window.Blend))).toBe(false);
 
+  await page.locator('#config-gear').click();
+  await expect(page.locator('#config-panel')).toHaveClass(/open/);
+  await expect(page.locator('#transport')).toHaveAttribute('inert', '');
+  await expect(page.locator('#transport')).toHaveAttribute('aria-disabled', 'true');
+
   await holder.evaluate(() => window.__heldBlendDatabase.close());
   await page.waitForFunction(() => window.Blend?.state?.library?.has('saved-before-blocked-upgrade'));
   await expect(recovery).toBeHidden();
+  await expect(page.locator('#transport')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('#transport')).not.toHaveAttribute('aria-disabled', 'true');
   expect(await page.evaluate(() => window.Blend.state.library.get('saved-before-blocked-upgrade')?.name))
     .toBe('saved-before-upgrade.jpg');
   expect(await page.evaluate(() => window.Blend?.state?.settings?.opacity)).not.toBeUndefined();
@@ -84,6 +91,12 @@ test('bootstrap catches an open error and a deliberate retry initializes the app
   await expect(page.locator('#database-startup-message')).toContainText('could not open your saved library');
   await expect(page.getByRole('button', { name: 'Retry startup' })).toBeVisible();
   expect(await page.evaluate(() => Boolean(window.Blend))).toBe(false);
+
+  await page.locator('#config-gear').click();
+  await expect(page.locator('#config-panel')).toHaveClass(/open/);
+  await expect(page.locator('#transport')).toHaveAttribute('inert', '');
+  await expect(page.locator('#transport')).toHaveAttribute('aria-disabled', 'true');
+  await page.locator('#close-config').click();
 
   await page.getByRole('button', { name: 'Retry startup' }).click();
   await page.waitForFunction(() => Boolean(window.Blend?.state));

@@ -714,7 +714,7 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
     name: 'public-reset-slideshow.txt',
     text: `${publicImageUrl}\n`
   });
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-play').click();
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
   await page.waitForFunction(() => {

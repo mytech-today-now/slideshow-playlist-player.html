@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-startup-access';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261010-v5.0.11-config-startup-access';
+} from './experience-persistence.js?v=20261010-v5.0.11-config-playback-toolbar';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-startup-access';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-startup-access';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-startup-access';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-startup-access';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-startup-access';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-startup-access';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261010-v5.0.11-config-startup-access';
+} from './storage-url-resolver.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261010-v5.0.11-config-startup-access';
+} from './transition-manager.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261010-v5.0.11-config-startup-access';
+} from './playback-clock.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-startup-access';
-import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-startup-access';
+import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261010-v5.0.11-config-startup-access';
+} from './url-share.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-startup-access';
+} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261010-v5.0.11-config-startup-access';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-startup-access';
+} from './timeline-analysis.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261010-v5.0.11-config-startup-access';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-startup-access';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-startup-access';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-startup-access';
+} from './shared-experience-download.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-playback-toolbar';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261010-v5.0.11-config-startup-access';
+} from './local-import-limits.js?v=20261010-v5.0.11-config-playback-toolbar';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-startup-access';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-playback-toolbar';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -2428,8 +2428,7 @@ function parseUrlShareRequest(value = window.location.search) {
  * Improvements over v5.0.7:
  *  - Prominent animated progress overlay replaces the bare toast.
  *  - All transport controls (play/pause/next/prev/seek/volume) are frozen for
- *    the duration of the import; the ⚙️ config gear (a sibling element, not
- *    inside #transport) remains fully functional throughout.
+ *    the duration of the import. The config gear remains functional.
  *  - Per-item progress flows from materializeImportedEntries via onItemProgress,
  *    populating a scrolling item list in the overlay in real time.
  *  - Keyboard transport shortcuts are blocked via the experienceLoading flag.
@@ -8908,8 +8907,7 @@ function setSlideshowVolume(value, opts = {}) {
 
 /**
  * Disable all interactive controls inside #transport while a URL-shared
- * experience is loading. #config-gear is a sibling of #transport, not a
- * descendant, so it is completely unaffected and remains fully functional.
+ * experience is loading. The config gear remains available during a load.
  */
 function freezeTransportControls() {
   const transport = $('#transport');
@@ -9321,7 +9319,10 @@ function openConfig() {
   panel.style.removeProperty('transform');
   panel.setAttribute('aria-hidden', 'false');
   $('#config-backdrop').classList.add('open');
-  $('#config-gear')?.setAttribute('aria-expanded', 'true');
+  const gear = $('#config-gear');
+  gear?.setAttribute('aria-expanded', 'true');
+  gear?.setAttribute('aria-label', 'Close configuration panel');
+  gear?.setAttribute('title', 'Close configuration panel (C)');
   document.body.classList.add('config-open');
   syncExperienceControls();
   renderExperiencePicker();
@@ -9342,7 +9343,10 @@ function closeConfig() {
   panel.classList.remove('open');
   panel.setAttribute('aria-hidden', 'true');
   $('#config-backdrop').classList.remove('open');
-  $('#config-gear')?.setAttribute('aria-expanded', 'false');
+  const gear = $('#config-gear');
+  gear?.setAttribute('aria-expanded', 'false');
+  gear?.setAttribute('aria-label', 'Open configuration panel');
+  gear?.setAttribute('title', 'Configuration (C)');
   document.body.classList.remove('config-open');
   if (configTrapHandler) {
     panel.removeEventListener('keydown', configTrapHandler);
@@ -11957,7 +11961,7 @@ function setConfigStartupState(message = '') {
     notice.textContent = message;
   }
   panel?.classList.toggle('config-startup-locked', locked);
-  for (const selector of ['.experience-panel', '.config-body', '.global-settings', '#open-info']) {
+  for (const selector of ['#transport', '.experience-panel', '.config-body', '.global-settings', '#open-info']) {
     const section = panel?.querySelector(selector);
     if (!section) continue;
     if (locked) {

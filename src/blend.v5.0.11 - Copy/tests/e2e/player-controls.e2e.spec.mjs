@@ -47,6 +47,7 @@ async function buildVideoExperience(page, testInfo) {
 
 // Starts playback (user gesture) and waits for the active video clock to move.
 async function startAndWaitForProgress(page, blendPage) {
+  await blendPage.openConfig();
   await blendPage.playButton.click();
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
   await page.waitForFunction(() => {
@@ -235,7 +236,7 @@ test('pressing Play with an empty experience stays stopped (no crash)', async ({
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
   await blendPage.createExperience(`Empty ${createRunSuffix(testInfo)}`);
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
 
   await blendPage.playButton.click();
   await page.waitForTimeout(500);
@@ -253,6 +254,7 @@ test('the S keyboard shortcut stops playback', async ({ page }, testInfo) => {
   test.setTimeout(90000);
   const blendPage = await buildVideoExperience(page, testInfo);
   await startAndWaitForProgress(page, blendPage);
+  await blendPage.closeConfig();
   await page.locator('#viewport').click({ position: { x: 5, y: 5 } }).catch(() => {});
   await page.keyboard.press('s');
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 5000 });
@@ -306,6 +308,7 @@ test('enabled resume restores both saved indices paused and survives autoplay re
       return Promise.reject(new DOMException('Playback requires a user gesture', 'NotAllowedError'));
     };
   });
+  await blendPage.openConfig();
   await blendPage.playButton.click();
   await page.waitForFunction(() => window.Blend?.transport === 'paused' && /Your last session is ready\. Select Play to resume\./.test(document.querySelector('.toast-resume-on-load')?.textContent || ''));
   restored = await resumePlaybackState(page);
@@ -316,6 +319,7 @@ test('enabled resume restores both saved indices paused and survives autoplay re
   expect(restored.playButtonText).toBe('▶');
 
   await page.evaluate(() => { HTMLMediaElement.prototype.play = window.__resumeCountingPlay; });
+  await blendPage.closeConfig();
   await page.locator('#viewport').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
@@ -415,6 +419,7 @@ test('touch help is truthful and supported navigation controls stay accessible',
     expect(helpText).not.toMatch(/Swipe\s*(?:←|↑|→|↓|left|right|up|down)/i);
     await page.keyboard.press('Escape');
 
+    await page.locator('#config-gear').click();
     const previous = page.getByRole('button', { name: 'Previous item' });
     const next = page.getByRole('button', { name: 'Next item' });
     const blend = page.getByRole('slider', { name: 'Blend opacity' });
@@ -446,6 +451,7 @@ test('touch help is truthful and supported navigation controls stay accessible',
     await page.keyboard.press('ArrowRight');
     await expect(blend).toHaveValue(String(startingBlend + 1));
 
+    await page.locator('#close-config').click();
     await page.evaluate(() => document.body.focus());
     await expectNavigationChange(() => page.keyboard.press('ArrowRight'));
     await expectNavigationChange(() => page.keyboard.press('ArrowLeft'));
@@ -518,7 +524,7 @@ test('layer order controls persist and random navigation uses per-layer history'
   await blendPage.openConfig();
   await expect(page.getByRole('combobox', { name: 'Playlist order' })).toHaveValue('random');
   await expect(page.getByRole('combobox', { name: 'Slideshow order' })).toHaveValue('random');
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
 
   await page.evaluate(() => {
     const state = window.Blend.state;

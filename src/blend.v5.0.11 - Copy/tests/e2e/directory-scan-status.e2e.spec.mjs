@@ -533,7 +533,18 @@ test('depth-limit scans report truncation and recover from a deeper folder witho
 
   const chooseDeeper = status.getByRole('button', { name: 'Choose deeper folder' });
   await page.locator('#close-config').focus();
-  await page.keyboard.press('Tab');
+  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ).length);
+  let reachedChooseDeeper = false;
+  for (let index = 0; index < focusableCount; index += 1) {
+    await page.keyboard.press('Tab');
+    if (await chooseDeeper.evaluate(node => node === document.activeElement)) {
+      reachedChooseDeeper = true;
+      break;
+    }
+  }
+  expect(reachedChooseDeeper).toBe(true);
   await expect(chooseDeeper).toBeFocused();
   const keyboardFocus = await chooseDeeper.evaluate(node => ({
     focusVisible: node.matches(':focus-visible'),
@@ -577,7 +588,7 @@ test('depth-limit scans report truncation and recover from a deeper folder witho
   await app.openConfig();
   await app.selectLibraryItemsByNames(['deep.mp4']);
   await app.addSelectedLibraryToList('playlist', 1);
-  await app.closeConfig();
+  await app.openConfig();
   await page.locator('#btn-play').click();
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video');

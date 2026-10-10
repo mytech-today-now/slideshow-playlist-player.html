@@ -138,7 +138,6 @@ test('no request before consent; opt-in loads once, reload honors consent, and o
   await page.locator('#analytics-consent').uncheck();
   await expect(page.locator('#analytics-consent-status')).toHaveText('Analytics does not load until you enable it.');
   const eventsBeforeOptOutActions = await page.evaluate(() => window.__analyticsMockCalls.filter(call => call[0] === 'event').length);
-  await page.locator('#close-config').click();
   await page.locator('#btn-play').click();
   await page.evaluate(async () => {
     await window.Blend.shareContextByMethod('copy');
@@ -176,6 +175,7 @@ test('saved consent remains blocked by DNT and GPC while playback controls stay 
       'Analytics is off because a browser privacy setting or local-file mode blocks it.'
     );
     expect(await blockedPage.evaluate(() => typeof window.gtag)).toBe('undefined');
+    await blockedPage.locator('#config-gear').click();
     await blockedPage.locator('#btn-play').click();
     await expect(blockedPage.locator('#btn-play')).toBeVisible();
   }
@@ -209,7 +209,6 @@ test('a failed script leaves analytics off and permits one retry without blockin
   expect(vendorRequests.filter(request => request.url.includes('googletagmanager.com'))).toHaveLength(2);
   expect(await page.evaluate(() => window.__analyticsMockCalls.filter(call => call[0] === 'config').length)).toBe(1);
 
-  await page.locator('#close-config').click();
   await page.locator('#btn-play').click();
   await expect(page.locator('#btn-play')).toBeVisible();
 });
@@ -230,7 +229,6 @@ test('analytics denial does not block information, fixture import, or share-link
   await blendPage.importExperience(path.resolve(process.cwd(), 'samples', 'New-York-New-York-01.json'));
   await expect(page.locator('#experience-select')).toContainText('New York, New York!');
 
-  await blendPage.closeConfig();
   await page.locator('#btn-share').click();
   const shareUrl = page.locator('#url-share-url-input');
   await expect(shareUrl).toBeVisible();

@@ -48,7 +48,6 @@ async function buildPlaybackExperience(page, testInfo) {
     for (const ref of state.slideshow) ref.displayDuration = 120;
     window.Blend.renderListEditor();
   });
-  await blendPage.closeConfig();
   return blendPage;
 }
 
@@ -87,7 +86,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
   await expect(page.locator('#list-playlist-item-2-availability-details')).toHaveText('Permission denied');
   await expect(unavailableRow).not.toHaveAttribute('aria-current');
 
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-next').click();
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.playlistIndex)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.slideshowIndex)).toBe(1);
@@ -96,7 +95,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
   await openList(blendPage, 'slideshow');
   await expectCurrentRow(page, 'slideshow', 1);
 
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-prev').click();
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.playlistIndex)).toBe(0);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.slideshowIndex)).toBe(0);
@@ -133,15 +132,15 @@ test('exposes one current playback row per layer through navigation, stop, selec
   });
   await expectCurrentRow(page, 'playlist', 0);
 
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-play').click();
   await page.waitForFunction(() => window.Blend?.transport === 'paused', null, { timeout: 5000 });
   await openList(blendPage, 'playlist');
   await expectCurrentRow(page, 'playlist', 0);
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-play').click();
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 5000 });
-  await blendPage.closeConfig();
+  await blendPage.openConfig();
   await page.locator('#btn-stop').click();
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 5000 });
   await openList(blendPage, 'playlist');

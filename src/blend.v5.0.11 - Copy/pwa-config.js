@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261010-v5.0.11-config-startup-access';
-  const CACHE_VERSION = '20261010-v5.0.11-config-startup-access';
+  const ASSET_VERSION = '20261010-v5.0.11-config-playback-toolbar';
+  const CACHE_VERSION = '20261010-v5.0.11-config-playback-toolbar';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';

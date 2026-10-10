@@ -152,6 +152,7 @@ test('DNT and GPC keep consented analytics off with no intercepted requests', as
     await expect(blockedPage.locator('#analytics-consent-status')).toHaveText(
       'Analytics is off because a browser privacy setting or local-file mode blocks it.'
     );
+    await blockedPage.locator('#config-gear').click();
     await expect(blockedPage.locator('#btn-play')).toBeVisible();
     expect(await blockedPage.evaluate(() => typeof window.gtag)).toBe('undefined');
   }

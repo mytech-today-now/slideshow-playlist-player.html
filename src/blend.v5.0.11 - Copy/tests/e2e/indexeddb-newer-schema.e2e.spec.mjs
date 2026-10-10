@@ -86,7 +86,7 @@ test('opens a higher database version when required stores and key paths remain 
   expect(await page.evaluate(() => window.Blend.state.settings.opacity)).toBe(0.37);
   expect(await page.evaluate(() => window.Blend.state.playlist[0]?.id)).toBe('saved-schema-six-playlist-item');
 
-  const configGear = page.getByRole('button', { name: 'Open configuration panel' });
+  const configGear = page.locator('#config-gear');
   const configPanel = page.locator('#config-panel');
   await configGear.focus();
   await page.keyboard.press('Enter');

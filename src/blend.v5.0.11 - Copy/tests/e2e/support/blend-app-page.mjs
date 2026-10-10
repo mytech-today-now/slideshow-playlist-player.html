@@ -396,7 +396,7 @@ export class BlendAppPage {
 
   async startPlayback() {
     await this.dismissIpfsOperationModalIfPresent();
-    await this.closeConfig();
+    await this.openConfig();
     await this.playButton.click();
     await this.page.waitForFunction(() => {
       const state = window.Blend?.state;
@@ -407,6 +407,7 @@ export class BlendAppPage {
         !!state.playlist?.[state.runtime?.playlistIndex ?? 0] ||
         !!state.slideshow?.[state.runtime?.slideshowIndex ?? 0];
     }, { timeout: 5000 }).catch(() => {});
+    await this.closeConfig();
   }
 
   async playbackSummary() {
@@ -441,12 +442,13 @@ export class BlendAppPage {
   }
 
   async buildUrlShareLinkForCurrentExperience() {
-    await this.closeConfig();
+    await this.openConfig();
     await this.shareButton.click();
     const input = this.page.locator('#url-share-url-input');
     await expect(input).toBeVisible();
     const value = await input.inputValue();
     await this.page.locator('#url-share-close').click();
+    await this.closeConfig();
     return value;
   }
 

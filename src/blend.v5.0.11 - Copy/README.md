@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261010-v5.0.11-config-startup-access`
+- **Cache/app shell version key:** `20261010-v5.0.11-config-playback-toolbar`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -115,7 +115,7 @@ Latest source location:
    - `Add Folder` for recursive folder scan
    - `Add URL` for `http(s)`, `supabase://`, or legacy `ipfs://` references
 4. Select items in Media Library and add to Playlist/Slideshow.
-5. Press `Play` and adjust `Blend`, volume, and transitions.
+5. In the configuration panel, press `Play` and adjust `Blend`, volume, and transitions.
 
 ## Installation
 
@@ -370,7 +370,7 @@ Remote `storageExperience` downloads accept JSON media types and are streamed wi
 
 ### Playback Controls
 
-- Transport bar controls both layers.
+- Open the configuration panel with the gear or `C` to access the playback toolbar for both layers.
 - Blend slider adjusts slideshow opacity over playlist.
 - Volume controls include Playlist, Slideshow, and Master (+ mute).
 
@@ -394,6 +394,8 @@ Remote `storageExperience` downloads accept JSON media types and are streamed wi
 - Keep exported files in versioned backups.
 
 ## Playback Controls
+
+Open the configuration panel with the gear or `C` to use the playback toolbar.
 
 | Control | Description |
 |---|---|
