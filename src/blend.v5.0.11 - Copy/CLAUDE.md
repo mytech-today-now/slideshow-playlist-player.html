@@ -21,13 +21,16 @@ Run every command below from this project root, the directory containing this `C
 ```bash
 npm install              # dev deps only: @playwright/test, esbuild (app itself has no runtime deps)
 npm run check            # node --check syntax-lint of every active JS module
-npm run test:regression  # node --test on tests/regression/*.test.mjs
+npm run test:regression  # serial node:test run without child processes
+npm run test:regression:isolated # process-isolated node:test run
 npm run test:e2e         # Playwright (auto-starts tests/e2e/fixture-server.mjs)
 npm run sanity           # check + regression (this is `npm test`)
 ```
 
 Run a single regression test file: `node --test tests/regression/storage-url-resolver.test.mjs`
 Run a single e2e spec: `npx playwright test tests/e2e/sharing.e2e.spec.mjs`
+
+The default regression command uses Node 22.8 or later and `--test-isolation=none`, so Windows environments that deny child-process creation can still run the suite. The isolated command remains available for environments that allow child processes and is used in CI. Playwright Test requires at least one worker process and launches a browser process, so `spawn EPERM` from a restricted execution sandbox cannot be fixed by reducing worker count. Run `npm run test:e2e` from a normal Windows PowerShell session outside that sandbox, or run it in an environment that allows child-process creation.
 
 Serve for manual testing (must be over HTTP, not `file://`, for modules + service worker):
 ```bash

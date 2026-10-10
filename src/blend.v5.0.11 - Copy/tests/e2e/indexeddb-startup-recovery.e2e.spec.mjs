@@ -91,3 +91,35 @@ test('bootstrap catches an open error and a deliberate retry initializes the app
   expect(await page.evaluate(() => window.__unhandledBootstrapRejections)).toBe(0);
   expect(pageErrors).toEqual([]);
 });
+
+test('a later schema upgrade closes the stale app connection and requests a reload', async ({ context }) => {
+  const appPage = await context.newPage();
+  await appPage.addInitScript(() => {
+    localStorage.setItem('blend-welcome-v4', '1');
+    localStorage.setItem('blend-install-banner-hidden-v4', '1');
+    localStorage.setItem('blend-analytics-consent-v1', '0');
+  });
+  await appPage.goto('/index.html');
+  await appPage.waitForFunction(() => window.Blend?.state);
+  await appPage.waitForTimeout(1400);
+
+  const upgradePage = await context.newPage();
+  await upgradePage.goto('/offline.html');
+  const upgradedVersion = await upgradePage.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 6);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const version = database.version;
+      database.close();
+      resolve(version);
+    };
+  }));
+
+  expect(upgradedVersion).toBe(6);
+  await expect(appPage.locator('#toast-container'))
+    .toContainText('Blend storage changed in another tab. Reload this tab before continuing.');
+
+  await upgradePage.close();
+  await appPage.close();
+});

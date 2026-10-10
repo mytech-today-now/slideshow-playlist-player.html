@@ -935,9 +935,12 @@ From this project root, the directory containing `package.json`:
 ```bash
 npm run check
 npm run test:regression
+npm run test:regression:isolated
 npm run test:e2e
 npm run test
 ```
+
+`npm run test:regression` runs all Node tests serially in the current process and requires Node 22.8 or later. This avoids Node's default per-file child processes in restricted Windows runners. `npm run test:regression:isolated` keeps the default process isolation for environments that allow child processes and is used by CI. Playwright Test always requires a worker process and also launches a browser process. If `npm run test:e2e` reports `spawn EPERM` inside a restricted coding-agent sandbox, run it from a normal Windows PowerShell session or another environment where child-process creation is allowed. Limiting Playwright to one worker reduces concurrency but does not remove its worker process requirement.
 
 ## Future Development and Recommended Improvements
 
