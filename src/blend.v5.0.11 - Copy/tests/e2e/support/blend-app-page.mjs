@@ -223,10 +223,21 @@ export class BlendAppPage {
     await this.page.locator('#experience-import').click();
     const chooser = await chooserPromise;
     await chooser.setFiles(filePath);
-    await this.page.waitForFunction(
-      expectedCount => (window.Blend?.state?.experiences?.length || 0) >= expectedCount,
-      before.length + 1
+    const importResultHandle = await this.page.waitForFunction(
+      expectedCount => {
+        if ((window.Blend?.state?.experiences?.length || 0) >= expectedCount) {
+          return { imported: true };
+        }
+        if (document.querySelector('.toast-import-failure')) return { imported: false };
+        return false;
+      },
+      before.length + 1,
+      { timeout: 30000 }
     );
+    const importResult = await importResultHandle.jsonValue();
+    if (!importResult.imported) {
+      throw new Error('Experience import showed the recoverable failure message.');
+    }
   }
 
   async getExperienceNames() {
@@ -394,10 +405,19 @@ export class BlendAppPage {
     await expect(this.toastContainer).toContainText(pattern);
   }
 
-  async startPlayback() {
+  async startPlayback({ onPhase = null } = {}) {
+    const reportPhase = async phase => {
+      if (typeof onPhase !== 'function') return;
+      try { await onPhase(phase, this.page); } catch (_) {}
+    };
     await this.dismissIpfsOperationModalIfPresent();
+    await reportPhase('Configuration open:before');
     await this.openConfig();
+    await reportPhase('Configuration open:after');
+    await reportPhase('Play click:before');
     await this.playButton.click();
+    await reportPhase('Play click:after');
+    await reportPhase('playback readiness:before');
     await this.page.waitForFunction(() => {
       const state = window.Blend?.state;
       if (!state) return false;
@@ -406,12 +426,20 @@ export class BlendAppPage {
         /press play|no playable media|could not load/i.test(toastText) ||
         !!state.playlist?.[state.runtime?.playlistIndex ?? 0] ||
         !!state.slideshow?.[state.runtime?.slideshowIndex ?? 0];
-    }, { timeout: 5000 }).catch(() => {});
+    }, null, { timeout: 5000 }).catch(() => {});
+    await reportPhase('playback readiness:after');
+    await reportPhase('Configuration close:before');
     await this.closeConfig();
+    await reportPhase('Configuration close:after');
   }
 
-  async playbackSummary() {
-    return this.page.evaluate(() => {
+  async playbackSummary({ onPhase = null } = {}) {
+    const reportPhase = async phase => {
+      if (typeof onPhase !== 'function') return;
+      try { await onPhase(phase, this.page); } catch (_) {}
+    };
+    await reportPhase('playbackSummary evaluation:before');
+    const summary = await this.page.evaluate(() => {
       const state = window.Blend?.state;
       const playlistCurrent = state?.playlist?.[state?.runtime?.playlistIndex ?? 0] || null;
       const slideshowCurrent = state?.slideshow?.[state?.runtime?.slideshowIndex ?? 0] || null;
@@ -431,6 +459,8 @@ export class BlendAppPage {
         slideshowLength: state?.slideshow?.length || 0
       };
     });
+    await reportPhase('playbackSummary evaluation:after');
+    return summary;
   }
 
   async buildShareLinkForExperience(name) {
