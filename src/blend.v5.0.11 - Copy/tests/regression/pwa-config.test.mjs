@@ -41,16 +41,36 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./pwa-config.js'));
   assert.ok(required.has('./pwa-client.js'));
   assert.ok(required.has('./alias-router.js'));
+  assert.ok(required.has('./manifest.webmanifest?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./icon.svg?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./icon-maskable.svg?v=' + config.ASSET_VERSION));
 });
 
 test('same-folder README is precached in the documentation cache for offline help', () => {
   assert.ok(config.PRECACHE_OPTIONAL.includes('./README.md'));
 });
 
+test('both manifests use versioned root icons and the worker skips legacy asset icon paths', async () => {
+  for (const manifestName of ['manifest.webmanifest', 'manifest.json']) {
+    const manifest = JSON.parse(await readFile(new URL(manifestName, root), 'utf8'));
+    assert.equal(manifest.icons.length, 2);
+    for (const icon of manifest.icons) {
+      const iconFile = icon.purpose === 'maskable' ? 'icon-maskable.svg' : 'icon.svg';
+      assert.equal(icon.src, `./${iconFile}?v=${config.ASSET_VERSION}`);
+      const manifestUrl = new URL(manifestName, 'https://blend.example.test/');
+      assert.equal(new URL(icon.src, manifestUrl).pathname, `/${iconFile}`);
+      await readFile(new URL(iconFile, root));
+    }
+  }
+
+  assert.equal(config.PRECACHE_OPTIONAL.includes('./assets/icon.svg'), false);
+  assert.equal(config.PRECACHE_OPTIONAL.includes('./assets/icon-maskable.svg'), false);
+});
+
 test('HTML shell uses manifest.webmanifest and the configured asset version', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
   const app = await readFile(new URL('app.js', root), 'utf8');
-  assert.match(html, /<link rel="manifest" href="\.\/manifest\.webmanifest">/);
+  assert.ok(html.includes(`<link rel="manifest" href="./manifest.webmanifest?v=${config.ASSET_VERSION}">`));
   assert.match(html, new RegExp(`styles\\.css\\?v=${config.ASSET_VERSION}`));
   assert.match(html, new RegExp(`app\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`analytics-consent\\.js\\?v=${config.ASSET_VERSION}`));

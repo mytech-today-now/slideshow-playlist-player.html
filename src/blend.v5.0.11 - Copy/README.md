@@ -87,8 +87,10 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261008-v5.0.11-issue13-information-readme-version`
+- **Cache/app shell version key:** `20261010-v5.0.11-indexeddb-manifest-paths`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
+
+The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
 
 Latest source location:
 
@@ -622,6 +624,8 @@ Stores:
 - `dirHandles`
 - `aliases`
 - `aliasMeta`
+
+When the stored database version is newer than this app's requested version, Blend opens it without requesting a downgrade and checks the required object stores and key paths before startup. Compatible additive schemas remain usable; an incompatible schema stops startup and leaves the saved database unchanged.
 
 ### LocalStorage keys used
 

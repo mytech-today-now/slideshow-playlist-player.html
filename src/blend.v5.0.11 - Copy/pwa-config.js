@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261008-v5.0.11-issue13-information-readme-version';
-  const CACHE_VERSION = '20261008-v5.0.11-issue13-information-readme-version';
+  const ASSET_VERSION = '20261010-v5.0.11-indexeddb-manifest-paths';
+  const CACHE_VERSION = '20261010-v5.0.11-indexeddb-manifest-paths';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -66,17 +66,15 @@
     './alias-sync.js',
     './offline.html',
     './alias-manifest.json',
-    './manifest.webmanifest',
-    './icon.svg',
-    './icon-maskable.svg'
+    asset('./manifest.webmanifest'),
+    asset('./icon.svg'),
+    asset('./icon-maskable.svg')
   ]);
 
   const PRECACHE_OPTIONAL = Object.freeze([
     './README.md',
     './manifest.json',
-    './about-hero-dark-full.png',
-    './assets/icon.svg',
-    './assets/icon-maskable.svg'
+    './about-hero-dark-full.png'
   ]);
 
   const ROUTE_POLICIES = Object.freeze({
@@ -139,7 +137,7 @@
     PRECACHE_OPTIONAL,
     ROUTE_POLICIES,
     SERVICE_WORKER_URL: './service-worker.js',
-    MANIFEST_URL: './manifest.webmanifest',
+    MANIFEST_URL: asset('./manifest.webmanifest'),
     ALIAS_MANIFEST_URL: './alias-manifest.json',
     OFFLINE_URL: './offline.html',
     asset,

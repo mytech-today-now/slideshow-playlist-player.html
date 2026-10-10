@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { IndexedDBOpenError, openIndexedDB } from './indexeddb-open.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './experience-persistence.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './storage-url-resolver.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './transition-manager.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './playback-clock.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { fetchReadme } from './readme-fetcher.js?v=20261008-v5.0.11-issue13-information-readme-version';
+import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './url-share.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './url-share-diagnostics.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './timeline-analysis.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261008-v5.0.11-issue13-information-readme-version';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './shared-experience-download.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261008-v5.0.11-issue13-information-readme-version';
+} from './local-import-limits.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -169,7 +169,7 @@ attachGlobalErrorHandlers(log);
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261008-v5.0.11-issue13-information-readme-version';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-indexeddb-manifest-paths';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -3167,8 +3167,20 @@ function showToast(message, opts = {}) {
 }
 
 // ====================== INDEXEDDB ======================
+const DB_STORE_KEY_PATHS = Object.freeze({
+  library: 'id',
+  playlist: 'key',
+  slideshow: 'key',
+  settings: 'key',
+  [EXPERIENCE_STORE]: 'id',
+  thumbnails: 'key',
+  dirHandles: 'id',
+  aliases: 'id',
+  aliasMeta: 'key'
+});
+
 async function openDB({ onBlocked } = {}) {
-  const connection = await openIndexedDB({
+  const connection = await openIndexedDBCompatible({
     indexedDB,
     name: DB_NAME,
     version: DB_VERSION,
@@ -3184,8 +3196,15 @@ async function openDB({ onBlocked } = {}) {
       if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
       ensureAliasObjectStores(d);
-    }
+    },
+    validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, DB_STORE_KEY_PATHS)
   });
+  if (connection.version > DB_VERSION) {
+    log.info('opened a compatible newer database schema', {
+      requestedVersion: DB_VERSION,
+      actualVersion: connection.version
+    });
+  }
   connection.onversionchange = () => {
     if (db === connection) db = null;
     connection.close();
@@ -11924,7 +11943,11 @@ function showDatabaseStartupFailure(error) {
   panel.hidden = false;
   retry.hidden = false;
   retry.disabled = false;
-  if (error instanceof IndexedDBOpenError || String(error?.code || '').startsWith('idb_')) {
+  if (error?.code === 'idb_schema_incompatible') {
+    message.textContent = 'This Blend release cannot safely read the saved database schema. Reload after updating to a compatible release. Your saved data was not changed.';
+    retry.textContent = 'Reload Blend';
+    retry.dataset.action = 'reload';
+  } else if (error instanceof IndexedDBOpenError || String(error?.code || '').startsWith('idb_')) {
     message.textContent = 'Blend could not open your saved library. Close any older Blend tabs, then retry. Your existing database was not cleared or replaced.';
     retry.textContent = 'Retry startup';
     retry.dataset.action = 'retry';

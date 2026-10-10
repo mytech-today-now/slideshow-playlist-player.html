@@ -1,5 +1,6 @@
 import './pwa-config.js';
 import './alias-router.js';
+import { assertIndexedDBObjectStoreKeyPaths, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-indexeddb-manifest-paths';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;
@@ -41,11 +42,15 @@ export async function openAliasDatabase() {
   if (!globalThis.indexedDB) {
     throw new Error('IndexedDB is not available.');
   }
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => ensureAliasObjectStores(req.result);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+  return openIndexedDBCompatible({
+    indexedDB: globalThis.indexedDB,
+    name: DB_NAME,
+    version: DB_VERSION,
+    onUpgrade: event => ensureAliasObjectStores(event.target.result),
+    validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, {
+      [ALIAS_STORE]: 'id',
+      [ALIAS_META_STORE]: 'key'
+    })
   });
 }
 

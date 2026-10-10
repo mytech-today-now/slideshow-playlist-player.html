@@ -6,6 +6,65 @@ export class IndexedDBOpenError extends Error {
   }
 }
 
+function isVersionError(error) {
+  return error?.name === 'VersionError' || error?.cause?.name === 'VersionError';
+}
+
+export function assertIndexedDBObjectStoreKeyPaths(database, expectedKeyPaths = {}) {
+  const entries = Object.entries(expectedKeyPaths);
+  const names = Array.from(database?.objectStoreNames || []);
+  const hasStore = name => typeof database?.objectStoreNames?.contains === 'function'
+    ? database.objectStoreNames.contains(name)
+    : names.includes(name);
+  const missing = entries.map(([name]) => name).filter(name => !hasStore(name));
+  if (missing.length) {
+    throw new Error(`Missing required object stores: ${missing.join(', ')}`);
+  }
+
+  if (!entries.length) return true;
+  const transaction = database.transaction(entries.map(([name]) => name), 'readonly');
+  const mismatched = entries
+    .filter(([name, keyPath]) => transaction.objectStore(name).keyPath !== keyPath)
+    .map(([name]) => name);
+  if (mismatched.length) {
+    throw new Error(`Unexpected key path for object stores: ${mismatched.join(', ')}`);
+  }
+  return true;
+}
+
+export async function openIndexedDBCompatible(options = {}) {
+  let connection;
+  try {
+    connection = await openIndexedDB(options);
+  } catch (error) {
+    if (options.version === undefined || !isVersionError(error)) throw error;
+
+    connection = await openIndexedDB({
+      ...options,
+      version: undefined,
+      onUpgrade(event) {
+        if (Number(event?.oldVersion || 0) === 0) {
+          throw new Error('The saved database changed before a compatible connection could be opened.');
+        }
+        options.onUpgrade?.(event);
+      }
+    });
+  }
+
+  try {
+    const valid = await options.validateConnection?.(connection);
+    if (valid === false) throw new Error('The database schema did not pass compatibility validation.');
+  } catch (cause) {
+    try { connection.close(); } catch (_) {}
+    throw new IndexedDBOpenError(
+      'idb_schema_incompatible',
+      'The local Blend database schema is not compatible with this release.',
+      { cause }
+    );
+  }
+  return connection;
+}
+
 export function openIndexedDB({
   indexedDB = globalThis.indexedDB,
   name,
@@ -41,7 +100,9 @@ export function openIndexedDB({
     };
 
     try {
-      request = indexedDB.open(name, version);
+      request = version === undefined
+        ? indexedDB.open(name)
+        : indexedDB.open(name, version);
     } catch (cause) {
       settle(reject, new IndexedDBOpenError(
         'idb_open_error',
