@@ -114,6 +114,81 @@ test('bootstrap catches an open error and a deliberate retry initializes the app
   expect(pageErrors).toEqual([]);
 });
 
+test('an aborted legacy upgrade preserves the existing database and shows startup recovery', async ({ context }) => {
+  const holder = await context.newPage();
+  await holder.goto('/offline.html');
+  await holder.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 4);
+    request.onupgradeneeded = event => {
+      event.target.result.createObjectStore('library', { keyPath: 'id' }).put({
+        id: 'saved-before-aborted-upgrade',
+        name: 'saved-before-aborted-upgrade.jpg',
+        type: 'image',
+        sourceUrl: 'https://media.example.test/saved-before-aborted-upgrade.jpg'
+      });
+    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+  }));
+  await holder.close();
+
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('blend-welcome-v4', '1');
+    localStorage.setItem('blend-install-banner-hidden-v4', '1');
+    localStorage.setItem('blend-analytics-consent-v1', '0');
+
+    const nativeCreateObjectStore = IDBDatabase.prototype.createObjectStore;
+    Object.defineProperty(IDBDatabase.prototype, 'createObjectStore', {
+      configurable: true,
+      writable: true,
+      value: function (name, options) {
+        if (name === 'settings') {
+          throw new DOMException('Synthetic upgrade failure.', 'UnknownError');
+        }
+        return nativeCreateObjectStore.call(this, name, options);
+      }
+    });
+  });
+
+  await page.goto('/index.html');
+  await expect(page.locator('#database-startup-recovery')).toBeVisible();
+  await expect(page.locator('#database-startup-message'))
+    .toContainText('could not open your saved library');
+  expect(await page.evaluate(() => Boolean(window.Blend))).toBe(false);
+
+  const savedDatabase = await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const stores = Array.from(database.objectStoreNames).sort();
+      const transaction = database.transaction('library', 'readonly');
+      const read = transaction.objectStore('library').get('saved-before-aborted-upgrade');
+      let record;
+      read.onsuccess = () => { record = read.result; };
+      read.onerror = () => reject(read.error);
+      transaction.oncomplete = () => {
+        const result = { version: database.version, stores, record };
+        database.close();
+        resolve(result);
+      };
+      transaction.onerror = () => reject(transaction.error);
+    };
+  }));
+
+  expect(savedDatabase.version).toBe(4);
+  expect(savedDatabase.stores).toEqual(['library']);
+  expect(savedDatabase.record?.id).toBe('saved-before-aborted-upgrade');
+  expect(pageErrors).toEqual([]);
+  await page.close();
+});
+
 test('a later schema upgrade closes the stale app connection and requests a reload', async ({ context }) => {
   const appPage = await context.newPage();
   await appPage.addInitScript(() => {

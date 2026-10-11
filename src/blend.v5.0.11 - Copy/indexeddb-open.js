@@ -16,6 +16,38 @@ function reportDiagnostic(options, event, details = {}) {
   } catch (_) {}
 }
 
+async function findExistingDatabaseVersion(indexedDB, name) {
+  if (typeof indexedDB?.databases !== 'function') return { available: false, version: null };
+  try {
+    const databases = await indexedDB.databases();
+    const existing = Array.from(databases || []).find(database => database?.name === name);
+    const version = Number(existing?.version);
+    return {
+      available: true,
+      version: Number.isFinite(version) && version > 0 ? version : null
+    };
+  } catch (_) {
+    return { available: false, version: null };
+  }
+}
+
+function openCurrentDatabaseWithoutVersion(options) {
+  return openIndexedDB({ ...options, version: undefined });
+}
+
+function openExistingDatabaseWithoutVersion(options) {
+  return openIndexedDB({
+    ...options,
+    version: undefined,
+    onUpgrade(event) {
+      if (Number(event?.oldVersion || 0) === 0) {
+        throw new Error('The saved database changed before a compatible connection could be opened.');
+      }
+      options.onUpgrade?.(event);
+    }
+  });
+}
+
 export function assertIndexedDBObjectStoreKeyPaths(database, expectedKeyPaths = {}) {
   const entries = Object.entries(expectedKeyPaths);
   const names = Array.from(database?.objectStoreNames || []);
@@ -41,8 +73,41 @@ export function assertIndexedDBObjectStoreKeyPaths(database, expectedKeyPaths = 
 export async function openIndexedDBCompatible(options = {}) {
   let connection;
   let usedVersionlessFallback = false;
+  let usedVersionlessPreflight = false;
+  const indexedDB = options.indexedDB === undefined ? globalThis.indexedDB : options.indexedDB;
+  const requestedVersion = Number(options.version);
+  let inventory = { available: false, version: null };
+  if (options.version !== undefined && typeof indexedDB?.databases === 'function') {
+    inventory = await findExistingDatabaseVersion(indexedDB, options.name);
+  }
+
+  const shouldProbeCurrentVersion = options.version !== undefined
+    && Number.isFinite(requestedVersion)
+    && (!inventory.available || (Number.isFinite(inventory.version) && inventory.version > requestedVersion));
+
+  if (shouldProbeCurrentVersion) {
+    reportDiagnostic(options, 'versionless_preflight', {
+      database: options.name || '',
+      requestedVersion: options.version,
+      existingVersion: inventory.version
+    });
+    const currentConnection = await openCurrentDatabaseWithoutVersion(options);
+    if (Number.isFinite(currentConnection.version) && currentConnection.version >= requestedVersion) {
+      connection = currentConnection;
+      usedVersionlessFallback = true;
+      usedVersionlessPreflight = true;
+    } else {
+      try { currentConnection.close(); } catch (_) {}
+      reportDiagnostic(options, 'versionless_preflight_upgrade_required', {
+        database: options.name || '',
+        requestedVersion: options.version,
+        actualVersion: Number.isFinite(currentConnection.version) ? currentConnection.version : null
+      });
+    }
+  }
+
   try {
-    connection = await openIndexedDB(options);
+    if (!connection) connection = await openIndexedDB(options);
   } catch (error) {
     if (options.version === undefined || !isVersionError(error)) throw error;
 
@@ -52,19 +117,19 @@ export async function openIndexedDBCompatible(options = {}) {
       requestedVersion: options.version,
       error
     });
-    connection = await openIndexedDB({
-      ...options,
-      version: undefined,
-      onUpgrade(event) {
-        if (Number(event?.oldVersion || 0) === 0) {
-          throw new Error('The saved database changed before a compatible connection could be opened.');
-        }
-        options.onUpgrade?.(event);
-      }
-    });
+    connection = await openExistingDatabaseWithoutVersion(options);
   }
 
   try {
+    const requiredVersion = Number(options.version);
+    if (
+      usedVersionlessFallback &&
+      Number.isFinite(requiredVersion) &&
+      Number.isFinite(connection.version) &&
+      connection.version < requiredVersion
+    ) {
+      throw new Error('The saved database changed to an older schema while a compatible connection was opening.');
+    }
     const valid = await options.validateConnection?.(connection);
     if (valid === false) throw new Error('The database schema did not pass compatibility validation.');
   } catch (cause) {
@@ -82,7 +147,7 @@ export async function openIndexedDBCompatible(options = {}) {
     );
   }
   if (usedVersionlessFallback) {
-    reportDiagnostic(options, 'versionless_fallback_opened', {
+    reportDiagnostic(options, usedVersionlessPreflight ? 'versionless_preflight_opened' : 'versionless_fallback_opened', {
       database: options.name || '',
       requestedVersion: options.version,
       actualVersion: Number.isFinite(connection.version) ? connection.version : null

@@ -177,11 +177,12 @@ test('a late success after timeout closes its connection and cannot resolve star
   assert.equal(deliveredConnection, null);
 });
 
-test('a higher schema version opens without requesting a downgrade when its stores are compatible', async () => {
+test('a version error from a concurrent upgrade falls back to the current database', async () => {
   const versionedRequest = makeOpenRequest();
   const latestRequest = makeOpenRequest();
   const calls = [];
   const indexedDB = {
+    databases: async () => [{ name: 'player-blend-v1', version: 5 }],
     open(...args) {
       calls.push(args);
       return args.length === 2 ? versionedRequest : latestRequest;
@@ -201,9 +202,10 @@ test('a higher schema version opens without requesting a downgrade when its stor
     clearTimer: timers.clearTimer
   });
 
+  await new Promise(resolve => setImmediate(resolve));
   versionedRequest.error = new DOMException('Requested version is older than the database.', 'VersionError');
   versionedRequest.onerror();
-  await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
   latestRequest.result = database;
   latestRequest.onsuccess();
 
@@ -220,10 +222,169 @@ test('a higher schema version opens without requesting a downgrade when its stor
   assert.equal(timers.pendingCount, 0);
 });
 
+test('a higher schema opens with a versionless probe when database enumeration is unavailable', async () => {
+  const request = makeOpenRequest();
+  const calls = [];
+  const indexedDB = {
+    open(...args) {
+      calls.push(args);
+      return request;
+    }
+  };
+  const keyPaths = { library: 'id', aliases: 'id', aliasMeta: 'key' };
+  const database = makeDatabase(keyPaths, 6);
+  const diagnostics = [];
+  const opened = openIndexedDBCompatible({
+    indexedDB,
+    name: 'player-blend-v1',
+    version: 5,
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
+    validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, keyPaths)
+  });
+
+  await new Promise(resolve => setImmediate(resolve));
+  request.result = database;
+  request.onsuccess();
+
+  assert.equal(await opened, database);
+  assert.deepEqual(calls, [['player-blend-v1']]);
+  assert.deepEqual(diagnostics.map(diagnostic => diagnostic.event), [
+    'versionless_preflight',
+    'versionless_preflight_opened'
+  ]);
+  assert.equal(diagnostics[1].actualVersion, 6);
+});
+
+test('a fresh database is created and upgraded when database enumeration is unavailable', async () => {
+  const initialRequest = makeOpenRequest();
+  const upgradeRequest = makeOpenRequest();
+  const calls = [];
+  const indexedDB = {
+    open(...args) {
+      calls.push(args);
+      return args.length === 1 ? initialRequest : upgradeRequest;
+    }
+  };
+  const keyPaths = { library: 'id', aliases: 'id', aliasMeta: 'key' };
+  let initialCloseCount = 0;
+  const initialDatabase = makeDatabase(keyPaths, 1);
+  initialDatabase.close = () => { initialCloseCount += 1; };
+  const database = makeDatabase(keyPaths, 5);
+  const upgrades = [];
+  const opened = openIndexedDBCompatible({
+    indexedDB,
+    name: 'player-blend-v1',
+    version: 5,
+    onUpgrade: event => upgrades.push(event),
+    validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, keyPaths)
+  });
+
+  await new Promise(resolve => setImmediate(resolve));
+  const initialUpgrade = { target: { result: {} } };
+  initialRequest.onupgradeneeded(initialUpgrade);
+  initialRequest.result = initialDatabase;
+  initialRequest.onsuccess();
+  await new Promise(resolve => setImmediate(resolve));
+  const schemaUpgrade = { target: { result: {} } };
+  upgradeRequest.onupgradeneeded(schemaUpgrade);
+  upgradeRequest.result = database;
+  upgradeRequest.onsuccess();
+
+  assert.equal(await opened, database);
+  assert.deepEqual(calls, [['player-blend-v1'], ['player-blend-v1', 5]]);
+  assert.deepEqual(upgrades, [initialUpgrade, schemaUpgrade]);
+  assert.equal(initialCloseCount, 1);
+});
+
+test('a known higher schema opens versionlessly before a lower version is requested', async () => {
+  const request = makeOpenRequest();
+  const calls = [];
+  const indexedDB = {
+    databases: async () => [{ name: 'player-blend-v1', version: 6 }],
+    open(...args) {
+      calls.push(args);
+      return request;
+    }
+  };
+  const timers = makeTimers();
+  const database = makeDatabase({ library: 'id', aliases: 'id', aliasMeta: 'key' });
+  const diagnostics = [];
+  const opened = openIndexedDBCompatible({
+    indexedDB,
+    name: 'player-blend-v1',
+    version: 5,
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
+    validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, {
+      library: 'id',
+      aliases: 'id',
+      aliasMeta: 'key'
+    }),
+    setTimer: timers.setTimer,
+    clearTimer: timers.clearTimer
+  });
+
+  await new Promise(resolve => setImmediate(resolve));
+  request.result = database;
+  request.onsuccess();
+
+  assert.equal(await opened, database);
+  assert.deepEqual(calls, [['player-blend-v1']]);
+  assert.deepEqual(diagnostics.map(diagnostic => diagnostic.event), [
+    'versionless_preflight',
+    'versionless_preflight_opened'
+  ]);
+  assert.equal(diagnostics[0].existingVersion, 6);
+  assert.equal(diagnostics[1].actualVersion, 6);
+  assert.equal(timers.pendingCount, 0);
+});
+
+test('a versionless fallback that discovers an older schema is rejected after a version error', async () => {
+  const versionedRequest = makeOpenRequest();
+  const latestRequest = makeOpenRequest();
+  const calls = [];
+  const indexedDB = {
+    databases: async () => [{ name: 'player-blend-v1', version: 5 }],
+    open(_name, version) {
+      calls.push(version === undefined ? [_name] : [_name, version]);
+      return version === undefined ? latestRequest : versionedRequest;
+    }
+  };
+  const keyPaths = { library: 'id', aliases: 'id', aliasMeta: 'key' };
+  let closeCount = 0;
+  const diagnostics = [];
+  const database = makeDatabase(keyPaths, 4);
+  database.close = () => { closeCount += 1; };
+  const opened = openIndexedDBCompatible({
+    indexedDB,
+    name: 'player-blend-v1',
+    version: 5,
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
+    validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, keyPaths)
+  });
+
+  await new Promise(resolve => setImmediate(resolve));
+  versionedRequest.error = new DOMException('Requested version is older than the database.', 'VersionError');
+  versionedRequest.onerror();
+  await new Promise(resolve => setImmediate(resolve));
+  latestRequest.result = database;
+  latestRequest.onsuccess();
+
+  await assert.rejects(opened, error => {
+    assert.ok(error instanceof IndexedDBOpenError);
+    assert.equal(error.code, 'idb_schema_incompatible');
+    return true;
+  });
+  assert.equal(closeCount, 1);
+  assert.equal(diagnostics.at(-1).event, 'schema_validation_failed');
+  assert.match(diagnostics.at(-1).cause.message, /older schema/);
+  assert.deepEqual(calls, [['player-blend-v1', 5], ['player-blend-v1']]);
+});
+
 test('a higher schema version with incompatible stores is rejected and its connection is closed', async () => {
   const versionedRequest = makeOpenRequest();
   const latestRequest = makeOpenRequest();
   const indexedDB = {
+    databases: async () => [{ name: 'player-blend-v1', version: 5 }],
     open(_name, version) {
       return version === undefined ? latestRequest : versionedRequest;
     }
@@ -241,9 +402,10 @@ test('a higher schema version with incompatible stores is rejected and its conne
     validateConnection: connection => assertIndexedDBObjectStoreKeyPaths(connection, { library: 'id' })
   });
 
+  await new Promise(resolve => setImmediate(resolve));
   versionedRequest.error = new DOMException('Requested version is older than the database.', 'VersionError');
   versionedRequest.onerror();
-  await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
   latestRequest.result = database;
   latestRequest.onsuccess();
 

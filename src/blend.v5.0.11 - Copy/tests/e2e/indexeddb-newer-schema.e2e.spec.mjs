@@ -68,6 +68,21 @@ async function suppressFirstRunPrompts(page) {
 test('opens a higher database version when required stores and key paths remain compatible', async ({ page }) => {
   await seedDatabase(page, 'id', true);
   await suppressFirstRunPrompts(page);
+  await page.addInitScript(() => {
+    const factoryPrototype = Object.getPrototypeOf(indexedDB);
+    const nativeOpen = factoryPrototype.open;
+    window.__blendDatabaseOpenCalls = [];
+    Object.defineProperty(factoryPrototype, 'open', {
+      configurable: true,
+      writable: true,
+      value: function (...args) {
+        if (args[0] === 'player-blend-v1') {
+          window.__blendDatabaseOpenCalls.push({ argumentCount: args.length, version: args[1] ?? null });
+        }
+        return nativeOpen.apply(this, args);
+      }
+    });
+  });
 
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -132,6 +147,46 @@ test('opens a higher database version when required stores and key paths remain 
     .toBe('saved-schema-six-playlist-item');
   expect(databaseVersion.records.settings.find(record => record.key === 'global')?.opacity).toBe(0.37);
   expect(await page.evaluate(() => window.__unhandledDatabaseRejections)).toBe(0);
+  const databaseOpenCalls = await page.evaluate(() => window.__blendDatabaseOpenCalls);
+  expect(databaseOpenCalls.length).toBeGreaterThan(0);
+  expect(databaseOpenCalls.every(call => call.argumentCount === 1 && call.version === null)).toBe(true);
+  expect(pageErrors).toEqual([]);
+});
+
+test('opens a compatible higher schema without database enumeration support', async ({ page }) => {
+  await seedDatabase(page, 'id', true);
+  await suppressFirstRunPrompts(page);
+  await page.addInitScript(() => {
+    const factoryPrototype = Object.getPrototypeOf(indexedDB);
+    const nativeOpen = factoryPrototype.open;
+    Object.defineProperty(factoryPrototype, 'databases', {
+      configurable: true,
+      writable: true,
+      value: undefined
+    });
+    window.__blendDatabaseOpenCalls = [];
+    Object.defineProperty(factoryPrototype, 'open', {
+      configurable: true,
+      writable: true,
+      value: function (...args) {
+        if (args[0] === 'player-blend-v1') {
+          window.__blendDatabaseOpenCalls.push({ argumentCount: args.length, version: args[1] ?? null });
+        }
+        return nativeOpen.apply(this, args);
+      }
+    });
+  });
+
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto('/index.html');
+  await page.waitForFunction(() => window.Blend?.state?.library?.has('saved-in-schema-six'));
+
+  expect(await page.evaluate(() => window.Blend.state.settings.opacity)).toBe(0.37);
+  expect(await page.evaluate(() => window.Blend.state.playlist[0]?.id)).toBe('saved-schema-six-playlist-item');
+  const databaseOpenCalls = await page.evaluate(() => window.__blendDatabaseOpenCalls);
+  expect(databaseOpenCalls.length).toBeGreaterThan(0);
+  expect(databaseOpenCalls.every(call => call.argumentCount === 1 && call.version === null)).toBe(true);
   expect(pageErrors).toEqual([]);
 });
 

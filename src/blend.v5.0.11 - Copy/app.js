@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-config-diagnostics';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-idb-preflight';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261010-v5.0.11-config-diagnostics';
+} from './experience-persistence.js?v=20261010-v5.0.11-idb-preflight';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-config-diagnostics';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-config-diagnostics';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-config-diagnostics';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-config-diagnostics';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-config-diagnostics';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-config-diagnostics';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-idb-preflight';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-idb-preflight';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-idb-preflight';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-idb-preflight';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-idb-preflight';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-idb-preflight';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261010-v5.0.11-config-diagnostics';
+} from './storage-url-resolver.js?v=20261010-v5.0.11-idb-preflight';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261010-v5.0.11-config-diagnostics';
+} from './transition-manager.js?v=20261010-v5.0.11-idb-preflight';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261010-v5.0.11-config-diagnostics';
+} from './playback-clock.js?v=20261010-v5.0.11-idb-preflight';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-config-diagnostics';
-import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-config-diagnostics';
+import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-idb-preflight';
+import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-idb-preflight';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261010-v5.0.11-config-diagnostics';
+} from './url-share.js?v=20261010-v5.0.11-idb-preflight';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261010-v5.0.11-config-diagnostics';
+} from './url-share-diagnostics.js?v=20261010-v5.0.11-idb-preflight';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261010-v5.0.11-config-diagnostics';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-config-diagnostics';
+} from './timeline-analysis.js?v=20261010-v5.0.11-idb-preflight';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-idb-preflight';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261010-v5.0.11-config-diagnostics';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-config-diagnostics';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-config-diagnostics';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-config-diagnostics';
+} from './shared-experience-download.js?v=20261010-v5.0.11-idb-preflight';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-idb-preflight';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-idb-preflight';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-idb-preflight';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +88,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261010-v5.0.11-config-diagnostics';
+} from './local-import-limits.js?v=20261010-v5.0.11-idb-preflight';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -188,7 +188,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-config-diagnostics';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-idb-preflight';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
