@@ -2,7 +2,7 @@
 
 Blend is a local-first, browser-based dual-layer media studio. It lets you run a **Playlist layer** (video/audio) and a **Slideshow layer** (image/video) at the same time, then blend them live with independent controls.
 
-> This README documents the self-contained `blend.v5.0.11 - Copy` project in this directory. Run project commands from the directory containing this file and `package.json`.
+> This README documents the self-contained `[blend.v5.0.11 - Copy](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.11%20-%20Copy)` project in this directory. Run project commands from the directory containing this file and `package.json`.
 >
 > The neighboring `../blend.v5.0.11/` is a separate version folder. This folder is a standalone review target. Confirm its release destination before copying changes to another version.
 
@@ -95,7 +95,7 @@ The web manifest and PWA icons are served from the app directory: publish `manif
 Latest source location:
 
 - [Repository root](https://github.com/mytech-today-now/slideshow-playlist-player.html)
-- [Canonical upstream release folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.11)
+- [Canonical upstream release folder](https://github.com/mytech-today-now/slideshow-playlist-player.html/tree/main/src/blend.v5.0.11%20-%20Copy)
 
 ## Screenshots
 
