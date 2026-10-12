@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-idb-preflight';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261010-v5.0.11-idb-preflight';
+} from './experience-persistence.js?v=20261011-v5.0.11-git-catalog-read';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261010-v5.0.11-idb-preflight';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261010-v5.0.11-idb-preflight';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261010-v5.0.11-idb-preflight';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261010-v5.0.11-idb-preflight';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261010-v5.0.11-idb-preflight';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261010-v5.0.11-idb-preflight';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261011-v5.0.11-git-catalog-read';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261011-v5.0.11-git-catalog-read';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261011-v5.0.11-git-catalog-read';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261011-v5.0.11-git-catalog-read';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261011-v5.0.11-git-catalog-read';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261010-v5.0.11-idb-preflight';
+} from './storage-url-resolver.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261010-v5.0.11-idb-preflight';
+} from './transition-manager.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261010-v5.0.11-idb-preflight';
+} from './playback-clock.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261010-v5.0.11-idb-preflight';
-import { fetchReadme } from './readme-fetcher.js?v=20261010-v5.0.11-idb-preflight';
+import { renderMarkdown } from './markdown.js?v=20261011-v5.0.11-git-catalog-read';
+import { fetchReadme } from './readme-fetcher.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,39 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261010-v5.0.11-idb-preflight';
+} from './url-share.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261010-v5.0.11-idb-preflight';
+} from './url-share-diagnostics.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261010-v5.0.11-idb-preflight';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261010-v5.0.11-idb-preflight';
+} from './timeline-analysis.js?v=20261011-v5.0.11-git-catalog-read';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261010-v5.0.11-idb-preflight';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261010-v5.0.11-idb-preflight';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261010-v5.0.11-idb-preflight';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261010-v5.0.11-idb-preflight';
+} from './shared-experience-download.js?v=20261011-v5.0.11-git-catalog-read';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261011-v5.0.11-git-catalog-read';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261011-v5.0.11-git-catalog-read';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261011-v5.0.11-git-catalog-read';
+import {
+  GitCatalogError,
+  catalogPlaylistPath,
+  fetchPublicCatalog,
+  fetchPublicRepositoryFile,
+  loadPublicCatalogSettings,
+  normalizePublicCatalogSettings,
+  parsePublicPlaylistDocument,
+  publicCatalogConfigKey,
+  savePublicCatalogSettings
+} from './git-playlist-catalog.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -88,7 +99,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261010-v5.0.11-idb-preflight';
+} from './local-import-limits.js?v=20261011-v5.0.11-git-catalog-read';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -188,7 +199,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261010-v5.0.11-idb-preflight';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261011-v5.0.11-git-catalog-read';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -398,6 +409,10 @@ let state = {
 let experienceLoading = false;
 
 let playlistVideoA = null, playlistVideoB = null;
+let publicCatalogSettings = null;
+let publicCatalogEntries = [];
+let publicCatalogBusy = false;
+let publicCatalogSettingsSaved = true;
 let slideshowMedia = null; // current img or video in top layer
 let kenBurnsRAF = null;
 let crossfadeTimer = null;
@@ -8706,7 +8721,7 @@ async function clearBrowserStorage() {
   const confirmed = await showExperienceDialog({
     title: 'Clear browser storage',
     mode: 'confirm',
-    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, and saved media access handles, including the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
+    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, the public Git catalog location, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
     okText: '✓ Clear Browser Storage',
     okDanger: true
   });
@@ -8870,6 +8885,15 @@ async function clearBrowserStorage() {
     localStorage.removeItem(WELCOME_KEY);
     localStorage.removeItem(ANALYTICS_CONSENT_KEY);
     localStorage.removeItem(MASTODON_INSTANCE_KEY);
+    localStorage.removeItem(publicCatalogConfigKey());
+    publicCatalogSettings = null;
+    publicCatalogSettingsSaved = true;
+    clearPublicCatalogResults();
+    for (const selector of ['#git-catalog-provider', '#git-catalog-owner', '#git-catalog-repository', '#git-catalog-branch', '#git-catalog-directory']) {
+      const input = $(selector);
+      if (input) input.value = '';
+    }
+    setPublicCatalogStatus('Choose a provider and enter the public repository details.', 'idle');
     analyticsConsentGranted = false;
     updateAnalyticsConsentState({ consent: false });
 
@@ -8886,7 +8910,7 @@ async function clearBrowserStorage() {
       showToast(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${cleanupFailures.join(', ')}.`, { timeout: 7000 });
       return false;
     }
-    showToast('Browser data cleared. The saved Supabase session was removed, runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
+    showToast('Browser data cleared. The saved Supabase session and public Git catalog settings were removed, runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
     return true;
   } catch (_) {
     showToast('Browser reset incomplete. The saved Supabase session and Blend database were cleared from this browser, but some other browser data could not be cleared.', { timeout: 6000 });
@@ -9890,6 +9914,188 @@ function wireConfigPanelControls() {
   }
 }
 
+function publicCatalogErrorMessage(error) {
+  const messages = {
+    invalid_provider: 'Choose GitHub or Bitbucket Cloud.',
+    invalid_repository_settings: 'Enter a valid owner or workspace, repository, branch, and catalog directory.',
+    settings_unavailable: 'Browser storage is unavailable. Catalog settings were not saved.',
+    unsafe_playlist_id: 'The catalog contains an unsafe playlist identifier.',
+    unsafe_repository_path: 'The catalog path is not valid.',
+    repository_or_file_not_found: 'The public repository, branch, catalog file, or playlist file was not found.',
+    authentication_required: 'The provider did not allow this public read. Check that the repository is public.',
+    provider_rate_limit_or_access_denied: 'The provider rate-limited or denied this public read. Try again later or check repository access.',
+    provider_unavailable: 'The Git provider is temporarily unavailable.',
+    provider_request_failed: 'The Git provider rejected the public read request.',
+    request_timeout: 'The public catalog request timed out. Try again when the connection is available.',
+    network_or_cors_error: 'The browser could not reach the provider. This may be offline access or a network/CORS restriction.',
+    response_too_large: 'The provider response exceeded the catalog size limit.',
+    streaming_response_required: 'The provider response could not be bounded safely. Operation cancelled.',
+    catalog_index_too_large: 'The catalog index exceeds the 256 KB limit.',
+    malformed_catalog_index: 'The catalog index is not valid JSON.',
+    unsupported_catalog_schema: 'The catalog index uses an unsupported schema.',
+    catalog_entry_limit: 'The catalog contains more than 100 playlists.',
+    invalid_catalog_entry: 'The catalog contains an invalid or duplicate playlist entry.',
+    playlist_file_too_large: 'The playlist exceeds the 1 MB limit.',
+    malformed_playlist: 'The public playlist is not valid JSON.',
+    unsupported_playlist_schema: 'The public playlist uses an unsupported schema or contains non-playlist data.',
+    playlist_item_limit: 'The public playlist exceeds the 10,000 item limit.',
+    disallowed_playlist_fields: 'The public playlist contains fields Blend does not accept.',
+    invalid_playlist_item: 'The public playlist contains an invalid media item.',
+    private_or_unsafe_media_reference: 'The playlist contains a local, private, signed, or otherwise unsafe media reference.',
+    invalid_playlist_order: 'The public playlist has an invalid item order.',
+    empty_playlist: 'The public playlist contains no media items.',
+    invalid_playlist_metadata: 'The public playlist contains invalid metadata.'
+  };
+  const code = error instanceof GitCatalogError ? error.code : '';
+  return messages[code] || 'The public catalog operation failed. Your local playlist is unchanged.';
+}
+
+function setPublicCatalogStatus(message, stateName = 'idle') {
+  const status = $('#git-catalog-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function publicCatalogSettingsFromForm() {
+  return normalizePublicCatalogSettings({
+    provider: $('#git-catalog-provider')?.value,
+    owner: $('#git-catalog-owner')?.value,
+    repository: $('#git-catalog-repository')?.value,
+    branch: $('#git-catalog-branch')?.value,
+    directory: $('#git-catalog-directory')?.value
+  });
+}
+
+function publicCatalogStorage() {
+  try { return window.localStorage; } catch (_) { return null; }
+}
+
+function applyPublicCatalogSettingsToForm(settings) {
+  if (!settings) return;
+  $('#git-catalog-provider').value = settings.provider;
+  $('#git-catalog-owner').value = settings.owner;
+  $('#git-catalog-repository').value = settings.repository;
+  $('#git-catalog-branch').value = settings.branch;
+  $('#git-catalog-directory').value = settings.directory;
+}
+
+function clearPublicCatalogResults() {
+  publicCatalogEntries = [];
+  $('#git-catalog-results')?.replaceChildren();
+}
+
+function setPublicCatalogBusy(value) {
+  publicCatalogBusy = !!value;
+  const resetButton = $('#clear-browser-storage');
+  if (resetButton) resetButton.disabled = publicCatalogBusy;
+}
+
+function renderPublicCatalogEntries(entries) {
+  const container = $('#git-catalog-results');
+  if (!container) return;
+  container.replaceChildren();
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.className = 'git-catalog__row';
+    row.setAttribute('role', 'listitem');
+    const title = document.createElement('span');
+    title.className = 'git-catalog__title';
+    title.textContent = entry.title;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'list-action git-catalog__import';
+    button.textContent = 'Import to Playlist';
+    button.setAttribute('aria-label', `Import ${entry.title} to Playlist`);
+    button.addEventListener('click', () => { void importPublicCatalogPlaylist(entry, button); });
+    row.append(title, button);
+    container.append(row);
+  }
+}
+
+function savePublicCatalogForm() {
+  publicCatalogSettings = savePublicCatalogSettings(publicCatalogStorage(), publicCatalogSettingsFromForm());
+  setPublicCatalogStatus('Public catalog settings saved in this browser. No credentials are stored.', 'ready');
+  return publicCatalogSettings;
+}
+
+async function fetchPublicCatalogFromForm() {
+  if (publicCatalogBusy) return;
+  clearPublicCatalogResults();
+  try {
+    publicCatalogSettings = publicCatalogSettingsFromForm();
+  } catch (error) {
+    setPublicCatalogStatus(publicCatalogErrorMessage(error), 'error');
+    return;
+  }
+  try {
+    savePublicCatalogSettings(publicCatalogStorage(), publicCatalogSettings);
+    publicCatalogSettingsSaved = true;
+  } catch (_) {
+    publicCatalogSettingsSaved = false;
+  }
+  setPublicCatalogBusy(true);
+  const button = $('#git-catalog-fetch');
+  button.disabled = true;
+  setPublicCatalogStatus('Fetching the public catalog index…', 'loading');
+  try {
+    publicCatalogEntries = await fetchPublicCatalog(publicCatalogSettings);
+    renderPublicCatalogEntries(publicCatalogEntries);
+    const storageNote = publicCatalogSettingsSaved ? '' : ' Settings could not be saved in this browser.';
+    setPublicCatalogStatus(`Loaded ${publicCatalogEntries.length} public playlist${publicCatalogEntries.length === 1 ? '' : 's'}. Select one to import it into the local Playlist.${storageNote}`, 'ready');
+  } catch (error) {
+    clearPublicCatalogResults();
+    setPublicCatalogStatus(publicCatalogErrorMessage(error), 'error');
+  } finally {
+    setPublicCatalogBusy(false);
+    button.disabled = false;
+  }
+}
+
+async function importPublicCatalogPlaylist(entry, button) {
+  if (publicCatalogBusy || !publicCatalogSettings || !entry) return;
+  if (state.settings.importBehavior === 'replace'
+      && !window.confirm(`Importing “${entry.title}” will replace the current local Playlist. Continue?`)) return;
+  setPublicCatalogBusy(true);
+  button.disabled = true;
+  const originalLabel = button.textContent;
+  button.textContent = 'Fetching…';
+  setPublicCatalogStatus(`Fetching public playlist “${entry.title}”…`, 'loading');
+  try {
+    const raw = await fetchPublicRepositoryFile(publicCatalogSettings, catalogPlaylistPath(publicCatalogSettings, entry.id));
+    const safePlaylist = parsePublicPlaylistDocument(raw, entry);
+    const file = new File([JSON.stringify(safePlaylist)], `public-catalog-${entry.id}.json`, { type: 'application/json' });
+    const result = await importListFromFile(file, { which: 'playlist' });
+    if (result) setPublicCatalogStatus(`Imported ${entry.title} into the local Playlist. The public repository was not changed.`, 'ready');
+  } catch (error) {
+    setPublicCatalogStatus(publicCatalogErrorMessage(error), 'error');
+  } finally {
+    setPublicCatalogBusy(false);
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+function wirePublicCatalogControls() {
+  const providerSelect = $('#git-catalog-provider');
+  const saveButton = $('#git-catalog-save');
+  const fetchButton = $('#git-catalog-fetch');
+  if (!providerSelect || !saveButton || !fetchButton) return;
+  const storage = publicCatalogStorage();
+  publicCatalogSettings = loadPublicCatalogSettings(storage);
+  applyPublicCatalogSettingsToForm(publicCatalogSettings);
+  if (publicCatalogSettings) setPublicCatalogStatus('Saved public catalog settings loaded. Fetch when you want to read the current catalog.', 'idle');
+  saveButton.onclick = () => {
+    try {
+      savePublicCatalogForm();
+      clearPublicCatalogResults();
+    } catch (error) {
+      setPublicCatalogStatus(publicCatalogErrorMessage(error), 'error');
+    }
+  };
+  fetchButton.onclick = () => { void fetchPublicCatalogFromForm(); };
+}
+
 function wireConfig() {
   const experienceSelect = $('#experience-select');
   experienceSelect.onchange = async (e) => {
@@ -9919,6 +10125,7 @@ function wireConfig() {
   const shareUrlBtn = $('#experience-share-url');
   if (shareUrlBtn) shareUrlBtn.onclick = () => { void shareExperienceViaUrl(); };
   $('#clear-browser-storage').onclick = clearBrowserStorage;
+  wirePublicCatalogControls();
 
   // add buttons
   $('#add-files').onclick = addFilesFromPicker;

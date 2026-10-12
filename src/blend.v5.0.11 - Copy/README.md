@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261010-v5.0.11-idb-preflight`
+- **Cache/app shell version key:** `20261011-v5.0.11-git-catalog-read`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -178,6 +178,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Import/Export | List JSON/TXT import-export | Yes | `.json`, `.jsonl`, `.txt`, `.md` import |
 | Import/Export | Experience JSON import-export | Yes | Schema `player.blend.experience.v2` |
 | Remote Media | Supabase URL resolution | Yes | Public object URLs + signed private URLs |
+| Remote Playlists | Public Git catalog browsing | Partial | Explicit GitHub or Bitbucket settings; public reads and local import only |
 | Sharing | Deep links | Yes | `exp`, `layer`, `item`, optional `autoplay` |
 | Sharing | Social share menu | Yes | Native share, copy, and platform links |
 | PWA | Service worker shell cache | Yes | App shell cached; media/range requests bypass cache |
@@ -367,6 +368,12 @@ Remote `storageExperience` downloads accept JSON media types and are streamed wi
 
 - `Import List...` imports list entries into active list.
 - `Experience -> Import` imports one or more experience JSON files.
+
+### Browsing a Public Git Playlist Catalog
+
+Open Configuration and enter the provider, owner or workspace, repository, branch, and catalog directory. Blend does not select a provider or repository for you. Save the settings, fetch the catalog, then choose a playlist to import it into the local Playlist. Import follows the current append/replace setting; replace asks for confirmation.
+
+The catalog must use the format and safe media-reference subset described in [GIT_PLAYLIST_STORAGE_DESIGN.md](GIT_PLAYLIST_STORAGE_DESIGN.md). Public reads require no credentials. The reader does not commit changes, connect a private repository, or change the remote catalog. Public content and its Git history may remain accessible after the current catalog entry is removed.
 
 ### Playback Controls
 
@@ -601,6 +608,7 @@ Import behavior rules:
 | Supabase default bucket | `#supabase-default-bucket` | IndexedDB settings | Default storage bucket |
 | Signed URL TTL | `#supabase-signed-url-ttl` | IndexedDB settings | Seconds |
 | Require auth for private media | `#private-media-auth-required` | IndexedDB settings | Controls auth expectation |
+| Public Git catalog | `#git-catalog-*` controls | LocalStorage `blend-public-git-catalog-v1` | Stores provider and public repository location only; never stores credentials |
 | Playlist volume | `#vol-playlist` | IndexedDB settings | 0.0-1.0 |
 | Slideshow volume | `#vol-slideshow` | IndexedDB settings | 0.0-1.0 |
 | Master volume | `#vol-master` | IndexedDB settings | 0.0-1.0 |
@@ -637,6 +645,7 @@ When the stored database version is newer than this app's requested version, Ble
 - `blend-analytics-consent-v1`
 - `blend-share-mastodon-instance-v1`
 - `blend-runtime-config-v1` (operator-managed connection settings; preserved by Clear Browser Storage)
+- `blend-public-git-catalog-v1` (public Git provider, repository, branch, and path only; contains no credentials)
 - `blend-supabase-auth-session-v2` (only after opting in to save the session)
 - `blend-debug-log-v1`
 
@@ -645,6 +654,7 @@ When the stored database version is newer than this app's requested version, Ble
 - Local media files are not uploaded by default.
 - Browser-side path sanitization rejects control chars and `..` traversal.
 - Remote references are validated and normalized.
+- The Git playlist catalog performs unauthenticated, bounded reads from fixed GitHub and Bitbucket Cloud API hosts. It uses `no-store`, omits credentials, rejects redirects, and validates a public catalog index and playlist subset before a user imports references locally. It does not write to Git or access private repositories.
 - Supabase sessions stay in memory by default. Selecting **Save session in this browser** explicitly saves only `access_token`, `refresh_token`, and `expires_at` under `blend-supabase-auth-session-v2`; the previous `v1` entry is removed and never restored. The accessible disclosure says: “A saved token can be read by scripts running on this site.”
 - Supabase refresh tokens have no fixed expiry and are normally single-use, with a default 10-second reuse interval. Project Auth settings can still end sessions through inactivity or maximum-lifetime rules, and sign-out revokes the session. See [Supabase session documentation](https://supabase.com/docs/guides/auth/sessions).
 - To restore cross-reload access for a session, select **Save session in this browser** when connecting; that checkbox is the explicit acceptance of the LocalStorage disclosure. To return to tab-only access, sign out and reconnect with the checkbox cleared.
@@ -670,7 +680,7 @@ When the stored database version is newer than this app's requested version, Ble
 Use **Clear Browser Storage** to remove browser-side data:
 
 - IndexedDB data, including saved media access handles
-- selected LocalStorage keys, including saved Supabase sessions and any legacy session entry
+- selected LocalStorage keys, including saved Supabase sessions, public Git catalog coordinates, and any legacy session entry
 - operator-managed runtime configuration (`blend-runtime-config-v1`) is retained, including Supabase endpoint, key, and bucket overrides, so configured service access can be restored after reset
 - Blend service worker/cache entries across `blend-shell-*`, `blend-static-*`, `blend-docs-*`, `blend-api-*`, and `blend-alias-*`
 
@@ -685,6 +695,7 @@ If the recovery snapshot cannot be prepared, deletion does not begin and the cur
 - HTML shell (`index.html`) + CSS (`styles.css`) + JS modules.
 - Main orchestration in `app.js`.
 - Feature modules:
+- `git-playlist-catalog.js`
 - `transition-manager.js`
 - `storage-url-resolver.js`
 - `supabase-auth.js`
@@ -806,6 +817,7 @@ Verified in current implementation:
 - Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`). A scan that reaches this limit reports how many child folders it skipped as a partial result; choose **Choose deeper folder** in the status notice (or select the deeper folder directly) to include that media.
 - Each folder selection imports at most 250 supported media files (`MAX_FOLDER_MEDIA_FILES` in `app.js`). If more accessible files are found, the saved items stay in the library and the status notice reports added, skipped, and pending counts; choose **Choose smaller folder** to continue with a narrower folder or another folder. This limit applies to both directory-picking and directory-input fallback imports.
 - Remote URL parsing generally requires media-like filenames/extensions for text list imports.
+- GitHub and Bitbucket Cloud are configurable alternatives for public catalog reads. Shared catalog writes, private repository connections, OAuth, publish/unpublish, conflict resolution, and commit creation are not implemented. The static frontend has no approved per-user provider authorization design or trusted write broker, and must not ship a shared write credential. See [GIT_PLAYLIST_STORAGE_DESIGN.md](GIT_PLAYLIST_STORAGE_DESIGN.md).
 - Service worker intentionally does not cache media/range responses.
 - File System Access capabilities vary significantly by browser.
 
@@ -906,6 +918,8 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 ### Code Organization
 
 - `app.js`: app state, UI wiring, import/export, playback, persistence
+- `git-playlist-catalog.js`: fixed-host public Git reads, schema checks, and media-reference filtering
+- `GIT_PLAYLIST_STORAGE_DESIGN.md`: catalog contract, threat model, provider basis, and write-authentication boundary
 - `pwa-config.js`: app/cache/database version constants, precache assets, and cache policy metadata
 - `pwa-client.js`: service worker registration, update prompts, cache messages, and alias snapshot sync
 - `alias-router.js`: pure alias validation and route resolution logic

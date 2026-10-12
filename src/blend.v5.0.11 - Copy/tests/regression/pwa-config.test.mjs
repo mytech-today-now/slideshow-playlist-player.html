@@ -36,6 +36,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./shared-experience-download.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./save-state.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./url-share.js?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./git-playlist-catalog.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./playback-mode.js'));
   assert.ok(required.has('./resume-on-load.js?v=20260927-v5.0.11-resume'));
   assert.ok(required.has('./pwa-config.js'));
@@ -77,5 +78,6 @@ test('HTML shell uses manifest.webmanifest and the configured asset version', as
   assert.match(app, new RegExp(`media-relink\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`indexeddb-open\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`url-share\\.js\\?v=${config.ASSET_VERSION}`));
+  assert.match(app, new RegExp(`git-playlist-catalog\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(html, new RegExp(`content="${config.APP_VERSION}"`));
 });

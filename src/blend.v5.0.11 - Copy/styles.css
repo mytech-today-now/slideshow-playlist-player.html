@@ -1287,6 +1287,63 @@ button {
 .setting__status[data-state="error"] {
   color: var(--warning, #f59e0b);
 }
+.git-catalog-setting {
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.git-catalog-setting h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+.git-catalog__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+.git-catalog__directory {
+  grid-column: 1 / -1;
+}
+.git-catalog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.git-catalog__results {
+  display: grid;
+  gap: 6px;
+}
+.git-catalog__results:empty {
+  display: none;
+}
+.git-catalog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev2);
+}
+.git-catalog__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+.git-catalog__import {
+  flex: 0 0 auto;
+}
+.git-catalog__import:disabled,
+.git-catalog__actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 .transition-picker {
   grid-column: 1 / -1;
   border: 1px solid var(--border);
