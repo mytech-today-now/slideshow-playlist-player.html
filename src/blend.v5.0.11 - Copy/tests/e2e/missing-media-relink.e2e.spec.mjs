@@ -117,6 +117,58 @@ async function installDirectoryPicker(page, rootName, children) {
   }, { name: rootName, entries: children });
 }
 
+async function installBoundedRelinkDirectoryPicker(page, {
+  count,
+  targetIndex = -1,
+  failureName = '',
+  failureAfter = -1
+}) {
+  await page.evaluate(options => {
+    let visited = 0;
+    const filePrototype = {
+      async getFile() {
+        return new File([this.contents], this.name, { type: 'video/mp4' });
+      }
+    };
+    const makeFile = index => {
+      const name = index === options.targetIndex
+        ? 'track.mp4'
+        : `synthetic-${String(index).padStart(5, '0')}.mp4`;
+      return Object.assign(Object.create(filePrototype), {
+        kind: 'file',
+        name,
+        contents: `synthetic-${index}`,
+        transient: true
+      });
+    };
+    const root = Object.create({
+      async *values() {
+        for (let index = 0; index < options.count; index += 1) {
+          if (options.failureName && visited >= options.failureAfter) {
+            throw new DOMException('simulated directory access failure', options.failureName);
+          }
+          visited += 1;
+          yield makeFile(index);
+        }
+      }
+    });
+    Object.assign(root, { kind: 'directory', name: 'Assets' });
+    window.__relinkVisited = () => visited;
+    window.showDirectoryPicker = async () => root;
+  }, { count, targetIndex, failureName, failureAfter });
+}
+
+async function startBoundedRelink(page, options) {
+  await bootRelinkPage(page, 'playlist');
+  await importMissingList(page, 'playlist', [
+    { id: 'bounded-missing-track', name: 'track.mp4', path: 'Assets/track.mp4', type: 'video' }
+  ]);
+  const before = await missingRefSnapshot(page, 'playlist', 0);
+  await installBoundedRelinkDirectoryPicker(page, options);
+  await clickResolve(page, 'playlist');
+  return before;
+}
+
 async function clickResolve(page, which) {
   await page.locator('#import-summary-modal [data-resolve]').click();
   await page.waitForFunction(key => {
@@ -463,7 +515,110 @@ test('partial directory scans relink found media and report unreadable folders',
   await page.waitForFunction(() => window.Blend?.state?.playlist?.[0]?.available === true);
   const notice = page.locator('.toast-directory-scan');
   await expect(notice).toContainText('Missing-media scan was partial: 1 folder could not be read.');
+  await expect(notice).toContainText('No saved entries were removed.');
   await expect(notice).toContainText('Resolved 1/1 missing path from 2 found media files.');
   await expect(notice.getByRole('button', { name: 'Retry scan' })).toBeVisible();
   expect((await readHandleContents(page, 'playlist', 0)).text).toBe('relinked-before-read-error');
+});
+
+test('a relink scan below the 250-media bound completes with the last exact-path match', async ({ page }) => {
+  await startBoundedRelink(page, { count: 249, targetIndex: 248 });
+
+  await page.waitForFunction(() => window.Blend?.state?.playlist?.[0]?.available === true);
+  expect(await page.evaluate(() => window.__relinkVisited())).toBe(249);
+  expect((await readHandleContents(page, 'playlist', 0)).text).toBe('synthetic-248');
+  await expect(page.locator('.toast-directory-scan')).toHaveCount(0);
+  await expect(page.locator('#toast-container')).toContainText('Resolved 1/1 missing path');
+});
+
+test('a relink scan reaching 250 media files stops partially and keeps matches', async ({ page }) => {
+  await startBoundedRelink(page, { count: 250, targetIndex: 249 });
+
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText('This folder contains more media than Blend can scan in one relink pass. No saved entries were removed. Choose a smaller folder or narrow the search.');
+  await expect(notice).toContainText('Resolved 1/1 missing path from 250 found media files.');
+  await expect(notice.getByRole('button', { name: 'Choose smaller folder' })).toBeVisible();
+  expect(await page.evaluate(() => window.__relinkVisited())).toBe(250);
+  expect((await readHandleContents(page, 'playlist', 0)).text).toBe('synthetic-249');
+  expect((await missingRefSnapshot(page, 'playlist', 0)).available).toBe(true);
+});
+
+test('a relink scan above 250 media files stops at the bound and retains unresolved entries', async ({ page }) => {
+  const before = await startBoundedRelink(page, { count: 251, targetIndex: 250 });
+
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText('This folder contains more media than Blend can scan in one relink pass. No saved entries were removed. Choose a smaller folder or narrow the search.');
+  await expect(notice).toContainText('Resolved 0/1 missing path from 250 found media files.');
+  await expect(notice.getByRole('button', { name: 'Choose smaller folder' })).toBeVisible();
+  expect(await page.evaluate(() => window.__relinkVisited())).toBe(250);
+  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
+});
+
+test('revoked child permission reports a retryable partial result and retains missing references', async ({ page }) => {
+  await bootRelinkPage(page, 'playlist');
+  await importMissingList(page, 'playlist', [
+    { id: 'bounded-missing-track', name: 'track.mp4', path: 'Assets/track.mp4', type: 'video' }
+  ]);
+  const before = await missingRefSnapshot(page, 'playlist', 0);
+  await page.evaluate(() => {
+    const denied = Object.create({
+      async *values() {
+        throw new DOMException('simulated permission revocation', 'NotAllowedError');
+      }
+    });
+    Object.assign(denied, { kind: 'directory', name: 'Denied' });
+    const root = Object.create({
+      async *values() { yield denied; }
+    });
+    Object.assign(root, { kind: 'directory', name: 'Assets' });
+    window.showDirectoryPicker = async () => root;
+  });
+
+  await clickResolve(page, 'playlist');
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText('Missing-media scan was partial: 1 folder could not be read.');
+  await expect(notice).toContainText('No saved entries were removed.');
+  await expect(notice.getByRole('button', { name: 'Retry scan' })).toBeVisible();
+  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
+});
+
+test('a removed relink root is partial, never a no-match, and offers retry', async ({ page }) => {
+  await bootRelinkPage(page, 'playlist');
+  await importMissingList(page, 'playlist', [
+    { id: 'bounded-missing-track', name: 'track.mp4', path: 'Assets/track.mp4', type: 'video' }
+  ]);
+  const before = await missingRefSnapshot(page, 'playlist', 0);
+  await installBoundedRelinkDirectoryPicker(page, {
+    count: 10,
+    failureName: 'NotFoundError',
+    failureAfter: 0
+  });
+
+  await clickResolve(page, 'playlist');
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText('Missing-media scan was partial: 1 folder could not be read.');
+  await expect(notice).toContainText('Resolved 0/1 missing path from 0 found media files.');
+  await expect(notice.getByRole('button', { name: 'Retry scan' })).toBeVisible();
+  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
+});
+
+test('keyboard cancellation during a large relink scan yields to input and preserves unresolved state', async ({ page }) => {
+  const before = await startBoundedRelink(page, { count: 10000 });
+  const progress = page.locator('.toast-directory-scan-progress');
+  await expect(progress).toHaveAttribute('role', 'status');
+  await expect(progress).toContainText('relink limit 250 media files');
+  const cancel = progress.getByRole('button', { name: 'Cancel scan' });
+  await expect(cancel).toBeVisible();
+  await page.waitForFunction(() => window.__relinkVisited() >= 24);
+  await cancel.focus();
+  await page.keyboard.press('Enter');
+
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText('Missing-media scan canceled.');
+  await expect(notice).toContainText('No saved entries were removed.');
+  await expect(notice.getByRole('button', { name: 'Retry scan' })).toBeVisible();
+  const visited = await page.evaluate(() => window.__relinkVisited());
+  expect(visited).toBeGreaterThan(0);
+  expect(visited).toBeLessThan(250);
+  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
 });

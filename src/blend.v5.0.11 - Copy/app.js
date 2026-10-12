@@ -4958,12 +4958,15 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
   let found = 0;
   let pending = 0;
   let batchCommitted = false;
+  let limitReached = false;
 
   async function visitDirectory(handle, depth, path) {
-    if (status === 'cancelled' || status === 'persistence-failed') return;
+    if (opts.signal?.aborted) status = 'cancelled';
+    if (status === 'cancelled' || status === 'persistence-failed' || limitReached) return;
     try {
       for await (const entry of handle.values()) {
-        if (status === 'cancelled' || status === 'persistence-failed') break;
+        if (opts.signal?.aborted) status = 'cancelled';
+        if (status === 'cancelled' || status === 'persistence-failed' || limitReached) break;
         scanned++;
         if (entry.kind === 'file') {
           if (getMediaType(entry.name)) {
@@ -4985,6 +4988,10 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
                 }
                 if (status === 'persistence-failed') break;
               }
+              if (opts.stopAtMediaLimit && found >= maxMediaFiles) {
+                limitReached = true;
+                break;
+              }
             } else {
               pending++;
             }
@@ -4999,14 +5006,15 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
         if (scanned % 24 === 0) {
           opts.onProgress?.({ found, pending, retained: handles.length, scanned });
           await new Promise(resolve => requestAnimationFrame(resolve));
+          if (opts.signal?.aborted) status = 'cancelled';
         }
-        if (status === 'cancelled' || status === 'persistence-failed') break;
+        if (status === 'cancelled' || status === 'persistence-failed' || limitReached) break;
       }
     } catch (e) {
-      const errorName = ['NotAllowedError', 'NotReadableError', 'SecurityError', 'AbortError', 'TypeError'].includes(e?.name)
+      const errorName = ['NotAllowedError', 'NotReadableError', 'NotFoundError', 'SecurityError', 'AbortError', 'TypeError'].includes(e?.name)
         ? e.name
         : 'UnknownError';
-      if (errorName === 'AbortError') {
+      if (errorName === 'AbortError' || opts.signal?.aborted) {
         status = 'cancelled';
       } else {
         status = 'partial';
@@ -5020,7 +5028,9 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
     }
   }
   await visitDirectory(dirHandle, 0, dirHandle.name || '');
+  if (opts.signal?.aborted && status !== 'persistence-failed') status = 'cancelled';
   opts.onProgress?.({ found, pending, retained: handles.length, scanned });
+  if (limitReached && status === 'complete') status = 'partial';
   if (pending && status === 'complete') status = 'partial';
   if (skippedDepthBranches && status === 'complete') status = 'partial';
   if (status === 'complete' && !found) status = 'empty';
@@ -5037,7 +5047,8 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
       skippedBranches,
       skippedDepthBranches,
       found,
-      pending
+      pending,
+      limitReached
     }
   };
 }
@@ -5045,24 +5056,40 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
 async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, onMediaBatch } = {}) {
   const subject = forMissingPaths ? 'media files' : 'files';
   const opening = forMissingPaths ? ' for missing paths' : '';
-  const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found`, {
+  const limitNotice = forMissingPaths ? `; relink limit ${MAX_FOLDER_MEDIA_FILES} media files` : '';
+  const controller = forMissingPaths ? new AbortController() : null;
+  const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found${limitNotice}`, {
     timeout: 0,
     role: 'status',
     className: 'toast-directory-scan-progress'
   });
+  if (controller) {
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'btn';
+    cancel.textContent = 'Cancel scan';
+    cancel.addEventListener('click', () => {
+      controller.abort();
+      cancel.disabled = true;
+      progress.label.textContent = 'Canceling missing-media scan...';
+    });
+    progress.toast.appendChild(cancel);
+  }
   let lastAnnouncedAt = performance.now();
   let lastAnnouncedCount = 0;
   const announceProgress = (count, force = false) => {
     if (count === lastAnnouncedCount) return;
     if (!force && performance.now() - lastAnnouncedAt < 1000) return;
-    progress.label.textContent = `Scanning "${dirHandle.name}"${opening}... ${count} ${subject} found`;
+    progress.label.textContent = `Scanning "${dirHandle.name}"${opening}... ${count} ${subject} found${limitNotice}`;
     lastAnnouncedAt = performance.now();
     lastAnnouncedCount = count;
   };
   try {
     const result = await walkDirectoryForMedia(dirHandle, {
       operation: forMissingPaths ? 'missing_media_relink' : 'directory_scan',
-      maxMediaFiles: forMissingPaths ? Number.POSITIVE_INFINITY : MAX_FOLDER_MEDIA_FILES,
+      maxMediaFiles: MAX_FOLDER_MEDIA_FILES,
+      stopAtMediaLimit: forMissingPaths,
+      signal: controller?.signal,
       onMediaBatch: forMissingPaths ? undefined : onMediaBatch,
       onProgress: ({ found }) => announceProgress(found)
     });
@@ -12053,15 +12080,21 @@ async function resolveMissingImports(missing, which) {
     const resolvedMessage = `Resolved ${resolved}/${missing.length} missing path${missing.length === 1 ? '' : 's'}${incompatible ? ` (${incompatible} incompatible)` : ''}`;
     if (summary.status === 'partial') {
       const messages = [];
+      if (summary.limitReached) {
+        messages.push('This folder contains more media than Blend can scan in one relink pass. No saved entries were removed. Choose a smaller folder or narrow the search.');
+      }
       if (summary.skippedBranches) {
         const folderCount = summary.skippedBranches;
         messages.push(`Missing-media scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read.`);
       }
       if (summary.skippedDepthBranches) messages.push(folderDepthLimitNotice(summary.skippedDepthBranches));
       messages.push(`${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`);
-      if (summary.skippedBranches) messages.push('Check permissions and retry.');
+      if (summary.skippedBranches) messages.push('No saved entries were removed. Check folder permissions and retry.');
 
       const actions = [];
+      if (summary.limitReached) {
+        actions.push({ label: 'Choose smaller folder', run: () => { void resolveMissingImports(missing, which); } });
+      }
       if (summary.skippedBranches) {
         actions.push({
           label: 'Retry scan',
@@ -12079,23 +12112,29 @@ async function resolveMissingImports(missing, which) {
       const depthNotice = summary.skippedDepthBranches
         ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
         : '';
-      const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice} ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
-      const actions = summary.skippedDepthBranches
-        ? [{ label: 'Choose deeper folder', run: () => { void resolveMissingImports(missing, which); } }]
-        : [];
-      showDirectoryScanToast(message, { timeout: 6000, actions });
+      const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice} No saved entries were removed. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
+      const actions = [{ label: 'Retry scan', run: () => { void resolveMissingImports(missing, which); } }];
+      if (summary.skippedDepthBranches) actions.push({ label: 'Choose deeper folder', run: () => { void resolveMissingImports(missing, which); } });
+      showDirectoryScanToast(message, { timeout: 12000, actions });
     } else if (summary.status === 'empty') {
       showDirectoryScanToast('No supported media found in that folder. Missing paths were left unchanged.', { timeout: 6000 });
     } else {
       showToast(resolvedMessage);
     }
   } catch (error) {
-    const errorName = ['AbortError', 'NotAllowedError', 'NotReadableError', 'SecurityError', 'InvalidStateError', 'QuotaExceededError', 'TypeError'].includes(error?.name)
+    const errorName = ['AbortError', 'NotAllowedError', 'NotReadableError', 'NotFoundError', 'SecurityError', 'InvalidStateError', 'QuotaExceededError', 'TypeError'].includes(error?.name)
       ? error.name
       : 'UnknownError';
     if (errorName !== 'AbortError') {
       log.warn('Missing media relink failed', { operation: 'missing_media_relink', errorName });
-      showToast('Could not resolve missing paths', { role: 'alert' });
+      if (['NotAllowedError', 'NotReadableError', 'NotFoundError', 'SecurityError', 'InvalidStateError'].includes(errorName)) {
+        showDirectoryScanToast('Missing-media scan could not read the selected folder. No saved entries were removed. Check folder permissions or choose the folder again to retry.', {
+          timeout: 0,
+          actions: [{ label: 'Retry scan', run: () => { void resolveMissingImports(missing, which); } }]
+        });
+      } else {
+        showToast('Could not resolve missing paths', { role: 'alert' });
+      }
     }
   }
 }

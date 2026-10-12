@@ -30,13 +30,14 @@ test('relink paths normalize separators while preserving case and distinct folde
 
 test('basename fallback preserves every candidate so ambiguous names cannot overwrite each other', () => {
   const candidates = [
-    { id: 'folder-a', name: 'clip.mp4', pathHint: 'Assets/A/clip.mp4' },
-    { id: 'folder-b', name: 'clip.mp4', pathHint: 'Assets/B/clip.mp4' }
+    { id: 'folder-a', name: 'clip.mp4', pathHint: 'Assets/A/clip.mp4', size: 4096 },
+    { id: 'folder-b', name: 'clip.mp4', pathHint: 'Assets/B/clip.mp4', size: 4096 }
   ];
   const index = indexRelinkCandidates(candidates);
   const match = findRelinkCandidates(index, { path: 'Legacy/clip.mp4', basename: 'clip.mp4' });
 
   assert.equal(match.matchType, 'basename');
+  assert.equal(match.candidates[0].size, match.candidates[1].size, 'equal-size candidates remain ambiguous');
   assert.deepEqual(match.candidates, candidates);
 });
 
