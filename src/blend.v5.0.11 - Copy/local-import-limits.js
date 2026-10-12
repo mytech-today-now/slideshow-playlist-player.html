@@ -1,4 +1,5 @@
 export const LOCAL_IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+export const LOCAL_IMPORT_MAX_MEDIA_FILES = 250;
 export const LOCAL_IMPORT_MAX_ARRAY_ITEMS = 10_000;
 export const LOCAL_IMPORT_MAX_TOTAL_ARRAY_ITEMS = 50_000;
 export const LOCAL_IMPORT_MAX_OBJECT_PROPERTIES = 5_000;
@@ -9,6 +10,20 @@ export const LOCAL_IMPORT_MAX_ENTRIES = 10_000;
 
 export const LOCAL_IMPORT_SIZE_LIMIT_MESSAGE = 'This import exceeds the supported file size. Choose a smaller export file.';
 export const LOCAL_IMPORT_STRUCTURE_LIMIT_MESSAGE = 'This import exceeds the supported structure limits. Choose a smaller or simpler export file.';
+
+export function getLocalMediaSelectionCounts(selected) {
+  if (!Number.isSafeInteger(selected) || selected < 0) {
+    throw new TypeError('Invalid selected media count');
+  }
+  const withinLimit = selected <= LOCAL_IMPORT_MAX_MEDIA_FILES;
+  return {
+    selected,
+    limit: LOCAL_IMPORT_MAX_MEDIA_FILES,
+    accepted: withinLimit ? selected : 0,
+    remaining: withinLimit ? 0 : selected,
+    withinLimit
+  };
+}
 
 export class LocalImportLimitError extends Error {
   constructor(code) {

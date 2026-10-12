@@ -8,6 +8,7 @@ These changes are present in the current review checkout. The app version remain
 
 ### Added
 
+- Added a shared 250-file ceiling for direct Add Files selections, with accessible selected/accepted/remaining counts for oversized batches and retry for unreadable selected files.
 - Added deterministic save-performance fixtures and Node/browser benchmarks for large experiences, plus regression and browser coverage for changed-row writes and save recovery.
 - Added focused Firefox and WebKit compatibility coverage and CI reporting that records engine versions without implying branded-browser or mobile-device certification.
 - Added sign-out coverage for active and in-flight private media, copied signed URLs, public/local playback, retry after sign-in, and peer tabs.

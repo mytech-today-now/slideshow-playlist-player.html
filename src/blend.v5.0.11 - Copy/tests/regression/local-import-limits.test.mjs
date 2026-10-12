@@ -7,10 +7,31 @@ import {
   LocalImportLimitError,
   LOCAL_IMPORT_MAX_ARRAY_ITEMS,
   LOCAL_IMPORT_MAX_BYTES,
+  LOCAL_IMPORT_MAX_MEDIA_FILES,
   LOCAL_IMPORT_SIZE_LIMIT_MESSAGE,
+  getLocalMediaSelectionCounts,
   parseBoundedImportJson,
   readLocalImportFile
 } from '../../local-import-limits.js';
+
+test('direct media selection boundary accepts 250 and rejects 251 without truncating', () => {
+  assert.deepEqual(getLocalMediaSelectionCounts(LOCAL_IMPORT_MAX_MEDIA_FILES), {
+    selected: 250,
+    limit: 250,
+    accepted: 250,
+    remaining: 0,
+    withinLimit: true
+  });
+  assert.deepEqual(getLocalMediaSelectionCounts(LOCAL_IMPORT_MAX_MEDIA_FILES + 1), {
+    selected: 251,
+    limit: 250,
+    accepted: 0,
+    remaining: 251,
+    withinLimit: false
+  });
+  assert.throws(() => getLocalMediaSelectionCounts(-1), TypeError);
+  assert.throws(() => getLocalMediaSelectionCounts(1.5), TypeError);
+});
 
 test('file-size boundary accepts exactly 10 MiB and rejects the first byte above without reading', async () => {
   assert.equal(assertLocalImportFileSize({ size: LOCAL_IMPORT_MAX_BYTES - 1 }), LOCAL_IMPORT_MAX_BYTES - 1);

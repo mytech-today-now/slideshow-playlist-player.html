@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-signed-media-signout';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261012-v5.0.11-signed-media-signout';
+} from './experience-persistence.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-signed-media-signout';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-signed-media-signout';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-signed-media-signout';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-signed-media-signout';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-signed-media-signout';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-signed-media-signout';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,32 +22,32 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261012-v5.0.11-signed-media-signout';
+} from './storage-url-resolver.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup
-} from './signed-url-cleanup.js?v=20261012-v5.0.11-signed-media-signout';
+} from './signed-url-cleanup.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261012-v5.0.11-signed-media-signout';
+} from './transition-manager.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261012-v5.0.11-signed-media-signout';
+} from './playback-clock.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-signed-media-signout';
-import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-signed-media-signout';
+import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -62,28 +62,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261012-v5.0.11-signed-media-signout';
+} from './url-share.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261012-v5.0.11-signed-media-signout';
+} from './url-share-diagnostics.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261012-v5.0.11-signed-media-signout';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-signed-media-signout';
+} from './timeline-analysis.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261012-v5.0.11-signed-media-signout';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-signed-media-signout';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-signed-media-signout';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-signed-media-signout';
+} from './shared-experience-download.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -94,7 +94,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261012-v5.0.11-signed-media-signout';
+} from './git-playlist-catalog.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -105,23 +105,25 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261012-v5.0.11-signed-media-signout';
+} from './git-playlist-storage.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
   assertLocalImportPayloadStructure,
   LocalImportLimitError,
+  LOCAL_IMPORT_MAX_MEDIA_FILES,
   parseBoundedImportJson,
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
-  LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261012-v5.0.11-signed-media-signout';
+  LOCAL_IMPORT_MAX_LINES,
+  getLocalMediaSelectionCounts
+} from './local-import-limits.js?v=20261012-v5.0.11-bounded-add-files-selection';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261012-v5.0.11-signed-media-signout';
+} from './resume-on-load.js?v=20261012-v5.0.11-bounded-add-files-selection';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -215,7 +217,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-signed-media-signout';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-bounded-add-files-selection';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -352,7 +354,7 @@ const MEDIA_PICKER_TYPES = [{
 }];
 const LIST_FILE_EXTS = ['json','jsonl','txt','md'];
 const MAX_FOLDER_DEPTH = 6;
-const MAX_FOLDER_MEDIA_FILES = 250;
+const MAX_FOLDER_MEDIA_FILES = LOCAL_IMPORT_MAX_MEDIA_FILES;
 const REMOTE_MEDIA_RETRY_DELAY_MS = 900;
 const REMOTE_MEDIA_RETRY_COOLDOWN_MS = 30000;
 const REMOTE_MEDIA_MAX_RETRIES = 1;
@@ -4825,6 +4827,7 @@ function pickFilesWithInput({ directory = false, withStatus = false } = {}) {
     input.style.left = '-9999px';
     document.body.appendChild(input);
     input.onchange = () => {
+      const selectedCount = (input.files || []).length;
       const handles = [];
       let found = 0;
       for (const file of input.files || []) {
@@ -4837,6 +4840,7 @@ function pickFilesWithInput({ directory = false, withStatus = false } = {}) {
       }
       finish(handles, found ? 'complete' : 'empty', {
         found,
+        selectedCount,
         pending: directory ? Math.max(0, found - handles.length) : 0
       });
     };
@@ -4855,6 +4859,62 @@ function fileInputImportStatus(result, { includeSummary = true } = {}) {
   return `${added}Blend saved the selected file data in this browser. Source-folder access is not retained.`;
 }
 
+function allowDirectFileSelection(handles, selectedCount = handles.length) {
+  const counts = getLocalMediaSelectionCounts(selectedCount);
+  if (counts.withinLimit) return true;
+
+  showToast(
+    `You selected more files than Blend can add in one batch. Select up to ${counts.limit} files, or choose a smaller folder. No unlisted files were added. Selected: ${counts.selected}; accepted: ${counts.accepted}; remaining: ${counts.remaining}.`,
+    { role: 'alert', className: 'toast-import-selection-limit', timeout: 12000 }
+  );
+  return false;
+}
+
+function directFileImportCounts(handles, result, selectedCount = handles.length) {
+  const failed = result.failed || 0;
+  const filtered = Math.max(0, selectedCount - handles.length);
+  const accepted = result.added + result.existing;
+  const skipped = result.skipped + filtered;
+  return `Selected ${selectedCount}; accepted ${accepted}; remaining ${failed}. Added ${result.added}; already in library ${result.existing}; skipped ${skipped}.`;
+}
+
+async function addDirectFileSelection(handles, { inputFallback = false, selectedCount = handles.length } = {}) {
+  if (!allowDirectFileSelection(handles, selectedCount)) return null;
+
+  const result = await addHandles(handles, {
+    requireReadableFile: true,
+    notify: !inputFallback
+  });
+
+  if (result.failed) {
+    const persistence = result.saved
+      ? 'Successful files were saved in this browser.'
+      : 'Successful files remain available in this session. Use Retry in the save status to persist them.';
+    showToast(
+      `${result.failed} selected file${result.failed === 1 ? '' : 's'} could not be read. ${directFileImportCounts(handles, result, selectedCount)} ${persistence}`,
+      {
+        role: 'alert',
+        className: 'toast-import-partial',
+        timeout: 0,
+        actions: [{
+          label: result.failed === 1 ? 'Retry failed file' : `Retry ${result.failed} failed files`,
+          run: () => { void addDirectFileSelection(result.failedHandles, { inputFallback }); }
+        }]
+      }
+    );
+  } else if (!result.saved) {
+    const savedStatus = fileInputImportStatus(result, { includeSummary: false });
+    showToast(
+      `${directFileImportCounts(handles, result, selectedCount)} ${savedStatus} Use Retry in the save status to try again.`,
+      { role: 'alert', className: 'toast-import-save-failure', timeout: 12000 }
+    );
+  } else if (inputFallback) {
+    showToast(fileInputImportStatus(result), { role: 'status', timeout: 10000 });
+  }
+
+  return result;
+}
+
 async function addFilesWithInputFallback() {
   const selection = await pickFilesWithInput({ withStatus: true });
   if (selection.status === 'cancelled') return;
@@ -4862,8 +4922,10 @@ async function addFilesWithInputFallback() {
     showToast('No media files selected', { timeout: 1800 });
     return;
   }
-  const result = await addHandles(selection.handles, { notify: false });
-  showToast(fileInputImportStatus(result), { role: 'status', timeout: 10000 });
+  await addDirectFileSelection(selection.handles, {
+    inputFallback: true,
+    selectedCount: selection.selectedCount ?? selection.handles.length
+  });
 }
 
 async function addFilesFromPicker() {
@@ -4873,14 +4935,14 @@ async function addFilesFromPicker() {
       return;
     }
     const handles = await window.showOpenFilePicker({ multiple: true, types: MEDIA_PICKER_TYPES });
-    await addHandles(handles);
+    await addDirectFileSelection(handles);
   } catch (e) {
     if (e.name === 'TypeError') {
       try {
         const handles = typeof window.showOpenFilePicker === 'function'
           ? await window.showOpenFilePicker({ multiple: true })
           : await pickFilesWithInput();
-        await addHandles(handles);
+        await addDirectFileSelection(handles);
         return;
       } catch (fallbackError) {
         if (fallbackError.name !== 'AbortError') showToast('File picker error');
@@ -5242,7 +5304,7 @@ async function ensureHandleInLibrary(handle, meta = {}) {
   const candidateDirectoryId = meta.directoryId || handle.directoryId || '';
   let size = meta.size || 0;
   try {
-    if (!size) {
+    if (!size && !meta.skipSizeProbe) {
       const f = await handle.getFile();
       size = f.size;
     }
@@ -5300,11 +5362,27 @@ async function ensureHandleInLibrary(handle, meta = {}) {
 }
 
 async function addHandles(handles, meta = {}) {
-  let added = 0, existing = 0, skipped = 0, ambiguousDuplicates = 0;
+  let added = 0, existing = 0, skipped = 0, ambiguousDuplicates = 0, failed = 0;
   const ids = [];
+  const failedHandles = [];
   const durationCandidates = [];
+  const { requireReadableFile = false, ...handleMeta } = meta;
   for (const h of handles) {
-    const result = await ensureHandleInLibrary(h, { ...meta, pathHint: meta.pathHint || h.pathHint });
+    let result;
+    try {
+      const itemMeta = { ...handleMeta, pathHint: handleMeta.pathHint || h.pathHint };
+      if (requireReadableFile) {
+        const file = await h.getFile();
+        itemMeta.size = file.size;
+        itemMeta.skipSizeProbe = true;
+      }
+      result = await ensureHandleInLibrary(h, itemMeta);
+    } catch (error) {
+      if (!requireReadableFile) throw error;
+      failed++;
+      failedHandles.push(h);
+      continue;
+    }
     if (result.id) ids.push(result.id);
     if (result.status === 'added') {
       added++;
@@ -5330,10 +5408,10 @@ async function addHandles(handles, meta = {}) {
     if (configPanel?.classList.contains('open') && configBody) {
       configPanel.insertBefore(notice.toast, configBody);
     }
-  } else if (saved && added && meta.notify !== false) {
+  } else if (saved && added && !failed && meta.notify !== false) {
     showToast(`Added ${added} item${added>1?'s':''}${existing || skipped ? ` (${existing + skipped} skipped)` : ''}`);
   }
-  return { ids, added, existing, skipped, ambiguousDuplicates, saved };
+  return { ids, added, existing, skipped, ambiguousDuplicates, failed, failedHandles, saved };
 }
 
 function ensureLibraryVirtualList() {
