@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261011-v5.0.11-git-playlist-byot';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './experience-persistence.js?v=20261012-v5.0.11-signed-media-signout';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261011-v5.0.11-git-playlist-byot';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261011-v5.0.11-git-playlist-byot';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261011-v5.0.11-git-playlist-byot';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261011-v5.0.11-git-playlist-byot';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261011-v5.0.11-git-playlist-byot';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261011-v5.0.11-git-playlist-byot';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-signed-media-signout';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-signed-media-signout';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-signed-media-signout';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-signed-media-signout';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-signed-media-signout';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,32 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './storage-url-resolver.js?v=20261012-v5.0.11-signed-media-signout';
+import {
+  applySignedMediaUrlCleanup,
+  clearSignedMediaElements,
+  planSignedMediaUrlCleanup
+} from './signed-url-cleanup.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './transition-manager.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './playback-clock.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261011-v5.0.11-git-playlist-byot';
-import { fetchReadme } from './readme-fetcher.js?v=20261011-v5.0.11-git-playlist-byot';
+import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-signed-media-signout';
+import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +62,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './url-share.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './url-share-diagnostics.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261011-v5.0.11-git-playlist-byot';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './timeline-analysis.js?v=20261012-v5.0.11-signed-media-signout';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261011-v5.0.11-git-playlist-byot';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261011-v5.0.11-git-playlist-byot';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261011-v5.0.11-git-playlist-byot';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './shared-experience-download.js?v=20261012-v5.0.11-signed-media-signout';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-signed-media-signout';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-signed-media-signout';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -89,7 +94,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './git-playlist-catalog.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -98,7 +103,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './git-playlist-storage.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -108,13 +113,13 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261011-v5.0.11-git-playlist-byot';
+} from './local-import-limits.js?v=20261012-v5.0.11-signed-media-signout';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20260927-v5.0.11-resume';
+} from './resume-on-load.js?v=20261012-v5.0.11-signed-media-signout';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -208,7 +213,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261011-v5.0.11-git-playlist-byot';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-signed-media-signout';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -462,6 +467,7 @@ const slideshowPreload = new Map();
 const playlistPreload = new Map();
 const activePlaybackRequests = { playlist: null, slideshow: null };
 const STORAGE_REQUEST_TIMEOUT_COPY = 'The storage request timed out. Check your connection and retry.';
+const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.';
 const thumbUrlCache = new Map();
 const thumbRequests = new Map();
 const thumbElementState = new WeakMap();
@@ -3080,12 +3086,58 @@ async function loadSharedIpfsExperience(request) {
   }
 }
 
+function clearSignedPrivateMediaForSignedOut() {
+  const cleanupPlan = planSignedMediaUrlCleanup({
+    library: state.library,
+    playlist: state.playlist,
+    slideshow: state.slideshow,
+    experiences: state.experiences
+  });
+  const clearedFieldCount = applySignedMediaUrlCleanup(cleanupPlan);
+  if (!clearedFieldCount) return false;
+
+  const unavailableUntil = Date.now() + REMOTE_MEDIA_RETRY_COOLDOWN_MS;
+  for (const list of [state.playlist, state.slideshow]) {
+    for (const ref of list) {
+      if (!cleanupPlan.clearedIds.has(String(ref?.id ?? ''))) continue;
+      const stillHasPublicUrl = [ref?.sourceUrl, ref?.path]
+        .some(value => isRemoteUrl(value) && !cleanupPlan.signedUrls.has(String(value).trim()));
+      if (stillHasPublicUrl) continue;
+      ref.available = false;
+      ref.retryAfter = unavailableUntil;
+      ref.reason = 'You are signed out. Sign in, then retry this private media item.';
+    }
+  }
+
+  clearSignedMediaElements(document.querySelectorAll('video, audio, img'), {
+    signedUrls: cleanupPlan.signedUrls,
+    onCleanupError: ({ operation, errorName }) => {
+      log.warn('signed media sign-out cleanup failed', { operation, errorName });
+    }
+  });
+
+  renderLibrary();
+  renderListEditor();
+  updateHUD();
+  saveStateDebounced();
+  showToast(PRIVATE_MEDIA_SIGNED_OUT_COPY, {
+    timeout: 0,
+    role: 'alert',
+    action: {
+      label: 'Sign in',
+      run: () => { void promptSupabaseSignIn(); }
+    }
+  });
+  return true;
+}
+
 supabaseAuthClient.onAuthStateChange(({ event }) => {
   syncIpfsControls();
   updateIpfsShareButtonState();
   if (event === 'SIGNED_OUT') {
     cancelPlaybackRequest('playlist');
     cancelPlaybackRequest('slideshow');
+    clearSignedPrivateMediaForSignedOut();
   }
   if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     storageUrlResolver.clearCache();

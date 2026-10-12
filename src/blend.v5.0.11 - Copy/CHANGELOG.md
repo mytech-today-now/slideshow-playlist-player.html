@@ -10,6 +10,7 @@ These changes are present in the current review checkout. The app version remain
 
 - Added deterministic save-performance fixtures and Node/browser benchmarks for large experiences, plus regression and browser coverage for changed-row writes and save recovery.
 - Added focused Firefox and WebKit compatibility coverage and CI reporting that records engine versions without implying branded-browser or mobile-device certification.
+- Added sign-out coverage for active and in-flight private media, copied signed URLs, public/local playback, retry after sign-in, and peer tabs.
 
 ### Changed
 
@@ -19,6 +20,8 @@ These changes are present in the current review checkout. The app version remain
 - Experience saves now queue writes for changed records and explicit deletions while preserving the existing multi-store transaction, merge, conflict, and recovery behavior.
 - Browser reset recovery snapshots omit regenerable thumbnail blobs, prepare before local sign-out or database deletion, and report incomplete reset outcomes accurately.
 - The Information dialog uses the installed README by default. Online documentation is an explicit source, carries version and cache-age information, and refreshes while the installed guide stays visible.
+- Signing out cancels private playback and clears signed Storage URLs from transient in-app media references while retaining portable `supabase://` references for retry. Copied URLs remain independent of local cleanup, and cached responses may remain available beyond token expiry.
+- The Storage policy release checklist records the authorized owner, policy revision, rollback artifact, and expected outcomes for all six principal/object cases. Its staging matrix checks direct and resolver results without retaining signed URLs or credentials.
 - Clarified local-copy instructions, browser compatibility claims, reset behavior, and offline documentation behavior.
 
 ## 5.0.11 — 2026-10-06

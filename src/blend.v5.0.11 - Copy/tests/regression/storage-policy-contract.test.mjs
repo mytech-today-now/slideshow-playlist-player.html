@@ -53,6 +53,38 @@ test('settings surface the required private-policy verification fallback as a no
   );
 });
 
+test('release evidence records the named owner, policy revision, rollback, and all six matrix cells', async () => {
+  const verification = await readFile(new URL('../../STORAGE_POLICY_VERIFICATION.md', import.meta.url), 'utf8');
+  const staging = await readFile(new URL('../integration/storage-policy-staging.mjs', import.meta.url), 'utf8');
+
+  assert.match(verification, /\| Policy owner \| Named person and role authorized to approve the Storage policy and release gate \|/);
+  assert.match(verification, /\| Policy revision \| Non-secret revision identifier or redacted-export timestamp\/hash/);
+  assert.match(verification, /\| Rollback artifact \| Reference and revision for the reviewed pre-change policy export/);
+  assert.match(verification, /Any failed or missing cell keeps the release gate not passed and private-reference sharing blocked\./);
+  for (const [principal, visibility] of [
+    ['Anonymous', 'Private'],
+    ['Anonymous', 'Allowlisted public'],
+    ['Owner A', 'Private'],
+    ['Owner A', 'Allowlisted public'],
+    ['Unrelated user B', 'Private'],
+    ['Unrelated user B', 'Allowlisted public']
+  ]) {
+    assert.match(verification, new RegExp(`\\| ${principal} \\| ${visibility} \\|`));
+  }
+  for (const cell of [
+    'anonymous / private object / direct request',
+    'owner A / private object / direct request',
+    'unrelated user B / private object / direct request'
+  ]) {
+    assert.ok(staging.includes(cell), `staging runner labels the ${cell} matrix cell`);
+  }
+  for (const principal of ['anonymous', 'owner A', 'unrelated user B']) {
+    assert.match(staging, new RegExp(`await checkPublicObject\\('${principal}'`));
+  }
+  assert.match(staging, /function checkedCell\(cell, condition, message\)/);
+  assert.match(staging, /failCell\(cell, 'A staging Storage request failed before returning an HTTP response\.'/);
+});
+
 test('anonymous private resolution fails closed without a provider request or URL', async () => {
   let requestCount = 0;
   const resolver = resolverFor({

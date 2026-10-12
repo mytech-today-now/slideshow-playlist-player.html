@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261011-v5.0.11-git-playlist-byot';
-  const CACHE_VERSION = '20261011-v5.0.11-git-playlist-byot';
+  const ASSET_VERSION = '20261012-v5.0.11-signed-media-signout';
+  const CACHE_VERSION = '20261012-v5.0.11-signed-media-signout';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -49,6 +49,7 @@
     asset('./supabase-config.js'),
     asset('./supabase-auth.js'),
     asset('./storage-url-resolver.js'),
+    asset('./signed-url-cleanup.js'),
     asset('./transition-manager.js'),
     asset('./playback-clock.js'),
     './playback-mode.js',

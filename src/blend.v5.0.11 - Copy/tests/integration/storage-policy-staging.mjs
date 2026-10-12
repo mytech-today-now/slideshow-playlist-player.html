@@ -52,7 +52,7 @@ function objectUrl(baseUrl, bucket, path, visibility = '') {
   return `${baseUrl}/storage/v1/object${route}/${encodeURIComponent(bucket)}/${encodeObjectPath(path)}`;
 }
 
-async function responseStatus(url, { anonKey, accessToken = '', signed = false } = {}) {
+async function responseStatus(url, { anonKey, accessToken = '', signed = false, cell } = {}) {
   const headers = { Range: 'bytes=0-0' };
   if (!signed) {
     headers.apikey = anonKey;
@@ -62,7 +62,7 @@ async function responseStatus(url, { anonKey, accessToken = '', signed = false }
   try {
     response = await fetch(url, { method: 'GET', headers });
   } catch (_) {
-    fail('A staging Storage request failed before returning an HTTP response.');
+    failCell(cell, 'A staging Storage request failed before returning an HTTP response.');
   }
   const result = { ok: response.ok, status: response.status };
   try { await response.body?.cancel(); } catch (_) {}
@@ -84,8 +84,12 @@ function resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToke
   });
 }
 
-function checked(condition, message) {
-  if (!condition) fail(message);
+function failCell(cell, message) {
+  fail(`${cell}: ${message}`);
+}
+
+function checkedCell(cell, condition, message) {
+  if (!condition) failCell(cell, message);
 }
 
 function isPrivateReadDeniedStatus(status) {
@@ -131,72 +135,101 @@ async function main() {
   }
 
   const privateObject = objectUrl(baseUrl, privateBucket, privatePath);
-  const anonymousPrivate = await responseStatus(privateObject, { anonKey });
-  checked(isPrivateReadDeniedStatus(anonymousPrivate.status), 'Anonymous private request did not return a denial status.');
+  const anonymousPrivateDirectCell = 'anonymous / private object / direct request';
+  const anonymousPrivate = await responseStatus(privateObject, { anonKey, cell: anonymousPrivateDirectCell });
+  checkedCell(
+    anonymousPrivateDirectCell,
+    isPrivateReadDeniedStatus(anonymousPrivate.status),
+    `expected denied HTTP 400, 401, 403, or 404; received HTTP ${anonymousPrivate.status}.`
+  );
+  const anonymousPrivateResolverCell = 'anonymous / private object / app resolver';
   const anonymousResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: '' });
   let anonymousError = null;
   try {
     await anonymousResolver.resolve(`supabase://${privateBucket}/${privatePath}`);
-    fail('The app resolver returned a private URL to an anonymous principal.');
+    failCell(anonymousPrivateResolverCell, 'the resolver returned a private URL.');
   } catch (error) {
     if (error instanceof MatrixFailure) throw error;
     anonymousError = error;
   }
-  checked(anonymousError?.code === 'auth_required', 'Anonymous resolver failure was not the expected local auth gate.');
+  checkedCell(anonymousPrivateResolverCell, anonymousError?.code === 'auth_required', 'expected the local auth gate and no URL.');
   console.log(`PASS anonymous private read denied (HTTP ${anonymousPrivate.status}); resolver returned no URL`);
 
-  const ownerDirect = await responseStatus(privateObject, { anonKey, accessToken: ownerToken });
-  checked(ownerDirect.ok, `Owner A could not read the synthetic private object (HTTP ${ownerDirect.status}).`);
+  const ownerPrivateDirectCell = 'owner A / private object / direct request';
+  const ownerDirect = await responseStatus(privateObject, { anonKey, accessToken: ownerToken, cell: ownerPrivateDirectCell });
+  checkedCell(ownerPrivateDirectCell, ownerDirect.ok, `expected allowed; received HTTP ${ownerDirect.status}.`);
+  const ownerPrivateResolverCell = 'owner A / private object / app resolver signing request';
   const ownerResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: ownerToken });
   let ownerResult;
   try { ownerResult = await ownerResolver.resolve(`supabase://${privateBucket}/${privatePath}`); }
-  catch (_) { fail('Owner A could not resolve the synthetic private object through the app resolver.'); }
-  checked(ownerResult?.signed === true, 'Owner A resolution did not return a signed private URL.');
+  catch (_) { failCell(ownerPrivateResolverCell, 'the resolver did not sign the private object for Owner A.'); }
+  checkedCell(ownerPrivateResolverCell, ownerResult?.signed === true, 'expected a signed private URL for Owner A.');
   let signedOrigin;
-  try { signedOrigin = new URL(ownerResult.url).origin; } catch (_) { fail('Owner A resolver returned an invalid signed URL.'); }
-  checked(signedOrigin === parsedBase.origin, 'Owner A resolver returned a URL outside the staging project.');
-  const ownerSigned = await responseStatus(ownerResult.url, { anonKey, signed: true });
-  checked(ownerSigned.ok, `Owner A signed URL could not read the synthetic private object (HTTP ${ownerSigned.status}).`);
+  try { signedOrigin = new URL(ownerResult.url).origin; } catch (_) { failCell(ownerPrivateResolverCell, 'the resolver returned an invalid signed URL.'); }
+  checkedCell(ownerPrivateResolverCell, signedOrigin === parsedBase.origin, 'the resolver returned a URL outside the staging project.');
+  const ownerPrivateSignedCell = 'owner A / private object / resolver-signed request';
+  const ownerSigned = await responseStatus(ownerResult.url, { anonKey, signed: true, cell: ownerPrivateSignedCell });
+  checkedCell(ownerPrivateSignedCell, ownerSigned.ok, `expected allowed; received HTTP ${ownerSigned.status}.`);
   console.log(`PASS owner A private read allowed (direct HTTP ${ownerDirect.status}; signed HTTP ${ownerSigned.status})`);
 
-  const otherDirect = await responseStatus(privateObject, { anonKey, accessToken: otherToken });
-  checked(isAuthenticatedReadDeniedStatus(otherDirect.status), 'Unrelated user B private request did not return a denial status.');
+  const otherPrivateDirectCell = 'unrelated user B / private object / direct request';
+  const otherDirect = await responseStatus(privateObject, { anonKey, accessToken: otherToken, cell: otherPrivateDirectCell });
+  checkedCell(
+    otherPrivateDirectCell,
+    isAuthenticatedReadDeniedStatus(otherDirect.status),
+    `expected denied HTTP 400, 403, or 404; received HTTP ${otherDirect.status}.`
+  );
+  const otherPrivateResolverCell = 'unrelated user B / private object / app resolver';
   const otherResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: otherToken });
   let otherResult = null;
   let otherError = null;
   try { otherResult = await otherResolver.resolve(`supabase://${privateBucket}/${privatePath}`); }
   catch (error) { otherError = error; }
   if (!otherResult) {
-    checked(isAuthenticatedReadDeniedStatus(Number(otherError?.status)), 'Unrelated user B resolver request did not return a policy denial status.');
+    checkedCell(
+      otherPrivateResolverCell,
+      isAuthenticatedReadDeniedStatus(Number(otherError?.status)),
+      `expected policy denial HTTP 400, 403, or 404; received ${Number.isFinite(Number(otherError?.status)) ? `HTTP ${otherError.status}` : 'no HTTP status'}.`
+    );
   }
   let otherSigned = null;
   if (otherResult) {
-    checked(otherResult.signed === true && !!otherResult.url, 'Unrelated user B resolver treated the private fixture as public.');
+    checkedCell(otherPrivateResolverCell, otherResult.signed === true && !!otherResult.url, 'the resolver treated the private object as public.');
     let otherOrigin;
-    try { otherOrigin = new URL(otherResult.url).origin; } catch (_) { fail('Unrelated user B received an invalid signed URL.'); }
-    checked(otherOrigin === parsedBase.origin, 'Unrelated user B resolver returned a URL outside the staging project.');
-    otherSigned = await responseStatus(otherResult.url, { anonKey, signed: true });
+    try { otherOrigin = new URL(otherResult.url).origin; } catch (_) { failCell(otherPrivateResolverCell, 'the resolver returned an invalid signed URL.'); }
+    checkedCell(otherPrivateResolverCell, otherOrigin === parsedBase.origin, 'the resolver returned a URL outside the staging project.');
+    const otherPrivateSignedCell = 'unrelated user B / private object / resolver-signed request';
+    otherSigned = await responseStatus(otherResult.url, { anonKey, signed: true, cell: otherPrivateSignedCell });
   }
-  if (otherSigned) checked(isAuthenticatedReadDeniedStatus(otherSigned.status), 'Unrelated user B resolved request did not return a denial status.');
+  if (otherSigned) {
+    checkedCell(
+      'unrelated user B / private object / resolver-signed request',
+      isAuthenticatedReadDeniedStatus(otherSigned.status),
+      `expected denied HTTP 400, 403, or 404; received HTTP ${otherSigned.status}.`
+    );
+  }
   console.log(`PASS unrelated user B private read denied (direct HTTP ${otherDirect.status}${otherSigned ? `; resolved HTTP ${otherSigned.status}` : '; resolver returned no URL'})`);
 
   const publicObject = objectUrl(baseUrl, publicBucket, publicPath, 'public');
   async function checkPublicObject(principal, accessToken) {
-    const direct = await responseStatus(publicObject, { anonKey, accessToken });
-    checked(direct.ok, `${principal} could not read the allowlisted public object directly (HTTP ${direct.status}).`);
+    const directCell = `${principal} / allowlisted public object / direct request`;
+    const direct = await responseStatus(publicObject, { anonKey, accessToken, cell: directCell });
+    checkedCell(directCell, direct.ok, `expected allowed; received HTTP ${direct.status}.`);
 
+    const resolverCell = `${principal} / allowlisted public object / app resolver`;
     const resolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken });
     let resolved;
     try { resolved = await resolver.resolve(`supabase://${publicBucket}/${publicPath}`); }
-    catch (_) { fail(`${principal} could not resolve the allowlisted public object through the app.`); }
-    checked(resolved?.signed === false && resolved.visibility === 'public', `${principal} resolver did not use the public allowlist.`);
+    catch (_) { failCell(resolverCell, 'the resolver could not resolve the allowlisted public object.'); }
+    checkedCell(resolverCell, resolved?.signed === false && resolved.visibility === 'public', 'the resolver did not use the public allowlist.');
     let resolvedOrigin;
-    try { resolvedOrigin = new URL(resolved.url).origin; } catch (_) { fail(`${principal} public resolver returned an invalid URL.`); }
-    checked(resolvedOrigin === parsedBase.origin, `${principal} public resolver returned a URL outside the staging project.`);
+    try { resolvedOrigin = new URL(resolved.url).origin; } catch (_) { failCell(resolverCell, 'the resolver returned an invalid public URL.'); }
+    checkedCell(resolverCell, resolvedOrigin === parsedBase.origin, 'the resolver returned a URL outside the staging project.');
 
     // Public resolution must remain readable without attaching a user token.
-    const throughResolver = await responseStatus(resolved.url, { anonKey });
-    checked(throughResolver.ok, `${principal} could not read the resolved public object (HTTP ${throughResolver.status}).`);
+    const resolvedReadCell = `${principal} / allowlisted public object / resolver URL request`;
+    const throughResolver = await responseStatus(resolved.url, { anonKey, cell: resolvedReadCell });
+    checkedCell(resolvedReadCell, throughResolver.ok, `expected allowed; received HTTP ${throughResolver.status}.`);
     console.log(`PASS ${principal} public read allowed (direct HTTP ${direct.status}; resolver HTTP ${throughResolver.status})`);
   }
 

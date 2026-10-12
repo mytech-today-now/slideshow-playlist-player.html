@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-12
+goal: Stop app-managed playback from reusing cached private signed URLs after
+  sign-out and allow authenticated retry.

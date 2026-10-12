@@ -14,15 +14,17 @@ Before running the matrix, record these non-secret values in the release review:
 
 | Item | Required record |
 |---|---|
-| Project | Disposable staging project reference and reviewer |
+| Project | Disposable staging project reference and review date |
+| Policy owner | Named person and role authorized to approve the Storage policy and release gate |
+| Policy revision | Non-secret revision identifier or redacted-export timestamp/hash reviewed by the policy owner |
 | Private bucket | Bucket name; provider visibility set to private |
 | Private fixture | Synthetic object path under `codex-policy-check/` |
 | Owner A | Confirmed authenticated test principal and applicable ownership rule |
 | User B | Distinct authenticated principal that does not own the fixture |
 | Public bucket | Separately named bucket; provider visibility intentionally public |
 | Public fixture | Synthetic object path under `codex-policy-check/` |
-| Policies | Redacted `storage.objects` policy export, including command/role/ownership predicates |
-| Rollback | Reviewed pre-change policy export and named project owner who can restore it |
+| Policies | Redacted `storage.objects` policy export for the recorded revision, including command/role/ownership predicates and owner review date |
+| Rollback artifact | Reference and revision for the reviewed pre-change policy export; record who reviewed it and the named project owner authorized to restore it |
 
 Expected matrix:
 
@@ -33,6 +35,17 @@ Expected matrix:
 | Unrelated authenticated user B | Denied directly and through any URL returned by the app resolver | Allowed |
 
 The private bucket must not be added to the browser public-bucket allowlist. The staging command checks and reports all six principal/object pairs: each of anonymous, Owner A, and unrelated user B against the private and allowlisted public fixtures. A successful owner result does not establish that anonymous or unrelated users are denied.
+
+Record the expected and observed result, HTTP status or resolver outcome, and pass/fail for every matrix cell in the release review. Include direct and app-resolver results where the staging command reports them; for Owner A's private resolver result, record the signed-object read status without retaining the signed URL. Keep the six rows identifiable by principal and object visibility, and do not record access tokens, signed URLs, provider payloads, or real private paths. Any failed or missing cell keeps the release gate not passed and private-reference sharing blocked.
+
+| Principal | Object visibility | Expected result |
+|---|---|---|
+| Anonymous | Private | Denied directly; app resolver returns no private URL |
+| Anonymous | Allowlisted public | Allowed directly and through the app resolver |
+| Owner A | Private | Allowed directly and through the app resolver's signed URL |
+| Owner A | Allowlisted public | Allowed directly and through the app resolver |
+| Unrelated user B | Private | Denied directly and through any URL returned by the app resolver |
+| Unrelated user B | Allowlisted public | Allowed directly and through the app resolver |
 
 ## Mocked contract coverage
 

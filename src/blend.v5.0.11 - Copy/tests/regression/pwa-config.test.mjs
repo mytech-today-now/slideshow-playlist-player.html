@@ -10,6 +10,7 @@ const root = new URL('../../', import.meta.url);
 test('PWA config version matches package metadata', async () => {
   const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
   assert.equal(config.APP_VERSION, pkg.version);
+  assert.equal(config.CACHE_VERSION, config.ASSET_VERSION);
   assert.equal(config.DB_VERSION, 5);
 });
 
@@ -35,6 +36,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./media-relink.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./shared-experience-download.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./save-state.js?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./signed-url-cleanup.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./url-share.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./git-playlist-catalog.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./git-playlist-storage.js?v=' + config.ASSET_VERSION));
