@@ -6,7 +6,6 @@ const MAX_INDEX_BYTES = 256_000;
 const MAX_PLAYLISTS = 100;
 const MAX_PLAYLIST_ITEMS = 10_000;
 const REQUEST_TIMEOUT_MS = 15_000;
-const GITHUB_API_VERSION = '2026-03-10';
 
 export class GitCatalogError extends Error {
   constructor(code) {
@@ -127,7 +126,7 @@ export function buildPublicFileUrl(settingsValue, pathValue) {
 
 function apiRequestOptions(provider, signal) {
   const headers = provider === 'github'
-    ? { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': GITHUB_API_VERSION }
+    ? { Accept: 'application/vnd.github+json' }
     : { Accept: 'application/json' };
   return {
     method: 'GET',

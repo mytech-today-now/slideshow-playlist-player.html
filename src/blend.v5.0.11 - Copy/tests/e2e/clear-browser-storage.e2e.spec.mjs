@@ -6,12 +6,14 @@ const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 const AUTH_STORAGE_KEY = 'blend-supabase-auth-session-v2';
 const RUNTIME_CONFIG_STORAGE_KEY = 'blend-runtime-config-v1';
 const PUBLIC_GIT_CATALOG_STORAGE_KEY = 'blend-public-git-catalog-v1';
-const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, the public Git catalog location, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.';
+const GIT_PLAYLIST_SETTINGS_STORAGE_KEY = 'blend-git-playlist-repository-v1';
+const GIT_PLAYLIST_CREDENTIAL_STORAGE_KEY = 'blend-git-playlist-credential-v1';
+const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings and any remembered Git credential, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.';
 const RESET_SESSION_STORAGE_FAILURE = 'Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.';
 const RESET_SNAPSHOT_FAILURE = 'Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.';
 const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser. Saved data recovery is in progress; the thumbnail cache may be cleared, and previews can regenerate from retained media handles when available. Close other Blend tabs and retry.';
 const RESET_UNCONFIRMED_FAILURE = 'This tab is signed out, but another Blend tab may still be active. Close all Blend tabs and retry the local reset.';
-const RESET_SUCCESS = 'Browser data cleared. The saved Supabase session and public Git catalog settings were removed, runtime configuration was preserved, and other apps on this site were left alone.';
+const RESET_SUCCESS = 'Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.';
 const AUTH_RESET_CHANNEL = 'blend-supabase-auth-local-reset-v1:blend-supabase-auth-session-v2';
 
 async function confirmResetWithKeyboard(page) {
@@ -671,6 +673,12 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
   await page.evaluate(storageKey => localStorage.setItem(storageKey, JSON.stringify({
     provider: 'github', owner: 'public-owner', repository: 'public-repository', branch: 'main', directory: 'catalog'
   })), PUBLIC_GIT_CATALOG_STORAGE_KEY);
+  await page.evaluate(({ settingsKey, credentialKey }) => {
+    localStorage.setItem(settingsKey, JSON.stringify({
+      provider: 'github', owner: 'private-owner', repository: 'private-repository', branch: 'main', path: 'playlists/private.json'
+    }));
+    localStorage.setItem(credentialKey, JSON.stringify({ provider: 'github', token: 'synthetic-github-token-for-reset-test' }));
+  }, { settingsKey: GIT_PLAYLIST_SETTINGS_STORAGE_KEY, credentialKey: GIT_PLAYLIST_CREDENTIAL_STORAGE_KEY });
   await page.reload();
   await page.waitForFunction(() => !!window.Blend?.state);
   await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
@@ -685,6 +693,9 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
     authSession: localStorage.getItem(storageKey),
     values: Object.keys(localStorage).map(key => localStorage.getItem(key) || '')
   }), AUTH_STORAGE_KEY);
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), GIT_PLAYLIST_SETTINGS_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), GIT_PLAYLIST_CREDENTIAL_STORAGE_KEY)).toBeNull();
+  expect(afterReset.values.join('\n')).not.toContain('synthetic-github-token-for-reset-test');
   expect(afterReset.authSession).toBeNull();
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), PUBLIC_GIT_CATALOG_STORAGE_KEY)).toBeNull();
   expect(afterReset.values.join('\n')).not.toContain('synthetic-reset-access-token');

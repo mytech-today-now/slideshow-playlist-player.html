@@ -68,13 +68,14 @@ for (const deployment of deployments) {
     const blendIdentity = await openBlendAndReset(page, deployment, otherIdentity);
 
     await expect(page.locator('#toast-container .toast').last())
-      .toHaveText('Blend storage cleared. Other apps on this site were left alone.');
+      .toHaveText('Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.');
 
     const registrationsAfterReset = await page.evaluate(async () => (
       (await navigator.serviceWorker.getRegistrations()).map(registration => registration.scope)
     ));
     expect(registrationsAfterReset).not.toContain(blendIdentity.scope);
     expect(registrationsAfterReset).toContain(otherIdentity.scope);
+    expect((await page.evaluate(() => caches.keys())).filter(name => name.startsWith('blend-'))).toEqual([]);
     expect(await page.evaluate(() => caches.has('other-app-shell-v1'))).toBe(true);
 
     await page.goto('/other-app/index.html', { waitUntil: 'domcontentloaded' });

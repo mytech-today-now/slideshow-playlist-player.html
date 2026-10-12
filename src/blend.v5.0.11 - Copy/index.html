@@ -25,8 +25,8 @@
   <title>Blend version 5.0.11</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest?v=20261011-v5.0.11-git-catalog-read">
-  <link rel="stylesheet" href="./styles.css?v=20261011-v5.0.11-git-catalog-read">
+  <link rel="manifest" href="./manifest.webmanifest?v=20261011-v5.0.11-git-playlist-byot">
+  <link rel="stylesheet" href="./styles.css?v=20261011-v5.0.11-git-playlist-byot">
 </head>
 <body>
   <a class="skip-link" href="#config-gear">Go to configuration controls</a>
@@ -419,7 +419,81 @@
           </div>
           <p id="git-catalog-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Choose a provider and enter the public repository details.</p>
           <div id="git-catalog-results" class="git-catalog__results" role="list" aria-label="Public playlist catalog results"></div>
-          <p class="setting__hint">Private repository connections and Git writes are not enabled. Blend has no safe way to authenticate ordinary public-catalog users as authorized writers without a separately approved authorization design. A private user repository is not substituted for the shared public catalog.</p>
+          <p class="setting__hint">This shared catalog stays public and read-only. Your authenticated repository connection is separate and is never used as a catalog fallback.</p>
+        </section>
+        <section class="setting setting--wide git-catalog-setting git-playlist-setting" aria-labelledby="git-playlist-title">
+          <h2 id="git-playlist-title">Connect and publish your playlist</h2>
+          <p class="setting__hint">Connect directly from this browser to your GitHub or Bitbucket Cloud repository. Reading and publishing are separate actions. Blend never publishes during startup, playback, or local playlist edits.</p>
+          <div class="git-catalog__fields">
+            <div class="setting">
+              <label for="git-playlist-provider">Provider</label>
+              <select id="git-playlist-provider">
+                <option value="">Choose a provider</option>
+                <option value="github">GitHub</option>
+                <option value="bitbucket">Bitbucket Cloud</option>
+              </select>
+            </div>
+            <div class="setting">
+              <label for="git-playlist-owner">Owner or workspace</label>
+              <input id="git-playlist-owner" type="text" maxlength="100" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="setting">
+              <label for="git-playlist-repository">Repository</label>
+              <input id="git-playlist-repository" type="text" maxlength="100" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="setting">
+              <label for="git-playlist-branch">Branch</label>
+              <input id="git-playlist-branch" type="text" maxlength="120" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="setting git-catalog__directory">
+              <label for="git-playlist-path">Playlist file path</label>
+              <input id="git-playlist-path" type="text" maxlength="220" autocomplete="off" spellcheck="false" aria-describedby="git-playlist-path-help">
+              <span id="git-playlist-path-help" class="setting__hint">Repository-relative JSON path, such as playlists/ambient.json.</span>
+            </div>
+          </div>
+          <div class="setting setting--wide">
+            <label for="git-playlist-token">Provider token</label>
+            <input id="git-playlist-token" type="password" maxlength="2048" autocomplete="new-password" spellcheck="false" aria-describedby="git-playlist-token-help git-playlist-storage-help">
+            <p id="git-playlist-token-help" class="setting__hint">GitHub: use a fine-grained personal access token restricted to this repository, with Contents read for reading and Contents write for publishing. Bitbucket Cloud: use a repository access token scoped to this repository. Select Repository Read for reading and Repository Write for publishing. Bitbucket repository tokens are tied to this repository, and commits may appear under the token identity.</p>
+            <label class="setting setting--toggle" for="git-playlist-remember">
+              <input id="git-playlist-remember" type="checkbox">
+              <span>Remember on this device</span>
+            </label>
+            <p id="git-playlist-storage-help" class="setting__hint">By default, the token stays in memory for this app session. Remembering it saves a provider-tagged token in browser storage on Blend's origin, where JavaScript running on this origin can read it. It is used only for that provider, and this is not a secure vault. Disconnect clears the in-memory token. Forget credential also deletes the saved browser copy, but does not revoke the provider token.</p>
+          </div>
+          <div class="git-catalog__actions">
+            <button id="git-playlist-connect" type="button" class="list-action primary">Connect and verify access</button>
+            <button id="git-playlist-disconnect" type="button" class="list-action" disabled>Disconnect</button>
+            <button id="git-playlist-forget" type="button" class="list-action" disabled>Forget credential</button>
+          </div>
+          <p class="setting__hint">Token setup and revocation: <a href="https://github.com/settings/personal-access-tokens" rel="noopener noreferrer">GitHub fine-grained tokens</a>; <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository-access-token/" rel="noopener noreferrer">create a Bitbucket repository access token</a>; <a href="https://support.atlassian.com/bitbucket-cloud/docs/revoke-a-repository-access-token/" rel="noopener noreferrer">revoke a Bitbucket repository access token</a>.</p>
+          <p id="git-playlist-connection" class="setting__status" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Enter repository details and connect to verify access. No provider request runs during app startup.</p>
+          <div class="git-catalog__actions">
+            <button id="git-playlist-read" type="button" class="list-action" disabled>Read remote playlist</button>
+            <button id="git-playlist-review" type="button" class="list-action" disabled>Review local playlist for publishing</button>
+          </div>
+          <div id="git-playlist-read-result" class="git-playlist__review" role="region" aria-labelledby="git-playlist-read-title" hidden>
+            <h3 id="git-playlist-read-title" tabindex="-1">Remote playlist read</h3>
+            <p id="git-playlist-read-summary" class="setting__hint"></p>
+            <pre id="git-playlist-read-data" class="git-playlist__data" tabindex="0"></pre>
+            <button id="git-playlist-import-read" type="button" class="list-action" hidden>Import read playlist into Blend</button>
+          </div>
+          <div id="git-playlist-publish-review" class="git-playlist__review" role="region" aria-labelledby="git-playlist-publish-title" hidden>
+            <h3 id="git-playlist-publish-title" tabindex="-1">Review before publishing</h3>
+            <p id="git-playlist-destination" class="setting__hint"></p>
+            <p id="git-playlist-public-warning" class="setting__status" data-state="error" role="note" hidden></p>
+            <p class="setting__hint">This review shows the exact playlist JSON sent by the publish action. Only the fields shown here are serialized. Media URLs are public HTTPS references checked by format; Blend cannot prove that a media host is private, safe, or free of tracking.</p>
+            <pre id="git-playlist-publish-data" class="git-playlist__data" tabindex="0"></pre>
+            <label class="setting setting--toggle" for="git-playlist-confirm-publish">
+              <input id="git-playlist-confirm-publish" type="checkbox">
+              <span>I reviewed this playlist and want to publish it to the destination shown above.</span>
+            </label>
+            <p id="git-playlist-bitbucket-race" class="setting__status" data-state="error" role="note" hidden>Bitbucket checks the selected branch and parent revision before publishing, but its documented API does not guarantee atomic compare-and-set protection. A concurrent remote change may race with this check.</p>
+            <div class="git-catalog__actions">
+              <button id="git-playlist-publish" type="button" class="list-action primary" disabled>Publish reviewed playlist</button>
+              <button id="git-playlist-cancel-review" type="button" class="list-action">Cancel review</button>
+            </div>
+          </div>
         </section>
       </div>
       <div class="global-settings__volumes">
@@ -674,6 +748,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261011-v5.0.11-git-catalog-read"></script>
+  <script type="module" src="./app.js?v=20261011-v5.0.11-git-playlist-byot"></script>
 </body>
 </html>

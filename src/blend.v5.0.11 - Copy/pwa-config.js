@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261011-v5.0.11-git-catalog-read';
-  const CACHE_VERSION = '20261011-v5.0.11-git-catalog-read';
+  const ASSET_VERSION = '20261011-v5.0.11-git-playlist-byot';
+  const CACHE_VERSION = '20261011-v5.0.11-git-playlist-byot';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -36,6 +36,7 @@
     asset('./styles.css'),
     asset('./app.js'),
     asset('./git-playlist-catalog.js'),
+    asset('./git-playlist-storage.js'),
     asset('./indexeddb-open.js'),
     './resume-on-load.js?v=20260927-v5.0.11-resume',
     asset('./experience-persistence.js'),

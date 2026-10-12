@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261011-v5.0.11-git-catalog-read';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261011-v5.0.11-git-catalog-read';
+} from './experience-persistence.js?v=20261011-v5.0.11-git-playlist-byot';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261011-v5.0.11-git-catalog-read';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261011-v5.0.11-git-catalog-read';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261011-v5.0.11-git-catalog-read';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261011-v5.0.11-git-catalog-read';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261011-v5.0.11-git-catalog-read';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261011-v5.0.11-git-catalog-read';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261011-v5.0.11-git-playlist-byot';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261011-v5.0.11-git-playlist-byot';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261011-v5.0.11-git-playlist-byot';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261011-v5.0.11-git-playlist-byot';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261011-v5.0.11-git-playlist-byot';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,27 +22,27 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261011-v5.0.11-git-catalog-read';
+} from './storage-url-resolver.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261011-v5.0.11-git-catalog-read';
+} from './transition-manager.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261011-v5.0.11-git-catalog-read';
+} from './playback-clock.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261011-v5.0.11-git-catalog-read';
-import { fetchReadme } from './readme-fetcher.js?v=20261011-v5.0.11-git-catalog-read';
+import { renderMarkdown } from './markdown.js?v=20261011-v5.0.11-git-playlist-byot';
+import { fetchReadme } from './readme-fetcher.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -57,28 +57,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261011-v5.0.11-git-catalog-read';
+} from './url-share.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261011-v5.0.11-git-catalog-read';
+} from './url-share-diagnostics.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261011-v5.0.11-git-catalog-read';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261011-v5.0.11-git-catalog-read';
+} from './timeline-analysis.js?v=20261011-v5.0.11-git-playlist-byot';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261011-v5.0.11-git-catalog-read';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261011-v5.0.11-git-catalog-read';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261011-v5.0.11-git-catalog-read';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261011-v5.0.11-git-catalog-read';
+} from './shared-experience-download.js?v=20261011-v5.0.11-git-playlist-byot';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261011-v5.0.11-git-playlist-byot';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261011-v5.0.11-git-playlist-byot';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -89,7 +89,16 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261011-v5.0.11-git-catalog-read';
+} from './git-playlist-catalog.js?v=20261011-v5.0.11-git-playlist-byot';
+import {
+  GitPlaylistError,
+  createGitPlaylistClient,
+  loadGitPlaylistSettings,
+  normalizeGitPlaylistSettings,
+  removeGitPlaylistSettings,
+  saveGitPlaylistSettings,
+  serializeRemotePlaylist
+} from './git-playlist-storage.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -99,7 +108,7 @@ import {
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES
-} from './local-import-limits.js?v=20261011-v5.0.11-git-catalog-read';
+} from './local-import-limits.js?v=20261011-v5.0.11-git-playlist-byot';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
@@ -199,7 +208,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261011-v5.0.11-git-catalog-read';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261011-v5.0.11-git-playlist-byot';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -413,6 +422,12 @@ let publicCatalogSettings = null;
 let publicCatalogEntries = [];
 let publicCatalogBusy = false;
 let publicCatalogSettingsSaved = true;
+let gitPlaylistClient = null;
+let gitPlaylistSettings = null;
+let gitPlaylistConnection = null;
+let gitPlaylistReadResult = null;
+let gitPlaylistPublishReview = null;
+let gitPlaylistBusy = false;
 let slideshowMedia = null; // current img or video in top layer
 let kenBurnsRAF = null;
 let crossfadeTimer = null;
@@ -8721,7 +8736,7 @@ async function clearBrowserStorage() {
   const confirmed = await showExperienceDialog({
     title: 'Clear browser storage',
     mode: 'confirm',
-    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, the public Git catalog location, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
+    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings and any remembered Git credential, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
     okText: '✓ Clear Browser Storage',
     okDanger: true
   });
@@ -8886,6 +8901,23 @@ async function clearBrowserStorage() {
     localStorage.removeItem(ANALYTICS_CONSENT_KEY);
     localStorage.removeItem(MASTODON_INSTANCE_KEY);
     localStorage.removeItem(publicCatalogConfigKey());
+    const hadRememberedGitCredential = getGitPlaylistClient().hasRememberedCredential();
+    const gitCredentialRemoved = getGitPlaylistClient().forgetCredential();
+    const gitSettingsRemoved = removeGitPlaylistSettings(gitPlaylistStorage());
+    if (hadRememberedGitCredential && !gitCredentialRemoved) cleanupFailures.push('remembered Git credential');
+    if (!gitSettingsRemoved) cleanupFailures.push('Git repository settings');
+    gitPlaylistConnection = null;
+    gitPlaylistSettings = null;
+    clearGitPlaylistReadResult();
+    clearGitPlaylistPublishReview();
+    for (const selector of ['#git-playlist-provider', '#git-playlist-owner', '#git-playlist-repository', '#git-playlist-branch', '#git-playlist-path', '#git-playlist-token']) {
+      const input = $(selector);
+      if (input) input.value = '';
+    }
+    const remember = $('#git-playlist-remember');
+    if (remember) remember.checked = false;
+    setGitPlaylistStatus('Repository settings and Git credentials were removed from this browser. Provider tokens are not revoked.', 'idle');
+    updateGitPlaylistControls();
     publicCatalogSettings = null;
     publicCatalogSettingsSaved = true;
     clearPublicCatalogResults();
@@ -8910,7 +8942,7 @@ async function clearBrowserStorage() {
       showToast(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${cleanupFailures.join(', ')}.`, { timeout: 7000 });
       return false;
     }
-    showToast('Browser data cleared. The saved Supabase session and public Git catalog settings were removed, runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
+    showToast('Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
     return true;
   } catch (_) {
     showToast('Browser reset incomplete. The saved Supabase session and Blend database were cleared from this browser, but some other browser data could not be cleared.', { timeout: 6000 });
@@ -9988,7 +10020,7 @@ function clearPublicCatalogResults() {
 function setPublicCatalogBusy(value) {
   publicCatalogBusy = !!value;
   const resetButton = $('#clear-browser-storage');
-  if (resetButton) resetButton.disabled = publicCatalogBusy;
+  if (resetButton) resetButton.disabled = publicCatalogBusy || gitPlaylistBusy;
 }
 
 function renderPublicCatalogEntries(entries) {
@@ -10096,6 +10128,358 @@ function wirePublicCatalogControls() {
   fetchButton.onclick = () => { void fetchPublicCatalogFromForm(); };
 }
 
+function gitPlaylistStorage() {
+  try { return window.localStorage; } catch (_) { return null; }
+}
+
+function getGitPlaylistClient() {
+  if (!gitPlaylistClient) gitPlaylistClient = createGitPlaylistClient({ storage: gitPlaylistStorage() });
+  return gitPlaylistClient;
+}
+
+function setGitPlaylistStatus(message, stateName = 'idle') {
+  const status = $('#git-playlist-connection');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function focusGitPlaylistConfigHeading(selector) {
+  const heading = $(selector);
+  if (!heading) return;
+  heading.focus({ preventScroll: true });
+  heading.scrollIntoView({ block: 'start' });
+  const panel = $('#config-panel');
+  const stickyControls = $('.config-sticky-controls');
+  if (!panel || !stickyControls) return;
+  const overlap = stickyControls.getBoundingClientRect().bottom + 12 - heading.getBoundingClientRect().top;
+  if (overlap > 0) panel.scrollTop = Math.max(0, panel.scrollTop - overlap);
+}
+
+function gitPlaylistErrorMessage(error) {
+  const messages = {
+    invalid_provider: 'Choose GitHub or Bitbucket Cloud.',
+    invalid_repository_settings: 'Enter a valid owner or workspace, repository, branch, and repository-relative playlist file path.',
+    settings_unavailable: 'Repository settings could not be saved in this browser. The active connection remains session-only.',
+    token_required: 'Enter a provider token or use a remembered credential saved for this provider.',
+    authentication_failed: 'The provider rejected this token. Check that it is active and belongs to the selected provider.',
+    permission_denied: 'The provider denied this operation. Check repository access and the token permissions.',
+    rate_limited: 'The provider rate-limited this request. Try again later.',
+    provider_unavailable: 'The Git provider is temporarily unavailable.',
+    provider_request_failed: 'The Git provider rejected this request.',
+    request_timeout: 'The provider request timed out. No write was attempted.',
+    network_or_cors_error: 'The browser could not reach the provider. Check connectivity or a network/CORS restriction.',
+    response_too_large: 'The provider response or playlist exceeds the 1 MB limit.',
+    streaming_response_required: 'The provider response could not be bounded safely. Operation cancelled.',
+    malformed_provider_response: 'The provider returned an unexpected response. No provider details were shown.',
+    invalid_utf8: 'The playlist is not valid UTF-8 text.',
+    repository_or_file_not_found: 'The repository could not be found or accessed with this token.',
+    branch_not_found: 'The selected branch could not be found or read.',
+    file_not_found: 'No playlist file exists at the selected path on this branch.',
+    invalid_remote_playlist: 'The remote file is not a supported, safe Blend playlist. Your local playlist is unchanged.',
+    invalid_playlist: 'The local Playlist is empty or exceeds the supported item limit.',
+    unsafe_playlist_content: 'The local Playlist contains local paths, private or signed URLs, credentials, or unsupported media. Nothing was sent.',
+    not_connected: 'Connect and verify repository access before reading or publishing.',
+    remote_conflict: 'The remote branch or playlist changed after review. Nothing was written. Read the remote playlist and prepare a new review.',
+    provider_rejected_write: 'The provider rejected the publish request. No automatic retry was made.',
+    write_outcome_uncertain: 'The provider may have accepted this commit, but its response did not establish the result. Do not retry yet. Read the remote playlist to inspect the repository.',
+    form_data_unavailable: 'This browser cannot create the request format required by Bitbucket Cloud.',
+    invalid_publish_review: 'The publish review is no longer valid. Prepare a new review.'
+  };
+  return messages[error instanceof GitPlaylistError ? error.code : '']
+    || 'The Git playlist operation failed. Your local playlist and playback state are unchanged.';
+}
+
+function gitPlaylistSettingsFromForm() {
+  return normalizeGitPlaylistSettings({
+    provider: $('#git-playlist-provider')?.value,
+    owner: $('#git-playlist-owner')?.value,
+    repository: $('#git-playlist-repository')?.value,
+    branch: $('#git-playlist-branch')?.value,
+    path: $('#git-playlist-path')?.value
+  });
+}
+
+function applyGitPlaylistSettingsToForm(settings) {
+  if (!settings) return;
+  $('#git-playlist-provider').value = settings.provider;
+  $('#git-playlist-owner').value = settings.owner;
+  $('#git-playlist-repository').value = settings.repository;
+  $('#git-playlist-branch').value = settings.branch;
+  $('#git-playlist-path').value = settings.path;
+}
+
+function clearGitPlaylistReadResult() {
+  gitPlaylistReadResult = null;
+  const result = $('#git-playlist-read-result');
+  if (result) result.hidden = true;
+  $('#git-playlist-read-data')?.replaceChildren();
+  const importButton = $('#git-playlist-import-read');
+  if (importButton) importButton.hidden = true;
+  const summary = $('#git-playlist-read-summary');
+  if (summary) summary.textContent = '';
+}
+
+function clearGitPlaylistPublishReview() {
+  gitPlaylistPublishReview = null;
+  const review = $('#git-playlist-publish-review');
+  if (review) review.hidden = true;
+  $('#git-playlist-publish-data')?.replaceChildren();
+  const confirmation = $('#git-playlist-confirm-publish');
+  if (confirmation) confirmation.checked = false;
+  const publicWarning = $('#git-playlist-public-warning');
+  if (publicWarning) {
+    publicWarning.hidden = true;
+    publicWarning.textContent = '';
+  }
+  const bitbucketWarning = $('#git-playlist-bitbucket-race');
+  if (bitbucketWarning) bitbucketWarning.hidden = true;
+  const publishButton = $('#git-playlist-publish');
+  if (publishButton) publishButton.disabled = true;
+}
+
+function updateGitPlaylistControls() {
+  const client = getGitPlaylistClient();
+  const connected = !!gitPlaylistConnection && !!client.getConnection();
+  const remembered = client.hasRememberedCredential();
+  const connect = $('#git-playlist-connect');
+  const disconnect = $('#git-playlist-disconnect');
+  const forget = $('#git-playlist-forget');
+  const read = $('#git-playlist-read');
+  const review = $('#git-playlist-review');
+  const publish = $('#git-playlist-publish');
+  if (connect) connect.disabled = gitPlaylistBusy;
+  if (disconnect) disconnect.disabled = gitPlaylistBusy || !connected;
+  if (forget) forget.disabled = gitPlaylistBusy || (!connected && !remembered);
+  if (read) read.disabled = gitPlaylistBusy || !connected;
+  if (review) review.disabled = gitPlaylistBusy || !connected;
+  if (publish) publish.disabled = gitPlaylistBusy || !gitPlaylistPublishReview || !$('#git-playlist-confirm-publish')?.checked;
+  const reset = $('#clear-browser-storage');
+  if (reset) reset.disabled = gitPlaylistBusy || publicCatalogBusy;
+}
+
+function setGitPlaylistBusy(value) {
+  gitPlaylistBusy = !!value;
+  updateGitPlaylistControls();
+}
+
+function describeGitPlaylistConnection(settings, result, remembered) {
+  const provider = settings.provider === 'github' ? 'GitHub' : 'Bitbucket Cloud';
+  const destination = `${settings.owner}/${settings.repository}`;
+  let visibility = 'Repository visibility is unknown.';
+  if (result.visibility === 'public') visibility = 'This repository is public, so published files and their Git history may be visible to anyone.';
+  if (result.visibility === 'private') visibility = 'The repository is currently private. People with repository access may still read published files and their Git history.';
+  const persistence = remembered
+    ? ' The credential is remembered in browser storage on this device.'
+    : ' The credential is session-only and will be cleared on disconnect or reload.';
+  return `Connected to ${provider} ${destination}, branch ${settings.branch}. Repository and read access are confirmed. Publish permission is unverified and cannot be safely probed without a write. ${visibility}${persistence}`;
+}
+
+async function connectGitPlaylist() {
+  if (gitPlaylistBusy) return;
+  const tokenInput = $('#git-playlist-token');
+  const token = tokenInput?.value || '';
+  const remember = !!$('#git-playlist-remember')?.checked;
+  if (tokenInput) tokenInput.value = '';
+  setGitPlaylistBusy(true);
+  clearGitPlaylistReadResult();
+  clearGitPlaylistPublishReview();
+  setGitPlaylistStatus('Checking repository and branch access with read-only provider requests…', 'loading');
+  try {
+    const settings = gitPlaylistSettingsFromForm();
+    const connection = await getGitPlaylistClient().connect(settings, token, { remember });
+    gitPlaylistSettings = settings;
+    gitPlaylistConnection = connection;
+    let settingsSaved = true;
+    try { gitPlaylistSettings = saveGitPlaylistSettings(gitPlaylistStorage(), settings); }
+    catch (_) { settingsSaved = false; }
+    const status = describeGitPlaylistConnection(settings, connection, connection.credentialRemembered);
+    const credentialNote = remember && !connection.credentialRemembered
+      ? ' The browser could not save a remembered copy, so this connection is session-only.'
+      : '';
+    setGitPlaylistStatus(status + credentialNote + (settingsSaved ? '' : ' Repository settings could not be saved.'), settingsSaved ? 'ready' : 'error');
+  } catch (error) {
+    gitPlaylistConnection = null;
+    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+  } finally {
+    setGitPlaylistBusy(false);
+  }
+}
+
+function disconnectGitPlaylist() {
+  getGitPlaylistClient().disconnect();
+  gitPlaylistConnection = null;
+  clearGitPlaylistReadResult();
+  clearGitPlaylistPublishReview();
+  const saved = getGitPlaylistClient().hasRememberedCredential();
+  setGitPlaylistStatus(saved
+    ? 'Disconnected. The active credential was cleared. A previously remembered browser copy remains until you choose Forget credential.'
+    : 'Disconnected. The active credential was cleared.', 'idle');
+  updateGitPlaylistControls();
+}
+
+function forgetGitPlaylistCredential() {
+  const removed = getGitPlaylistClient().forgetCredential();
+  const remember = $('#git-playlist-remember');
+  if (remember) remember.checked = false;
+  gitPlaylistConnection = null;
+  clearGitPlaylistReadResult();
+  clearGitPlaylistPublishReview();
+  setGitPlaylistStatus(removed
+    ? 'Credential forgotten from this browser. This does not revoke the provider token.'
+    : 'The active credential was cleared, but browser storage could not confirm removal of a saved copy. Revoke the provider token if needed.', removed ? 'ready' : 'error');
+  updateGitPlaylistControls();
+}
+
+function gitPlaylistSettingsChanged() {
+  if (!gitPlaylistConnection && !gitPlaylistPublishReview && !gitPlaylistReadResult) return;
+  getGitPlaylistClient().disconnect();
+  gitPlaylistSettings = null;
+  gitPlaylistConnection = null;
+  clearGitPlaylistReadResult();
+  clearGitPlaylistPublishReview();
+  setGitPlaylistStatus('Repository settings changed. Connect again to verify access.', 'idle');
+  updateGitPlaylistControls();
+}
+
+async function readGitPlaylist() {
+  if (gitPlaylistBusy || !gitPlaylistConnection || !gitPlaylistSettings) return;
+  setGitPlaylistBusy(true);
+  clearGitPlaylistReadResult();
+  clearGitPlaylistPublishReview();
+  setGitPlaylistStatus('Reading and validating the remote playlist…', 'loading');
+  try {
+    const result = await getGitPlaylistClient().readPlaylist(gitPlaylistSettings);
+    gitPlaylistReadResult = result.playlist;
+    $('#git-playlist-read-data').textContent = result.text;
+    $('#git-playlist-read-summary').textContent = `Validated ${result.playlist.items.length} playlist items. This read did not change the local Playlist or remote repository.`;
+    $('#git-playlist-read-result').hidden = false;
+    $('#git-playlist-import-read').hidden = false;
+    setGitPlaylistStatus('Remote playlist read and validated. Import it into Blend only if you choose the separate import action below.', 'ready');
+    focusGitPlaylistConfigHeading('#git-playlist-read-title');
+  } catch (error) {
+    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+  } finally {
+    setGitPlaylistBusy(false);
+  }
+}
+
+async function importReadGitPlaylist() {
+  if (gitPlaylistBusy || !gitPlaylistReadResult) return;
+  setGitPlaylistBusy(true);
+  try {
+    const file = new File([JSON.stringify(gitPlaylistReadResult)], 'remote-playlist.json', { type: 'application/json' });
+    const result = await importListFromFile(file, { which: 'playlist' });
+    if (result) setGitPlaylistStatus('The validated remote playlist was imported into Blend. The repository was not changed.', 'ready');
+  } catch (error) {
+    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+  } finally {
+    setGitPlaylistBusy(false);
+  }
+}
+
+function currentGitPlaylistItems() {
+  return state.playlist.map(ref => {
+    const item = state.library.get(ref.id);
+    return {
+      path: ref.path || item?.path,
+      sourceUrl: ref.sourceUrl || item?.sourceUrl,
+      name: item?.name || ref.name,
+      type: item?.type || ref.type,
+      displayDuration: ref.displayDuration,
+      includeAudio: ref.includeAudio
+    };
+  });
+}
+
+async function reviewLocalGitPlaylist() {
+  if (gitPlaylistBusy || !gitPlaylistConnection || !gitPlaylistSettings) return;
+  setGitPlaylistBusy(true);
+  clearGitPlaylistPublishReview();
+  setGitPlaylistStatus('Preparing the playlist review and checking the current remote file…', 'loading');
+  try {
+    const meta = normalizeListMeta('playlist', state.listMeta.playlist);
+    const text = serializeRemotePlaylist(currentGitPlaylistItems(), meta.name);
+    const review = await getGitPlaylistClient().preparePublish(gitPlaylistSettings, text);
+    gitPlaylistPublishReview = review;
+    const provider = review.settings.provider === 'github' ? 'GitHub' : 'Bitbucket Cloud';
+    const action = review.snapshot.exists ? 'Replace the existing validated playlist file' : 'Create a new playlist file';
+    $('#git-playlist-destination').textContent = `${action}: ${provider} ${review.settings.owner}/${review.settings.repository}, branch ${review.settings.branch}, path ${review.settings.path}. Read access is confirmed. Publish permission remains unverified until the provider accepts a user-confirmed write.`;
+    $('#git-playlist-publish-data').textContent = review.text;
+    const warning = $('#git-playlist-public-warning');
+    if (warning) {
+      warning.hidden = review.visibility === 'private';
+      warning.textContent = review.visibility === 'public'
+        ? 'PUBLIC REPOSITORY: this playlist and its Git history may be visible to anyone. Review every media URL and item name before publishing.'
+        : 'Repository visibility is unknown. Treat this destination and its Git history as public until you verify its visibility with the provider.';
+    }
+    $('#git-playlist-bitbucket-race').hidden = review.settings.provider !== 'bitbucket';
+    $('#git-playlist-publish-review').hidden = false;
+    $('#git-playlist-confirm-publish').checked = false;
+    setGitPlaylistStatus('Review the destination and exact JSON. Publishing requires the separate confirmation control and button.', 'ready');
+    focusGitPlaylistConfigHeading('#git-playlist-publish-title');
+  } catch (error) {
+    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+  } finally {
+    setGitPlaylistBusy(false);
+  }
+}
+
+async function publishReviewedGitPlaylist() {
+  if (gitPlaylistBusy || !gitPlaylistPublishReview || !$('#git-playlist-confirm-publish')?.checked) return;
+  const review = gitPlaylistPublishReview;
+  setGitPlaylistBusy(true);
+  setGitPlaylistStatus('Checking for remote changes, then publishing the reviewed playlist…', 'loading');
+  try {
+    const result = await getGitPlaylistClient().publish(review);
+    setGitPlaylistStatus(result.commit
+      ? `Published playlist successfully. Provider commit ${result.commit}.`
+      : 'The provider confirmed the playlist commit was created.', 'ready');
+  } catch (error) {
+    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+  } finally {
+    clearGitPlaylistPublishReview();
+    setGitPlaylistBusy(false);
+  }
+}
+
+function wireGitPlaylistControls() {
+  const connect = $('#git-playlist-connect');
+  if (!connect) return;
+  const client = getGitPlaylistClient();
+  gitPlaylistSettings = loadGitPlaylistSettings(gitPlaylistStorage());
+  applyGitPlaylistSettingsToForm(gitPlaylistSettings);
+  const selectedProvider = $('#git-playlist-provider')?.value || '';
+  if (client.hasRememberedCredential(selectedProvider)) {
+    $('#git-playlist-remember').checked = true;
+    setGitPlaylistStatus('A credential was previously remembered in this browser. Select Connect and verify access to use it. No provider request runs during app startup.', 'idle');
+  } else if (gitPlaylistSettings) {
+    setGitPlaylistStatus('Saved repository details loaded. Enter a token and connect to verify access.', 'idle');
+  }
+  connect.onclick = () => { void connectGitPlaylist(); };
+  $('#git-playlist-disconnect').onclick = disconnectGitPlaylist;
+  $('#git-playlist-forget').onclick = forgetGitPlaylistCredential;
+  $('#git-playlist-read').onclick = () => { void readGitPlaylist(); };
+  $('#git-playlist-review').onclick = () => { void reviewLocalGitPlaylist(); };
+  $('#git-playlist-import-read').onclick = () => { void importReadGitPlaylist(); };
+  $('#git-playlist-publish').onclick = () => { void publishReviewedGitPlaylist(); };
+  $('#git-playlist-cancel-review').onclick = () => {
+    clearGitPlaylistPublishReview();
+    setGitPlaylistStatus('Publish review cancelled. No remote write was made.', 'idle');
+    $('#git-playlist-review')?.focus();
+  };
+  $('#git-playlist-confirm-publish').addEventListener('change', updateGitPlaylistControls);
+  for (const id of ['git-playlist-provider', 'git-playlist-owner', 'git-playlist-repository', 'git-playlist-branch', 'git-playlist-path']) {
+    $(`#${id}`)?.addEventListener('input', gitPlaylistSettingsChanged);
+    $(`#${id}`)?.addEventListener('change', gitPlaylistSettingsChanged);
+  }
+  $('#git-playlist-provider')?.addEventListener('change', () => {
+    const provider = $('#git-playlist-provider')?.value || '';
+    $('#git-playlist-remember').checked = client.hasRememberedCredential(provider);
+  });
+  updateGitPlaylistControls();
+}
+
 function wireConfig() {
   const experienceSelect = $('#experience-select');
   experienceSelect.onchange = async (e) => {
@@ -10126,6 +10510,7 @@ function wireConfig() {
   if (shareUrlBtn) shareUrlBtn.onclick = () => { void shareExperienceViaUrl(); };
   $('#clear-browser-storage').onclick = clearBrowserStorage;
   wirePublicCatalogControls();
+  wireGitPlaylistControls();
 
   // add buttons
   $('#add-files').onclick = addFilesFromPicker;

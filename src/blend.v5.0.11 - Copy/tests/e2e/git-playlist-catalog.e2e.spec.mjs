@@ -56,11 +56,12 @@ test('fetches a configured public catalog and imports a sanitized playlist local
   await app.boot();
   await app.openConfig();
 
-  await page.getByLabel('Provider').selectOption('github');
-  await page.getByLabel('Owner or workspace').fill('blend-team');
-  await page.getByLabel('Repository').fill('public-playlists');
-  await page.getByLabel('Branch').fill('main');
-  await page.getByLabel('Catalog directory').fill('blend-catalog');
+  const catalog = page.getByRole('region', { name: 'Public Git playlist catalog' });
+  await catalog.getByLabel('Provider', { exact: true }).selectOption('github');
+  await catalog.getByLabel('Owner or workspace', { exact: true }).fill('blend-team');
+  await catalog.getByLabel('Repository', { exact: true }).fill('public-playlists');
+  await catalog.getByLabel('Branch', { exact: true }).fill('main');
+  await catalog.getByLabel('Catalog directory', { exact: true }).fill('blend-catalog');
   await page.locator('#git-catalog-fetch').click();
 
   await expect(page.locator('#git-catalog-status')).toContainText('Loaded 1 public playlist');

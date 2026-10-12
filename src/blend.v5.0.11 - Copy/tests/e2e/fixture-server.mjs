@@ -366,7 +366,7 @@ function safePathFromUrlPath(urlPath) {
     normalized = '/tests/e2e/fixtures/other-app/index.html';
   } else if (normalized.startsWith('/other-app/')) {
     normalized = `/tests/e2e/fixtures/other-app/${normalized.slice('/other-app/'.length)}`;
-  } else if (normalized === '/nested/blend') {
+  } else if (normalized === '/nested/blend' || normalized === '/nested/blend/') {
     normalized = '/index.html';
   } else if (normalized.startsWith('/nested/blend/')) {
     normalized = `/${normalized.slice('/nested/blend/'.length)}`;

@@ -119,7 +119,7 @@ test('GitHub public file reads decode bounded Contents API base64 without creden
   assert.equal(requestLog[0].options.cache, 'no-store');
   assert.equal(requestLog[0].options.redirect, 'error');
   assert.equal('Authorization' in requestLog[0].options.headers, false);
-  assert.equal(requestLog[0].options.headers['X-GitHub-Api-Version'], '2026-03-10');
+  assert.equal(requestLog[0].options.headers['X-GitHub-Api-Version'], undefined);
 });
 
 test('Bitbucket Cloud public file reads use the fixed source endpoint with no credential headers', async () => {

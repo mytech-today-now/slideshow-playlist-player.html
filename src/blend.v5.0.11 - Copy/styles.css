@@ -1288,6 +1288,7 @@ button {
   color: var(--warning, #f59e0b);
 }
 .git-catalog-setting {
+  grid-column: 1 / -1;
   gap: 10px;
   min-width: 0;
   padding: 12px;
@@ -1299,6 +1300,42 @@ button {
   margin: 0;
   color: var(--text);
   font-size: 14px;
+}
+.git-catalog-setting h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+}
+.git-playlist-setting a {
+  color: var(--accent, #7dd3fc);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.git-playlist__review {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev2);
+}
+.git-playlist__review[hidden] {
+  display: none;
+}
+.git-playlist__data {
+  max-height: 320px;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .git-catalog__fields {
   display: grid;
@@ -1822,6 +1859,9 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
   }
   .setting--wide {
     grid-column: auto;
+  }
+  .git-catalog-setting {
+    grid-column: 1 / -1;
   }
   .transition-option {
     grid-template-columns: 1fr;
