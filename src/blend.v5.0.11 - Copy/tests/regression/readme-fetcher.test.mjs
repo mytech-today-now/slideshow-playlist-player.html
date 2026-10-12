@@ -13,6 +13,7 @@ import {
   LEGACY_README_CACHE_KEY,
   README_CACHE_TTL_MS,
   FETCH_TIMEOUT_MS,
+  ONLINE_README_MAX_BYTES,
   GITHUB_README_URL,
   LOCAL_README_URL,
 } from '../../readme-fetcher.js';
@@ -30,8 +31,41 @@ function makeStorage(initial = {}) {
   };
 }
 
-function response(markdown) {
-  return { ok: true, text: async () => markdown };
+function byteResponse(chunks, { headers = {}, close = true, onCancel } = {}) {
+  const normalizedHeaders = new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), String(value)]));
+  const body = new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk);
+      if (close) controller.close();
+    },
+    cancel(reason) { onCancel?.(reason); }
+  });
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: name => normalizedHeaders.get(String(name).toLowerCase()) ?? null },
+    body
+  };
+}
+
+function response(markdown, options) {
+  return byteResponse([new TextEncoder().encode(markdown)], options);
+}
+
+function stalledResponse(signal, onBodyStarted) {
+  let sentChunk = false;
+  const body = new ReadableStream({
+    start(controller) {
+      signal.addEventListener('abort', () => controller.error(new Error('aborted after headers')), { once: true });
+    },
+    pull(controller) {
+      if (sentChunk) return;
+      sentChunk = true;
+      controller.enqueue(new TextEncoder().encode('partial online README'));
+      onBodyStarted?.();
+    }
+  });
+  return { ok: true, status: 200, body };
 }
 
 function makeClock(startAt = 1000) {
@@ -150,6 +184,18 @@ test('fetchWithTimeout throws on a non-2xx status and propagates network errors'
     () => fetchWithTimeout('https://example.test/', 5000, async () => { throw new TypeError('Network error'); }),
     /Network error/
   );
+});
+
+test('fetchWithTimeout does not fall back to unbounded Response.text when the body stream is missing', async () => {
+  let textCalled = false;
+  await assert.rejects(
+    () => fetchWithTimeout('https://example.test/', 5000, async () => ({
+      ok: true,
+      text: async () => { textCalled = true; return '# Unbounded'; }
+    })),
+    /body stream is unavailable/
+  );
+  assert.equal(textCalled, false);
 });
 
 test('fetchReadme defaults to the installed guide even when an online cache exists', async () => {
@@ -315,6 +361,214 @@ test('fetchReadme uses the installed guide after online failure without caching 
   assert.equal(model.onlineUnavailable, true);
   assert.equal(model.documentVersion, '5.0.11');
   assert.equal(readReadmeCache(storage), null);
+});
+
+test('fetchReadme accepts complete online streams just under and exactly at the byte cap', async t => {
+  for (const size of [ONLINE_README_MAX_BYTES - 1, ONLINE_README_MAX_BYTES]) {
+    await t.test(`${size} bytes`, async () => {
+      const markdown = 'x'.repeat(size);
+      const storage = makeStorage();
+      let localModel = null;
+      const model = await fetchReadme({
+        source: 'online',
+        storage,
+        appVersion: '5.0.11',
+        onLocal: value => { localModel = value; },
+        fetcher: async url => response(url === LOCAL_README_URL ? LOCAL_GUIDE : markdown)
+      });
+
+      assert.equal(localModel.source, 'local');
+      assert.equal(model.source, 'online');
+      assert.equal(model.markdown, markdown);
+      assert.equal(readReadmeCache(storage).markdown, markdown);
+    });
+  }
+});
+
+test('fetchReadme cancels an over-cap stream and preserves a valid prior cache', async () => {
+  const storage = makeStorage();
+  writeReadmeCache(OLD_ONLINE_GUIDE, storage);
+  const previousCache = storage.getItem(README_CACHE_KEY);
+  let cancelled = false;
+  const oversized = new TextEncoder().encode('x'.repeat(ONLINE_README_MAX_BYTES + 1));
+  const model = await fetchReadme({
+    source: 'online',
+    forceRefresh: true,
+    storage,
+    appVersion: '5.0.11',
+    fetcher: async url => url === LOCAL_README_URL
+      ? response(LOCAL_GUIDE)
+      : byteResponse([oversized], { close: false, onCancel: () => { cancelled = true; } })
+  });
+
+  assert.equal(cancelled, true);
+  assert.equal(model.source, 'local');
+  assert.equal(model.onlineUnavailable, true);
+  assert.equal(model.markdown, LOCAL_GUIDE);
+  assert.equal(storage.getItem(README_CACHE_KEY), previousCache);
+});
+
+test('the online cap counts UTF-8 bytes across chunk boundaries, not JavaScript characters', async () => {
+  const exactText = 'é'.repeat(ONLINE_README_MAX_BYTES / 2);
+  const exactBytes = new TextEncoder().encode(exactText);
+  assert.equal(exactText.length, ONLINE_README_MAX_BYTES / 2);
+  assert.equal(exactBytes.byteLength, ONLINE_README_MAX_BYTES);
+  const exact = await fetchWithTimeout(
+    GITHUB_README_URL,
+    5000,
+    async () => byteResponse([exactBytes.slice(0, 1), exactBytes.slice(1)]),
+    globalThis,
+    ONLINE_README_MAX_BYTES
+  );
+  assert.equal(exact, exactText);
+
+  const oversizedText = `${exactText}é`;
+  const oversizedBytes = new TextEncoder().encode(oversizedText);
+  assert.ok(oversizedText.length < ONLINE_README_MAX_BYTES);
+  assert.ok(oversizedBytes.byteLength > ONLINE_README_MAX_BYTES);
+  let cancelled = false;
+  await assert.rejects(
+    () => fetchWithTimeout(
+      GITHUB_README_URL,
+      5000,
+      async () => byteResponse(
+        [oversizedBytes.slice(0, 1), oversizedBytes.slice(1)],
+        { close: false, onCancel: () => { cancelled = true; } }
+      ),
+      globalThis,
+      ONLINE_README_MAX_BYTES
+    ),
+    error => error.code === 'README_SIZE_LIMIT'
+  );
+  assert.equal(cancelled, true);
+});
+
+test('streamed bytes override missing or misleading Content-Length metadata', async () => {
+  const storage = makeStorage();
+  const oversized = new TextEncoder().encode('x'.repeat(ONLINE_README_MAX_BYTES + 1));
+  let cancelled = false;
+  const model = await fetchReadme({
+    source: 'online',
+    forceRefresh: true,
+    storage,
+    fetcher: async url => url === LOCAL_README_URL
+      ? response(LOCAL_GUIDE)
+      : byteResponse([oversized], {
+        headers: { 'content-length': '1' },
+        close: false,
+        onCancel: () => { cancelled = true; }
+      })
+  });
+
+  assert.equal(model.source, 'local');
+  assert.equal(model.onlineUnavailable, true);
+  assert.equal(cancelled, true);
+  assert.equal(readReadmeCache(storage), null);
+
+  const small = await fetchWithTimeout(
+    GITHUB_README_URL,
+    5000,
+    async () => response(ONLINE_GUIDE, {
+      headers: { 'content-length': String(ONLINE_README_MAX_BYTES + 1) }
+    }),
+    globalThis,
+    ONLINE_README_MAX_BYTES
+  );
+  assert.equal(small, ONLINE_GUIDE);
+});
+
+test('fetchReadme keeps the installed guide after a body timeout that starts after headers', async () => {
+  const clock = makeClock();
+  const storage = makeStorage();
+  let bodyStarted;
+  const reading = new Promise(resolve => { bodyStarted = resolve; });
+  const request = fetchReadme({
+    source: 'online',
+    storage,
+    appVersion: '5.0.11',
+    clock,
+    fetcher: async (url, { signal } = {}) => url === LOCAL_README_URL
+      ? response(LOCAL_GUIDE)
+      : stalledResponse(signal, bodyStarted)
+  });
+
+  await reading;
+  assert.equal(clock.pendingCount(), 1);
+  clock.advance(FETCH_TIMEOUT_MS);
+  const model = await request;
+  assert.equal(model.source, 'local');
+  assert.equal(model.onlineUnavailable, true);
+  assert.equal(model.markdown, LOCAL_GUIDE);
+  assert.equal(clock.pendingCount(), 0);
+  assert.equal(readReadmeCache(storage), null);
+});
+
+test('fetchReadme keeps the installed guide after a stream error and clears its timer', async () => {
+  const clock = makeClock();
+  const storage = makeStorage();
+  const model = await fetchReadme({
+    source: 'online',
+    storage,
+    appVersion: '5.0.11',
+    clock,
+    fetcher: async url => {
+      if (url === LOCAL_README_URL) return response(LOCAL_GUIDE);
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('partial online README'));
+          controller.error(new Error('synthetic stream failure'));
+        }
+      });
+      return { ok: true, status: 200, body };
+    }
+  });
+
+  assert.equal(model.source, 'local');
+  assert.equal(model.onlineUnavailable, true);
+  assert.equal(model.markdown, LOCAL_GUIDE);
+  assert.equal(clock.pendingCount(), 0);
+  assert.equal(readReadmeCache(storage), null);
+});
+
+test('invalid UTF-8 and Markdown validation failures do not replace a prior cache', async t => {
+  await t.test('invalid UTF-8', async () => {
+    const storage = makeStorage();
+    writeReadmeCache(OLD_ONLINE_GUIDE, storage);
+    const previousCache = storage.getItem(README_CACHE_KEY);
+    const model = await fetchReadme({
+      source: 'online',
+      forceRefresh: true,
+      storage,
+      fetcher: async url => url === LOCAL_README_URL
+        ? response(LOCAL_GUIDE)
+        : byteResponse([new Uint8Array([0xc3, 0x28])])
+    });
+
+    assert.equal(model.source, 'local');
+    assert.equal(model.onlineUnavailable, true);
+    assert.equal(model.markdown, LOCAL_GUIDE);
+    assert.equal(storage.getItem(README_CACHE_KEY), previousCache);
+  });
+
+  await t.test('Markdown validation failure', async () => {
+    const storage = makeStorage();
+    writeReadmeCache(OLD_ONLINE_GUIDE, storage);
+    const previousCache = storage.getItem(README_CACHE_KEY);
+    const model = await fetchReadme({
+      source: 'online',
+      forceRefresh: true,
+      storage,
+      validateMarkdown(markdown) {
+        if (markdown === ONLINE_GUIDE) throw new Error('synthetic renderer detail');
+      },
+      fetcher: async url => response(url === LOCAL_README_URL ? LOCAL_GUIDE : ONLINE_GUIDE)
+    });
+
+    assert.equal(model.source, 'local');
+    assert.equal(model.onlineUnavailable, true);
+    assert.equal(model.markdown, LOCAL_GUIDE);
+    assert.equal(storage.getItem(README_CACHE_KEY), previousCache);
+  });
 });
 
 test('fetchReadme rejects when online and installed documentation both fail', async () => {

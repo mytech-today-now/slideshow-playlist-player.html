@@ -2,6 +2,8 @@
 // Loads this app copy's README by default and makes the mutable online guide
 // available only on request. Browser globals are injectable for Node tests.
 
+import { renderMarkdown } from './markdown.js';
+
 export const GITHUB_README_URL =
   'https://raw.githubusercontent.com/mytech-today-now/slideshow-playlist-player.html/refs/heads/main/README.md';
 
@@ -16,6 +18,9 @@ export const README_CACHE_TTL_MS = 60 * 60 * 1000;
 
 // Abort a hung network request after 10 seconds.
 export const FETCH_TIMEOUT_MS = 10_000;
+
+// Cap the optional upstream guide at 512 KiB, measured from streamed UTF-8 bytes.
+export const ONLINE_README_MAX_BYTES = 512 * 1024;
 
 function clockNow(clock) {
   return typeof clock?.now === 'function' ? clock.now() : Date.now();
@@ -66,6 +71,49 @@ export function createReadmeViewModel({
   };
 }
 
+function utf8ByteLength(text) {
+  return new TextEncoder().encode(String(text == null ? '' : text)).byteLength;
+}
+
+async function readResponseText(response, maxBytes = Number.POSITIVE_INFINITY) {
+  if (!response?.body || typeof response.body.getReader !== 'function') {
+    throw new TypeError('README response body stream is unavailable');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const parts = [];
+  let bytesRead = 0;
+
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      if (!(result.value instanceof Uint8Array)) {
+        throw new TypeError('README response body did not contain bytes');
+      }
+
+      if (bytesRead + result.value.byteLength > maxBytes) {
+        const error = new Error(`Online README exceeds the ${maxBytes}-byte limit`);
+        error.name = 'ReadmeSizeLimitError';
+        error.code = 'README_SIZE_LIMIT';
+        throw error;
+      }
+
+      bytesRead += result.value.byteLength;
+      parts.push(decoder.decode(result.value, { stream: true }));
+    }
+
+    parts.push(decoder.decode());
+    return parts.join('');
+  } catch (error) {
+    try { await reader.cancel(error); } catch (_) {}
+    throw error;
+  } finally {
+    try { reader.releaseLock(); } catch (_) {}
+  }
+}
+
 /**
  * Return cached README markdown if present and still within TTL, else null.
  * @param {Pick<Storage,'getItem'>} [storage]
@@ -77,6 +125,8 @@ export function readReadmeCache(storage = globalThis.localStorage, now = Date.no
     if (!raw) return null;
     const entry = JSON.parse(raw);
     if (typeof entry?.markdown !== 'string' || typeof entry?.fetchedAt !== 'number') return null;
+    if (entry.markdown.length > ONLINE_README_MAX_BYTES
+      || utf8ByteLength(entry.markdown) > ONLINE_README_MAX_BYTES) return null;
     if (entry.source !== 'online') return null;
     if (!Number.isFinite(now) || entry.fetchedAt > now || now - entry.fetchedAt >= README_CACHE_TTL_MS) return null;
     const documentVersion = extractReadmeVersion(entry.markdown);
@@ -98,10 +148,12 @@ export function readReadmeCache(storage = globalThis.localStorage, now = Date.no
  */
 export function writeReadmeCache(markdown, storage = globalThis.localStorage, fetchedAt = Date.now()) {
   try {
+    const text = String(markdown == null ? '' : markdown);
+    if (text.length > ONLINE_README_MAX_BYTES || utf8ByteLength(text) > ONLINE_README_MAX_BYTES) return;
     storage?.setItem(README_CACHE_KEY, JSON.stringify({
       source: 'online',
-      markdown: String(markdown == null ? '' : markdown),
-      version: extractReadmeVersion(markdown),
+      markdown: text,
+      version: extractReadmeVersion(text),
       fetchedAt
     }));
   } catch (_) {}
@@ -125,13 +177,15 @@ export function clearReadmeCache(storage = globalThis.localStorage) {
  * @param {number} [timeoutMs]
  * @param {typeof fetch} [fetcher]
  * @param {{ setTimeout?: Function, clearTimeout?: Function }} [clock]
+ * @param {number} [maxBytes]
  * @returns {Promise<string>}
  */
 export async function fetchWithTimeout(
   url,
   timeoutMs = FETCH_TIMEOUT_MS,
   fetcher = globalThis.fetch,
-  clock = globalThis
+  clock = globalThis,
+  maxBytes = Number.POSITIVE_INFINITY
 ) {
   const controller = new AbortController();
   const schedule = typeof clock?.setTimeout === 'function'
@@ -144,7 +198,7 @@ export async function fetchWithTimeout(
   try {
     const res = await fetcher(url, { signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-    return await res.text();
+    return await readResponseText(res, maxBytes);
   } finally {
     cancel(timer);
   }
@@ -158,7 +212,7 @@ export async function fetchWithTimeout(
  * Passing `forceRefresh: true` bypasses the cache so a retry always hits
  * the network (used by the error-state retry button).
  *
- * @param {{ source?: 'local'|'online', forceRefresh?: boolean, fetcher?: typeof fetch, storage?: Storage, appVersion?: string, clock?: { now?: Function, setTimeout?: Function, clearTimeout?: Function }, onLocal?: (viewModel: ReturnType<typeof createReadmeViewModel>) => void }} [opts]
+ * @param {{ source?: 'local'|'online', forceRefresh?: boolean, fetcher?: typeof fetch, storage?: Storage, appVersion?: string, clock?: { now?: Function, setTimeout?: Function, clearTimeout?: Function }, onLocal?: (viewModel: ReturnType<typeof createReadmeViewModel>) => void, validateMarkdown?: (markdown: string) => unknown }} [opts]
  * @returns {Promise<ReturnType<typeof createReadmeViewModel>>}
  */
 export async function fetchReadme({
@@ -168,7 +222,8 @@ export async function fetchReadme({
   storage,
   appVersion = '',
   clock = globalThis,
-  onLocal
+  onLocal,
+  validateMarkdown = renderMarkdown
 } = {}) {
   if (source !== 'online') {
     const markdown = await fetchWithTimeout(LOCAL_README_URL, FETCH_TIMEOUT_MS, fetcher, clock);
@@ -178,13 +233,18 @@ export async function fetchReadme({
   if (!forceRefresh) {
     const cached = readReadmeCache(storage, clockNow(clock));
     if (cached !== null) {
-      return createReadmeViewModel({
-        markdown: cached.markdown,
-        source: 'online',
-        appVersion,
-        fetchedAt: cached.fetchedAt,
-        fromCache: true
-      });
+      try {
+        validateMarkdown(cached.markdown);
+        return createReadmeViewModel({
+          markdown: cached.markdown,
+          source: 'online',
+          appVersion,
+          fetchedAt: cached.fetchedAt,
+          fromCache: true
+        });
+      } catch (_) {
+        // Skip unusable cached Markdown and try a complete online response.
+      }
     }
   }
 
@@ -199,7 +259,14 @@ export async function fetchReadme({
 
   let onlineError;
   try {
-    const markdown = await fetchWithTimeout(GITHUB_README_URL, FETCH_TIMEOUT_MS, fetcher, clock);
+    const markdown = await fetchWithTimeout(
+      GITHUB_README_URL,
+      FETCH_TIMEOUT_MS,
+      fetcher,
+      clock,
+      ONLINE_README_MAX_BYTES
+    );
+    validateMarkdown(markdown);
     const fetchedAt = clockNow(clock);
     writeReadmeCache(markdown, storage, fetchedAt);
     const cached = readReadmeCache(storage, fetchedAt);

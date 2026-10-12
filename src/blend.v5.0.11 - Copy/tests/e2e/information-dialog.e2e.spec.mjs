@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { ONLINE_README_MAX_BYTES } from '../../readme-fetcher.js';
+
+const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
 
 // ---------------------------------------------------------------------------
 // Fixture markdown served in place of the live GitHub README. Long enough to
@@ -445,7 +448,7 @@ test.describe('Information dialog', () => {
 
   test('documentation source remains operable by touch on a narrow viewport', async ({ browser }) => {
     const context = await browser.newContext({
-      baseURL: 'http://127.0.0.1:4191',
+      baseURL: `http://127.0.0.1:${PLAYWRIGHT_PORT}`,
       viewport: { width: 360, height: 800 },
       hasTouch: true,
       isMobile: true
@@ -521,7 +524,7 @@ test.describe('Information dialog', () => {
     await page.locator('#info-readme-source').selectOption('online');
 
     const fallbackNotice = page.getByRole('status').filter({
-      hasText: 'Offline or online documentation is unavailable; this local guide remains available.'
+      hasText: 'The online guide is too large or unavailable. You are still viewing the installed Blend guide for version 5.0.11. Retry online help later.'
     });
     await expect(fallbackNotice).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
@@ -537,7 +540,7 @@ test.describe('Information dialog', () => {
       });
     });
 
-    const retry = page.getByRole('button', { name: 'Retry online documentation' });
+    const retry = page.getByRole('button', { name: 'Retry online help' });
     await retry.focus();
     await page.keyboard.press('Enter');
 
@@ -545,5 +548,37 @@ test.describe('Information dialog', () => {
     await expect(page.locator('#info-readme-source')).toHaveValue('online');
     await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.1.0');
     await expect(page.locator('.info-readme-retry-online')).toHaveCount(0);
+  });
+
+  test('an oversized online README leaves the installed guide readable and announces the fallback', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.unroute('https://raw.githubusercontent.com/**');
+    let requestCount = 0;
+    await page.route('https://raw.githubusercontent.com/**', route => {
+      requestCount += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/plain; charset=utf-8',
+        body: '# Oversized online guide\n\n' + 'x'.repeat(ONLINE_README_MAX_BYTES + 1)
+      });
+    });
+
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    const content = page.locator('#info-readme-content');
+    await expect(content).toContainText('Current Version Information');
+    await page.locator('#info-readme-source').selectOption('online');
+
+    const fallbackNotice = page.getByRole('status').filter({
+      hasText: 'The online guide is too large or unavailable. You are still viewing the installed Blend guide for version 5.0.11. Retry online help later.'
+    });
+    await expect(fallbackNotice).toBeVisible({ timeout: 15000 });
+    await expect(fallbackNotice).toContainText('Retry online help');
+    await expect(content).toContainText('Current Version Information');
+    await expect(content).not.toContainText('Oversized online guide');
+    await expect(page.locator('#info-readme-source')).toHaveValue('local');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-source', 'local');
+    expect(await page.evaluate(() => localStorage.getItem('blend-readme-online-cache-v2'))).toBeNull();
+    expect(requestCount).toBe(1);
   });
 });

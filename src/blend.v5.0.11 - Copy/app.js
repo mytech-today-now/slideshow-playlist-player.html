@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './experience-persistence.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,32 +22,32 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './storage-url-resolver.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup
-} from './signed-url-cleanup.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './signed-url-cleanup.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './transition-manager.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './playback-clock.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-bounded-add-files-selection';
+import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -62,28 +62,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './url-share.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './url-share-diagnostics.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './timeline-analysis.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-bounded-add-files-selection';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './shared-experience-download.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -94,7 +94,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './git-playlist-catalog.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -105,7 +105,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './git-playlist-storage.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -117,13 +117,13 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './local-import-limits.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261012-v5.0.11-bounded-add-files-selection';
+} from './resume-on-load.js?v=20261012-v5.0.11-bounded-url-share-decompression';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -217,7 +217,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-bounded-add-files-selection';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-bounded-url-share-decompression';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -1733,7 +1733,9 @@ async function resolveShareImageForContext(context) {
       const thumb = await generateThumbnail(item.handle, item);
       if (thumb) return safeAbsoluteUrl(thumb, context.imageUrl || safeAbsoluteUrl(DEFAULT_SOCIAL_IMAGE, canonicalEntryUrl()));
     } catch (error) {
-      log.warn('thumbnail generation for social metadata failed', error);
+      log.warn('thumbnail generation for social metadata failed', {
+        errorType: sanitizedThumbnailErrorType(error)
+      });
     }
   }
   return context.imageUrl || safeAbsoluteUrl(DEFAULT_SOCIAL_IMAGE, canonicalEntryUrl());
@@ -2577,7 +2579,7 @@ function buildIpfsExperienceShareUrl(mediaReference) {
 
 // ====================== URL SHARING (v5.0.7) ======================
 
-const SHARED_LINK_TOO_LARGE_MESSAGE = 'This shared link is too large to load safely. Ask for a smaller link or a JSON export.';
+const SHARED_LINK_TOO_LARGE_MESSAGE = 'This shared experience is too large for this browser to open safely. Your current Blend experience is unchanged. Ask for a smaller share link or import a JSON backup.';
 
 /**
  * Detect a compressed experience payload in the current URL.
@@ -2606,7 +2608,8 @@ function parseUrlShareRequest(value = window.location.search) {
  *  - Per-item progress flows from materializeImportedEntries via onItemProgress,
  *    populating a scrolling item list in the overlay in real time.
  *  - Keyboard transport shortcuts are blocked via the experienceLoading flag.
- *  - Cleans the ?experience= param from the URL on success or failure.
+ *  - Clears the share parameter only after a successful persisted import; failed
+ *    imports keep their source URL available for retry or recovery.
  *
  * @param {{ payload: string }} request
  * @returns {Promise<object|null>} the imported experience record, or null on failure
@@ -2706,13 +2709,8 @@ async function loadUrlSharedExperience(request) {
     progress.complete(false, msg);
     showToast(msg, { timeout: 5200 });
 
-    // Also clean the URL on failure so repeated refreshes don't loop.
-    try {
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete(URL_SHARE_PARAM);
-      clean.searchParams.delete(URL_SHARE_PARAM_ALIAS);
-      history.replaceState(null, '', clean.toString());
-    } catch (_) {}
+    // Keep the source share parameters in place so the user can retry after
+    // recovering or replacing an invalid/oversized link.
 
     return null;
   } finally {
@@ -3575,6 +3573,7 @@ async function idbDelete(storeName, key) {
 const thumbQueue = [];
 let thumbRunning = 0;
 const THUMB_CONCURRENCY = 2;
+const THUMB_MEDIA_TIMEOUT_MS = 10000;
 
 function thumbKey(name, size, lastMod = 0) {
   return `${name}:${size}:${lastMod}`;
@@ -3705,7 +3704,7 @@ function pumpThumbQueue() {
         const url = await generateThumbnail(job.item.handle, job.item);
         job.resolve(url ? rememberThumbUrl(job.key, url) : null);
       } catch (e) {
-            log.warn('thumb load failed', e);
+        log.warn('thumb load failed', { errorType: sanitizedThumbnailErrorType(e) });
         job.resolve(null);
       } finally {
         thumbRequests.delete(job.key);
@@ -3748,7 +3747,9 @@ async function generateThumbnail(handle, meta) {
     } else {
       // audio icon fallback later
     }
-  } catch (e) { log.warn('thumb gen failed', e); }
+  } catch (e) {
+    log.warn('thumb gen failed', { errorType: sanitizedThumbnailErrorType(e) });
+  }
 
   scheduleObjectUrlRevoke(url, 1000);
 
@@ -3759,53 +3760,178 @@ async function generateThumbnail(handle, meta) {
   return null;
 }
 
-async function videoFrameToBlob(src, pos = 0.1) {
+function sanitizedThumbnailErrorType(error) {
+  let type = '';
+  try {
+    type = error?.name || error?.constructor?.name || '';
+  } catch (_) {}
+  if (typeof type !== 'string') type = '';
+  return type.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'Error';
+}
+
+function reportThumbnailCleanupError(error) {
+  try {
+    log.warn('thumbnail operation failed', { errorType: sanitizedThumbnailErrorType(error) });
+  } catch (_) {}
+}
+
+function attemptThumbnailCleanup(action) {
+  try {
+    action();
+  } catch (error) {
+    reportThumbnailCleanupError(error);
+  }
+}
+
+function normalizedThumbnailTimeout(timeoutMs) {
+  return Number.isFinite(timeoutMs) && timeoutMs > 0
+    ? timeoutMs
+    : THUMB_MEDIA_TIMEOUT_MS;
+}
+
+function videoFrameToBlob(src, pos = 0.1, timeoutMs = THUMB_MEDIA_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    const v = document.createElement('video');
-    v.muted = true; v.playsInline = true;
+    let v = null;
+    let timer = null;
+    let settled = false;
     const cleanup = () => {
-      v.removeAttribute('src');
-      v.load();
-      v.remove();
+      if (timer !== null) {
+        const currentTimer = timer;
+        timer = null;
+        attemptThumbnailCleanup(() => clearTimeout(currentTimer));
+      }
+      if (!v) return;
+      attemptThumbnailCleanup(() => { v.onloadedmetadata = null; });
+      attemptThumbnailCleanup(() => { v.onseeked = null; });
+      attemptThumbnailCleanup(() => { v.onerror = null; });
+      attemptThumbnailCleanup(() => v.pause());
+      attemptThumbnailCleanup(() => v.removeAttribute('src'));
+      attemptThumbnailCleanup(() => v.load());
+      attemptThumbnailCleanup(() => v.remove());
+      attemptThumbnailCleanup(() => {
+        if (v.parentNode) v.parentNode.removeChild(v);
+      });
     };
-    v.onloadedmetadata = () => {
-      const seekTo = Math.max(0.5, Math.min(v.duration * pos, v.duration - 0.5));
-      v.currentTime = seekTo;
+    const settle = blob => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(blob || null);
     };
-    v.onseeked = () => {
-      const c = document.createElement('canvas');
-      const w = 320, h = Math.round(w * (v.videoHeight / v.videoWidth || 9/16));
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d', { alpha: false });
-      ctx.drawImage(v, 0, 0, w, h);
-      c.toBlob(b => {
-        cleanup();
-        resolve(b);
-      }, 'image/jpeg', 0.82);
-    };
-    v.onerror = () => { cleanup(); resolve(null); };
-    v.src = src;
+
+    try {
+      v = document.createElement('video');
+      v.muted = true;
+      v.playsInline = true;
+      v.onloadedmetadata = () => {
+        try {
+          const seekTo = Math.max(0.5, Math.min(v.duration * pos, v.duration - 0.5));
+          v.currentTime = seekTo;
+        } catch (error) {
+          reportThumbnailCleanupError(error);
+          settle(null);
+        }
+      };
+      v.onseeked = () => {
+        try {
+          const c = document.createElement('canvas');
+          const w = 320;
+          const h = Math.round(w * (v.videoHeight / v.videoWidth || 9 / 16));
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext('2d', { alpha: false });
+          if (!ctx) {
+            settle(null);
+            return;
+          }
+          ctx.drawImage(v, 0, 0, w, h);
+          c.toBlob(blob => settle(blob), 'image/jpeg', 0.82);
+        } catch (error) {
+          reportThumbnailCleanupError(error);
+          settle(null);
+        }
+      };
+      v.onerror = () => settle(null);
+      timer = setTimeout(() => settle(null), normalizedThumbnailTimeout(timeoutMs));
+      v.src = src;
+    } catch (error) {
+      reportThumbnailCleanupError(error);
+      settle(null);
+    }
   });
 }
 
-async function imageToThumbBlob(src) {
+function imageToThumbBlob(src, timeoutMs = THUMB_MEDIA_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      const w = 320, h = Math.round(w * (img.height / img.width || 9/16));
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d', { alpha: false });
-      ctx.drawImage(img, 0, 0, w, h);
-      c.toBlob(b => {
-        img.src = '';
-        resolve(b);
-      }, 'image/jpeg', 0.85);
+    let img = null;
+    let timer = null;
+    let settled = false;
+    const cleanup = () => {
+      if (timer !== null) {
+        const currentTimer = timer;
+        timer = null;
+        attemptThumbnailCleanup(() => clearTimeout(currentTimer));
+      }
+      if (!img) return;
+      attemptThumbnailCleanup(() => { img.onload = null; });
+      attemptThumbnailCleanup(() => { img.onerror = null; });
+      attemptThumbnailCleanup(() => { img.src = ''; });
+      attemptThumbnailCleanup(() => img.remove());
+      attemptThumbnailCleanup(() => {
+        if (img.parentNode) img.parentNode.removeChild(img);
+      });
     };
-    img.onerror = () => { img.src = ''; resolve(null); };
-    img.src = src;
+    const settle = blob => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(blob || null);
+    };
+
+    try {
+      img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          const w = 320;
+          const h = Math.round(w * (img.height / img.width || 9 / 16));
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext('2d', { alpha: false });
+          if (!ctx) {
+            settle(null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          c.toBlob(blob => settle(blob), 'image/jpeg', 0.85);
+        } catch (error) {
+          reportThumbnailCleanupError(error);
+          settle(null);
+        }
+      };
+      img.onerror = () => settle(null);
+      timer = setTimeout(() => settle(null), normalizedThumbnailTimeout(timeoutMs));
+      img.src = src;
+    } catch (error) {
+      reportThumbnailCleanupError(error);
+      settle(null);
+    }
   });
 }
+
+function installThumbnailTestHooks() {
+  const hooks = globalThis.__BLEND_TEST_HOOKS__;
+  if (!hooks || typeof hooks !== 'object') return;
+  try {
+    hooks.thumbnails = Object.freeze({
+      videoFrameToBlob,
+      imageToThumbBlob,
+      queueStatus: () => ({ active: thumbRunning, pending: thumbQueue.length })
+    });
+  } catch (_) {}
+}
+
+installThumbnailTestHooks();
 
 // ====================== STATE & PERSISTENCE ======================
 const SAVE_FAILURE_MESSAGE = 'Changes are not saved yet. Retry or export a backup before closing.';
@@ -10043,21 +10169,19 @@ function renderInfoReadme(viewModel, { preservePanelScroll = false } = {}) {
 
   const fallbackNotice = viewModel.onlineUnavailable
     ? '<p class="info-readme-status info-readme-status--notice" role="status">'
-      + 'Offline or online documentation is unavailable; this local guide remains available. '
-      + '<button type="button" class="info-readme-retry info-readme-retry-online">Retry online documentation</button>'
+      + `The online guide is too large or unavailable. You are still viewing the installed Blend guide for version ${VERSION}. Retry online help later. `
+      + '<button type="button" class="info-readme-retry info-readme-retry-online">Retry online help</button>'
       + '</p>'
     : '';
   target.innerHTML = fallbackNotice + renderMarkdown(viewModel.markdown);
   target.querySelector('.info-readme-retry-online')?.addEventListener('click', () => {
     void ensureReadmeRendered({ source: 'online', forceRefresh: true });
   }, { once: true });
-  requestAnimationFrame(() => {
-    if (preservePanelScroll && panel && Number.isFinite(previousScrollTop)) {
-      panel.scrollTop = previousScrollTop;
-      return;
-    }
-    restoreInfoReadmeSourceScroll(viewModel.source);
-  });
+  if (preservePanelScroll && panel && Number.isFinite(previousScrollTop)) {
+    requestAnimationFrame(() => { panel.scrollTop = previousScrollTop; });
+    return;
+  }
+  restoreInfoReadmeSourceScroll(viewModel.source);
 }
 
 function activateInfoTab(name, { focusTab = false } = {}) {

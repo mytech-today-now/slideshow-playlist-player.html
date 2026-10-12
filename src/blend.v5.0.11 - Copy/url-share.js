@@ -422,8 +422,9 @@ export function checkUrlLength(fullUrl) {
 // Hard upper bound on an incoming payload to prevent decompression bombs.
 const DECOMPRESS_INPUT_LIMIT = 4194304; // 4 MiB of Base64URL chars
 
-// Maximum decompressed JSON size (guards against malicious over-expansion).
-export const URL_SHARE_DECOMPRESS_OUTPUT_LIMIT = 52428800; // 50 MiB
+// Maximum decompressed JSON size. Keep this conservative because JSON parsing
+// and import staging need additional memory beyond the decompressed bytes.
+export const URL_SHARE_DECOMPRESS_OUTPUT_LIMIT = 8388608; // 8 MiB
 export const URL_SHARE_SIZE_LIMIT_ERROR_CODE = 'SHARE_DECOMPRESS_OUTPUT_LIMIT';
 
 /**
@@ -466,6 +467,7 @@ export async function decompressExperience(base64Url) {
     throw new Error('Share payload is corrupted or not gzip-compressed');
   }
   const json = new TextDecoder().decode(decompressed);
+  decompressed = null;
   try {
     return deserializeExperienceFromShare(JSON.parse(json));
   } catch (_) {
@@ -570,7 +572,7 @@ async function gunzipBytes(uint8) {
   const writer = ds.writable.getWriter();
   let outputLimitExceeded = false;
   // Start the reader before writing to avoid backpressure deadlock.
-  const readPromise = collectStream(ds.readable, {
+  const readPromise = collectBoundedBytes(ds.readable, {
     maxBytes: URL_SHARE_DECOMPRESS_OUTPUT_LIMIT,
     onLimit: async error => {
       outputLimitExceeded = true;
@@ -602,7 +604,7 @@ async function gunzipBytes(uint8) {
   }
 }
 
-async function collectStream(readable, { maxBytes = Infinity, onLimit } = {}) {
+async function collectStream(readable) {
   const reader = readable.getReader();
   const chunks = [];
   let totalLength = 0;
@@ -611,18 +613,6 @@ async function collectStream(readable, { maxBytes = Infinity, onLimit } = {}) {
       const { done, value } = await reader.read();
       if (done) break;
       const chunkLength = value?.byteLength ?? value?.length ?? 0;
-      if (chunkLength > maxBytes - totalLength) {
-        const error = new Error('Decompressed share payload exceeds the 50 MB safety limit');
-        error.code = URL_SHARE_SIZE_LIMIT_ERROR_CODE;
-        // Do not retain the first chunk that crosses the ceiling or build a
-        // concatenated output buffer. Cancel both sides before rejecting.
-        chunks.length = 0;
-        await Promise.allSettled([
-          reader.cancel(error),
-          Promise.resolve().then(() => onLimit?.(error))
-        ]);
-        throw error;
-      }
       chunks.push(value);
       totalLength += chunkLength;
     }
@@ -642,4 +632,58 @@ async function collectStream(readable, { maxBytes = Infinity, onLimit } = {}) {
     offset += chunk.length;
   }
   return result;
+}
+
+async function collectBoundedBytes(readable, { maxBytes, onLimit } = {}) {
+  const reader = readable.getReader();
+  let output = null;
+  let totalLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunkLength = value?.byteLength ?? value?.length ?? 0;
+      if (chunkLength > maxBytes - totalLength) {
+        const limitMiB = maxBytes / (1024 * 1024);
+        const error = new Error(`Decompressed share payload exceeds the ${limitMiB} MiB safety limit`);
+        error.code = URL_SHARE_SIZE_LIMIT_ERROR_CODE;
+        // Drop the only retained output buffer before cancelling either side.
+        output = null;
+        await Promise.allSettled([
+          reader.cancel(error),
+          Promise.resolve().then(() => onLimit?.(error))
+        ]);
+        throw error;
+      }
+
+      if (chunkLength === 0) continue;
+      const requiredLength = totalLength + chunkLength;
+      if (!output || requiredLength > output.byteLength) {
+        // Grow geometrically so the accepted output stays in one bounded
+        // backing buffer instead of retaining stream chunks and then copying
+        // the whole result into a second full-size array.
+        let nextCapacity = output?.byteLength || Math.min(64 * 1024, maxBytes);
+        while (nextCapacity < requiredLength) {
+          nextCapacity = Math.min(maxBytes, nextCapacity * 2);
+        }
+        const nextOutput = new Uint8Array(nextCapacity);
+        if (output && totalLength > 0) {
+          nextOutput.set(output.subarray(0, totalLength));
+        }
+        output = nextOutput;
+      }
+      output.set(value, totalLength);
+      totalLength = requiredLength;
+    }
+  } catch (error) {
+    output = null;
+    if (error?.code !== URL_SHARE_SIZE_LIMIT_ERROR_CODE) {
+      await Promise.allSettled([reader.cancel(error)]);
+    }
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+
+  return output ? output.subarray(0, totalLength) : new Uint8Array(0);
 }

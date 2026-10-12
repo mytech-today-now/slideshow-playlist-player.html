@@ -22,6 +22,7 @@ These changes are present in the current review checkout. The app version remain
 - Browser reset recovery snapshots omit regenerable thumbnail blobs, prepare before local sign-out or database deletion, and report incomplete reset outcomes accurately.
 - The Information dialog uses the installed README by default. Online documentation is an explicit source, carries version and cache-age information, and refreshes while the installed guide stays visible.
 - Signing out cancels private playback and clears signed Storage URLs from transient in-app media references while retaining portable `supabase://` references for retry. Copied URLs remain independent of local cleanup, and cached responses may remain available beyond token expiry.
+- URL-share imports now cap decompressed output at 8 MiB, avoid the retained-chunks-plus-full-copy allocation, and keep the source link and current experience intact after rejection or failed persistence. Oversized links offer smaller-link or JSON-backup recovery.
 - The Storage policy release checklist records the authorized owner, policy revision, rollback artifact, and expected outcomes for all six principal/object cases. Its staging matrix checks direct and resolver results without retaining signed URLs or credentials.
 - Clarified local-copy instructions, browser compatibility claims, reset behavior, and offline documentation behavior.
 

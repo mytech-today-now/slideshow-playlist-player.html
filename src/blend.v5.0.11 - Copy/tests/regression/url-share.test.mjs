@@ -251,8 +251,8 @@ test('URL_SHARE_SIZE_LIMIT is 524288 (500 KiB)', () => {
   assert.equal(URL_SHARE_SIZE_LIMIT, 524288);
 });
 
-test('decompressed URL-share output limit is 50 MiB', () => {
-  assert.equal(URL_SHARE_DECOMPRESS_OUTPUT_LIMIT, 52428800);
+test('decompressed URL-share output limit is 8 MiB', () => {
+  assert.equal(URL_SHARE_DECOMPRESS_OUTPUT_LIMIT, 8388608);
 });
 
 // ---- Base64URL encoding / decoding ------------------------------------------
@@ -404,83 +404,110 @@ maybeTest('compressExperience → decompressExperience roundtrip (simple)', asyn
   assert.deepEqual(decompressed, experience);
 });
 
-test('decompression accepts output immediately below the limit and cancels at the first crossing chunk', async () => {
+test('decompression accepts below and at the output limit, grows within the cap, and cancels above it', async () => {
   const experience = minimalExperience();
   const jsonPrefix = new TextEncoder().encode(JSON.stringify(experience));
-  const underLimitBytes = new Uint8Array(URL_SHARE_DECOMPRESS_OUTPUT_LIMIT - 1);
-  underLimitBytes.fill(0x20);
-  underLimitBytes.set(jsonPrefix);
-
+  const atLimitBytes = new Uint8Array(URL_SHARE_DECOMPRESS_OUTPUT_LIMIT);
+  atLimitBytes.fill(0x20);
+  atLimitBytes.set(jsonPrefix);
+  const belowLimitBytes = atLimitBytes.subarray(0, URL_SHARE_DECOMPRESS_OUTPUT_LIMIT - 1);
+  const exactChunks = Array.from(
+    { length: URL_SHARE_DECOMPRESS_OUTPUT_LIMIT / (64 * 1024) },
+    (_, index) => atLimitBytes.subarray(index * 64 * 1024, (index + 1) * 64 * 1024)
+  );
   const originalJsonParse = JSON.parse;
-  const originalArrayPush = Array.prototype.push;
   let parseCalls = 0;
-  const retainedChunkPushes = new Map();
-  const crossingChunk = new Uint8Array([0x20, 0x20]);
+  const crossingChunk = new Uint8Array([0x20]);
   const unreadChunk = new Uint8Array([0x20]);
   JSON.parse = function (...args) {
     parseCalls++;
     return originalJsonParse.apply(this, args);
   };
-  Array.prototype.push = function (...args) {
-    for (const chunk of args) {
-      if (chunk === underLimitBytes || chunk === crossingChunk || chunk === unreadChunk) {
-        retainedChunkPushes.set(chunk, (retainedChunkPushes.get(chunk) || 0) + 1);
-      }
-    }
-    return originalArrayPush.apply(this, args);
-  };
 
   try {
+    const belowStats = { readerReadCalls: 0, writerWriteCalls: 0, writerCloseCalls: 0 };
     const restoreSuccessfulStream = replaceGlobal(
       'DecompressionStream',
-      makeSyntheticDecompressionStream([underLimitBytes], {
-        readerReadCalls: 0, writerWriteCalls: 0, writerCloseCalls: 0
-      })
+      makeSyntheticDecompressionStream([belowLimitBytes], belowStats)
     );
     try {
       assert.deepEqual(await decompressExperience('SGVsbG8'), experience);
     } finally {
       restoreSuccessfulStream();
     }
-    assert.equal(underLimitBytes.byteLength, URL_SHARE_DECOMPRESS_OUTPUT_LIMIT - 1);
-    assert.equal(parseCalls, 1, 'valid under-limit compact JSON is parsed');
+    assert.equal(belowLimitBytes.byteLength, URL_SHARE_DECOMPRESS_OUTPUT_LIMIT - 1);
+    assert.equal(parseCalls, 1, 'valid below-limit JSON is parsed');
+
+    const expectedGrowthCapacities = Array.from(
+      { length: 8 },
+      (_, index) => 64 * 1024 * (2 ** index)
+    );
+    const exactAllocations = [];
+    const NativeUint8Array = globalThis.Uint8Array;
+    const TrackingUint8Array = new Proxy(NativeUint8Array, {
+      construct(target, args) {
+        if (Number.isInteger(args[0]) && args[0] >= 64 * 1024) exactAllocations.push(args[0]);
+        return Reflect.construct(target, args, target);
+      }
+    });
+    const exactStats = { readerReadCalls: 0, writerWriteCalls: 0, writerCloseCalls: 0 };
+    const restoreTypedArray = replaceGlobal('Uint8Array', TrackingUint8Array);
+    const restoreExactStream = replaceGlobal(
+      'DecompressionStream',
+      makeSyntheticDecompressionStream(exactChunks, exactStats)
+    );
+    try {
+      assert.deepEqual(await decompressExperience('SGVsbG8'), experience);
+    } finally {
+      restoreExactStream();
+      restoreTypedArray();
+    }
+    assert.equal(atLimitBytes.byteLength, URL_SHARE_DECOMPRESS_OUTPUT_LIMIT);
+    assert.equal(parseCalls, 2, 'valid output exactly at the cap is parsed');
+    assert.deepEqual(exactAllocations, expectedGrowthCapacities, 'accepted output uses geometric bounded growth without a final full-size concatenation allocation');
 
     const rejectionStats = {
       readerReadCalls: 0, writerWriteCalls: 0, writerCloseCalls: 0,
       readerCancelled: false, writerAborted: false
     };
+    const rejectionAllocations = [];
+    const TrackingRejectUint8Array = new Proxy(NativeUint8Array, {
+      construct(target, args) {
+        if (Number.isInteger(args[0]) && args[0] >= 64 * 1024) rejectionAllocations.push(args[0]);
+        return Reflect.construct(target, args, target);
+      }
+    });
+    const restoreRejectTypedArray = replaceGlobal('Uint8Array', TrackingRejectUint8Array);
     const restoreOversizedStream = replaceGlobal(
       'DecompressionStream',
-      makeSyntheticDecompressionStream([underLimitBytes, crossingChunk, unreadChunk], rejectionStats, {
+      makeSyntheticDecompressionStream([atLimitBytes, crossingChunk, unreadChunk], rejectionStats, {
         holdWriterClose: true
       })
     );
     try {
       await assert.rejects(
         () => decompressExperience('SGVsbG8'),
-        error => error?.code === URL_SHARE_SIZE_LIMIT_ERROR_CODE && /50 MB safety limit/i.test(error.message)
+        error => error?.code === URL_SHARE_SIZE_LIMIT_ERROR_CODE && /8 MiB safety limit/i.test(error.message)
       );
     } finally {
       restoreOversizedStream();
+      restoreRejectTypedArray();
     }
 
-    assert.equal(parseCalls, 1, 'the oversized result never reaches JSON.parse');
-    assert.equal(rejectionStats.readerReadCalls, 2, 'the reader stops on the first chunk that crosses 50 MiB');
+    assert.equal(parseCalls, 2, 'the oversized result never reaches JSON.parse');
+    assert.equal(rejectionStats.readerReadCalls, 2, 'the reader stops on the first chunk that crosses 8 MiB');
     assert.equal(rejectionStats.readerCancelled, true, 'the readable side is cancelled');
     assert.equal(rejectionStats.writerAborted, true, 'the writable side is aborted');
     assert.equal(rejectionStats.readerCancelReason?.code, URL_SHARE_SIZE_LIMIT_ERROR_CODE);
     assert.equal(rejectionStats.writerAbortReason?.code, URL_SHARE_SIZE_LIMIT_ERROR_CODE);
+    assert.deepEqual(rejectionAllocations, [URL_SHARE_DECOMPRESS_OUTPUT_LIMIT], 'the rejected crossing chunk does not cause another output allocation');
     assert.equal(
-      underLimitBytes.byteLength + crossingChunk.byteLength,
+      atLimitBytes.byteLength + crossingChunk.byteLength,
       URL_SHARE_DECOMPRESS_OUTPUT_LIMIT + 1,
       'the first rejected chunk crosses the configured byte ceiling by one byte'
     );
-    assert.equal(retainedChunkPushes.get(underLimitBytes), 2, 'only the under-limit chunk is retained before each boundary check');
-    assert.equal(retainedChunkPushes.get(crossingChunk), undefined, 'the crossing chunk is checked before it is retained');
-    assert.equal(retainedChunkPushes.get(unreadChunk), undefined, 'no later output chunk is read or retained');
   } finally {
     JSON.parse = originalJsonParse;
-    Array.prototype.push = originalArrayPush;
   }
 });
 

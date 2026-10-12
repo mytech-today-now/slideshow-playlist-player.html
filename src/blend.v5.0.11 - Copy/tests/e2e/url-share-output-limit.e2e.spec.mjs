@@ -4,7 +4,7 @@ import { compressExperience, URL_SHARE_DECOMPRESS_OUTPUT_LIMIT } from '../../url
 import { BlendAppPage } from './support/blend-app-page.mjs';
 
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
-const TOO_LARGE_MESSAGE = 'This shared link is too large to load safely. Ask for a smaller link or a JSON export.';
+const TOO_LARGE_MESSAGE = 'This shared experience is too large for this browser to open safely. Your current Blend experience is unchanged. Ask for a smaller share link or import a JSON backup.';
 
 function buildOversizedSharePayload() {
   const experience = {
@@ -44,6 +44,13 @@ test('oversized startup share rejects safely, preserves local state, and a later
     // oversized share URL in location.search before app.js runs.
     if (new URL(location.href).searchParams.has('e2e')) {
       history.replaceState(null, '', `${location.pathname}?experience=${sharePayload}`);
+    }
+    if (new URL(location.href).searchParams.has('transactionFailure')) {
+      window.__BLEND_TEST_HOOKS__ = {
+        beforeSnapshotPersist() {
+          throw new Error('Synthetic Issue 09 transaction abort');
+        }
+      };
     }
 
     const probe = {
@@ -112,12 +119,14 @@ test('oversized startup share rejects safely, preserves local state, and a later
     activeId: window.Blend.state.activeExperienceId,
     activeName: window.Blend.state.projectName,
     experienceCount: window.Blend.state.experiences.length,
+    sourcePayload: new URLSearchParams(location.search).get('experience'),
     probe: window.__urlShareOutputProbe,
     memoryAfter: performance.memory?.usedJSHeapSize ?? null
   }));
   expect(rejected.activeId).toBe(baseline.id);
   expect(rejected.activeName).toBe(baseline.name);
   expect(rejected.experienceCount).toBe(baseline.count);
+  expect(rejected.sourcePayload).toBe(oversizedPayload);
   expect(rejected.probe.sharedExperienceFiles).toBe(0);
   expect(rejected.probe.dbWrites).toEqual([]);
   expect(rejected.probe.progressMessages.some(message => message.includes('Decompressing share link'))).toBe(true);
@@ -145,9 +154,37 @@ test('oversized startup share rejects safely, preserves local state, and a later
     slideshow: { type: 'slideshow', order: [], items: [] }
   };
   const recoveryPayload = await compressExperience(recoveryExperience);
-  const recoveryUrl = new URL('/index.html', `http://127.0.0.1:${PLAYWRIGHT_PORT}`);
-  recoveryUrl.searchParams.set('experience', recoveryPayload);
-  await receiver.goto(recoveryUrl.toString(), { waitUntil: 'commit' });
+  const failedImportUrl = new URL('/index.html', `http://127.0.0.1:${PLAYWRIGHT_PORT}`);
+  failedImportUrl.searchParams.set('experience', recoveryPayload);
+  failedImportUrl.searchParams.set('transactionFailure', '1');
+  await receiver.goto(failedImportUrl.toString(), { waitUntil: 'commit' });
+
+  const failedImportOverlay = receiver.locator('#experience-load-overlay');
+  await expect(failedImportOverlay).toHaveClass(/exp-load--error/, { timeout: 30_000 });
+  const failedImport = await receiver.evaluate(() => ({
+    activeId: window.Blend.state.activeExperienceId,
+    activeName: window.Blend.state.projectName,
+    experienceCount: window.Blend.state.experiences.length,
+    sourcePayload: new URLSearchParams(location.search).get('experience'),
+    retryFlag: new URLSearchParams(location.search).get('transactionFailure'),
+    probe: window.__urlShareOutputProbe
+  }));
+  expect(failedImport.activeId).toBe(baseline.id);
+  expect(failedImport.activeName).toBe(baseline.name);
+  expect(failedImport.experienceCount).toBe(baseline.count);
+  expect(failedImport.sourcePayload).toBe(recoveryPayload);
+  expect(failedImport.retryFlag).toBe('1');
+  expect(failedImport.probe.sharedExperienceFiles).toBe(1);
+  expect(failedImport.probe.dbWrites).toEqual([]);
+  expect(failedImport.probe.progressMessages.some(message => message.includes('Saving to storage'))).toBe(true);
+
+  await receiver.evaluate(() => {
+    delete window.__BLEND_TEST_HOOKS__;
+    const retryUrl = new URL(location.href);
+    retryUrl.searchParams.delete('transactionFailure');
+    history.replaceState(null, '', retryUrl.toString());
+  });
+  await receiver.reload({ waitUntil: 'commit' });
 
   await expect(receiver.locator('#experience-load-overlay')).toBeVisible({ timeout: 12_000 });
   await receiver.waitForFunction(
@@ -158,9 +195,11 @@ test('oversized startup share rejects safely, preserves local state, and a later
   );
   const recovered = await receiver.evaluate(() => ({
     probe: window.__urlShareOutputProbe,
-    activeName: window.Blend.state.projectName
+    activeName: window.Blend.state.projectName,
+    remainingSearch: location.search
   }));
   expect(recovered.activeName).toBe(recoveryExperience.name);
+  expect(recovered.remainingSearch).not.toMatch(/(?:experience|data)=/);
   expect(recovered.probe.sharedExperienceFiles).toBe(1);
   expect(recovered.probe.dbWrites.length).toBeGreaterThan(0);
   expect(recovered.probe.progressMessages.some(message => message.includes('Decompressing share link'))).toBe(true);

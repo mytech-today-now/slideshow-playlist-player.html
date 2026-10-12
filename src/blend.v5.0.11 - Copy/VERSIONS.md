@@ -9,13 +9,13 @@ The app version is **5.0.11** in `package.json` and `pwa-config.js`. The UI and 
 | Version field | Verified value | Source |
 |---|---|---|
 | App version | `5.0.11` | `package.json`, `pwa-config.js` |
-| Asset version | `20261012-v5.0.11-bounded-add-files-selection` | `pwa-config.js` |
-| Cache version | `20261012-v5.0.11-bounded-add-files-selection` | `pwa-config.js` |
+| Asset version | `20261012-v5.0.11-bounded-url-share-decompression` | `pwa-config.js` |
+| Cache version | `20261012-v5.0.11-bounded-url-share-decompression` | `pwa-config.js` |
 | IndexedDB database | `player-blend-v1`, schema version `5` | `pwa-config.js` |
 
 Asset and cache versions identify a static-app cache generation. They are not separate product releases. The parent repository's top-level `VERSION` describes that repository and is not the Blend app version.
 
-The current unreleased checkout still identifies as app version **5.0.11**. Its `20261012-v5.0.11-bounded-add-files-selection` asset and cache generation refresh the app shell for the bounded Add Files selection change; see the [Unreleased changelog](CHANGELOG.md#unreleased).
+The current unreleased checkout still identifies as app version **5.0.11**. Its `20261012-v5.0.11-bounded-url-share-decompression` asset and cache generation refresh the app shell for bounded URL-share decompression and recovery; see the [Unreleased changelog](CHANGELOG.md#unreleased).
 
 Schema versions above `5` are opened only when this release's required object stores and key paths remain compatible; otherwise startup fails without changing the database.
 

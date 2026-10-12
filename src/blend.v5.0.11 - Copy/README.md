@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261012-v5.0.11-bounded-add-files-selection`
+- **Cache/app shell version key:** `20261012-v5.0.11-bounded-url-share-decompression`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -942,6 +942,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 ### Code Organization
 
 - `app.js`: app state, UI wiring, import/export, playback, persistence
+- `readme-fetcher.js`: local-first version guide and an optional online guide limited to 512 KiB of streamed bytes; failed or oversized remote content leaves installed help available
 - `git-playlist-catalog.js`: fixed-host public Git reads, schema checks, and media-reference filtering
 - `git-playlist-storage.js`: fixed-origin BYOT provider requests, credential lifecycle, playlist validation, and conflict-aware publication
 - `GIT_PLAYLIST_STORAGE_DESIGN.md`: public catalog and BYOT publishing contracts, threat model, provider basis, and concurrency limits
