@@ -392,6 +392,11 @@ test('GitHub maps stale SHA conflicts and uncertain write transport without retr
   const review2 = await client2.preparePublish(settings(), serializeRemotePlaylist([{ sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Café', type: 'audio' }]));
   await assert.rejects(client2.publish(review2), error => error.code === 'write_outcome_uncertain');
   assert.equal(putCalls, 2);
+  await assert.rejects(client2.publish(review2), error => error.code === 'remote_reconciliation_required');
+  assert.equal(putCalls, 2, 'the client must block a second submission until a remote read compares the review');
+  await client2.readPlaylist(settings());
+  await assert.rejects(client2.publish(review2), error => error.code === 'write_outcome_uncertain');
+  assert.equal(putCalls, 3, 'a second attempt is possible only after the explicit remote read');
 });
 
 test('GitHub creates a missing playlist without a stale SHA', async () => {
@@ -408,30 +413,49 @@ test('GitHub creates a missing playlist without a stale SHA', async () => {
   assert.equal('sha' in sentBody, false);
 });
 
-test('Bitbucket publication uses multipart path, branch, and reviewed parent and accepts documented 201', async () => {
-  let uploaded;
-  let requestOptions;
-  const { calls, fetchImpl } = bitbucketFetch({ onPost: ({ options }) => {
-    requestOptions = options;
-    uploaded = options.body.get('/playlists/ambient.json');
+test('publishing an exact document already at the reviewed remote path does not create a duplicate commit', async () => {
+  let remoteText = playlistDocument();
+  let putCalls = 0;
+  const base = githubFetch({ onPut: () => {
+    putCalls += 1;
+    return new Response(JSON.stringify({ content: { sha: SHA_B }, commit: { sha: SHA_B } }), { status: 201 });
+  } });
+  const fetchImpl = async (urlValue, options) => {
+    const url = new URL(urlValue);
+    if (url.pathname === '/repos/blend-team/playlists/contents/playlists/ambient.json' && options.method === 'GET') {
+      return githubContents(remoteText, SHA_A);
+    }
+    return base.fetchImpl(urlValue, options);
+  };
+  const client = createGitPlaylistClient({ fetchImpl });
+  await connectGithub(client);
+  const review = await client.preparePublish(settings(), serializeRemotePlaylist([
+    { sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Exact local copy', type: 'audio' }
+  ]));
+  remoteText = review.text;
+  const result = await client.publish(review);
+  assert.equal(result.alreadyCurrent, true);
+  assert.equal(result.provider, 'github');
+  assert.equal(putCalls, 0);
+});
+
+test('Bitbucket review stops before POST when the API has no documented conditional write', async () => {
+  let posts = 0;
+  const { calls, fetchImpl } = bitbucketFetch({ onPost: () => {
+    posts += 1;
     return new Response('', { status: 201 });
   } });
   const client = createGitPlaylistClient({ fetchImpl });
   await connectBitbucket(client);
   const document = serializeRemotePlaylist([{ sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Café', type: 'audio' }], 'Café mix');
   const review = await client.preparePublish(settings('bitbucket'), document);
-  const result = await client.publish(review);
-  assert.equal(result.provider, 'bitbucket');
-  assert.equal(result.confirmed, true);
-  assert.equal(uploaded.name, 'ambient.json');
-  assert.equal(await uploaded.text(), review.text);
-  assert.equal(requestOptions.body.get('branch'), 'main');
-  assert.equal(requestOptions.body.get('parents'), SHA_A);
-  assert.equal(requestOptions.body.get('message'), 'Publish Blend playlist');
-  const post = calls.find(call => call.options.method === 'POST');
-  assert.equal(post.url.pathname, '/2.0/repositories/blend-workspace/playlists/src');
-  assertApiOptions(post);
-  assert.equal('Content-Type' in post.options.headers, false, 'the browser must set the multipart boundary for FormData');
+  const exactReviewedText = review.text;
+  await assert.rejects(client.publish(review), error => error.code === 'conditional_write_unavailable');
+  assert.equal(review.text, exactReviewedText);
+  assert.match(review.text, /Café mix/);
+  assert.equal(review.snapshot.head, SHA_A);
+  assert.equal(posts, 0);
+  assert.equal(calls.some(call => call.options.method === 'POST'), false);
 });
 
 test('Bitbucket branch movement is surfaced before POST and concurrent writes are not retried', async () => {
@@ -453,6 +477,52 @@ test('Bitbucket branch movement is surfaced before POST and concurrent writes ar
   const review = await client.preparePublish(settings('bitbucket'), serializeRemotePlaylist([{ sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Café', type: 'audio' }]));
   head = SHA_B;
   await assert.rejects(client.publish(review), error => error.code === 'remote_conflict');
+  assert.equal(posts, 0);
+});
+
+test('Bitbucket head movement immediately after preflight cannot produce an unchecked write', async () => {
+  let head = SHA_A;
+  let branchReads = 0;
+  let fileReads = 0;
+  let posts = 0;
+  const fetchImpl = async (urlValue, options) => {
+    const url = new URL(urlValue);
+    if (url.pathname.endsWith('/repositories/blend-workspace/playlists')) {
+      return new Response(JSON.stringify({ is_private: true }), { status: 200 });
+    }
+    if (url.pathname.endsWith('/refs/branches')) {
+      branchReads += 1;
+      const observedHead = head;
+      const response = new Response(JSON.stringify({ values: [{ name: 'main', target: { hash: observedHead } }] }), { status: 200 });
+      if (branchReads === 3) head = SHA_B;
+      return response;
+    }
+    const fileMatch = url.pathname.match(/\/src\/([a-f0-9]{40})\/playlists\/ambient\.json$/);
+    if (fileMatch) {
+      fileReads += 1;
+      const response = new Response(playlistDocument(), { status: 200 });
+      if (fileReads === 2) head = SHA_B;
+      return response;
+    }
+    if (url.pathname.endsWith('/src') && options.method === 'POST') {
+      posts += 1;
+      return new Response('', { status: 201 });
+    }
+    return new Response('{}', { status: 404 });
+  };
+  const client = createGitPlaylistClient({ fetchImpl });
+  await connectBitbucket(client);
+  const outgoing = serializeRemotePlaylist([{ sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Local Café copy', type: 'audio' }]);
+  const review = await client.preparePublish(settings('bitbucket'), outgoing);
+  const exactReviewedText = review.text;
+  assert.equal(review.snapshot.head, SHA_A);
+  await assert.rejects(client.publish(review), error => error.code === 'conditional_write_unavailable');
+  assert.equal(head, SHA_B, 'the synthetic branch moved after the full preflight snapshot was read');
+  assert.equal(branchReads, 3);
+  assert.equal(fileReads, 2);
+  assert.equal(review.text, exactReviewedText);
+  assert.match(review.text, /Local Café copy/);
+  assert.equal(review.snapshot.head, SHA_A);
   assert.equal(posts, 0);
 });
 

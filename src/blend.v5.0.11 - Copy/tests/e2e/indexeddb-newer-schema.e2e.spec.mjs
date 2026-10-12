@@ -12,10 +12,10 @@ const STORE_KEY_PATHS = {
   aliasMeta: 'key'
 };
 
-async function seedDatabase(page, libraryKeyPath = 'id', includeLegacyRecords = false) {
+async function seedDatabase(page, libraryKeyPath = 'id', includeLegacyRecords = false, includeFutureFields = false, databaseVersion = 6) {
   await page.goto('/offline.html');
-  await page.evaluate(({ storeKeyPaths, libraryKeyPath: keyPath, includeLegacyRecords: seedLegacyRecords }) => new Promise((resolve, reject) => {
-    const request = indexedDB.open('player-blend-v1', 6);
+  await page.evaluate(({ storeKeyPaths, libraryKeyPath: keyPath, includeLegacyRecords: seedLegacyRecords, includeFutureFields: seedFutureFields, databaseVersion: version }) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', version);
     request.onupgradeneeded = event => {
       const database = event.target.result;
       for (const [name, expectedKeyPath] of Object.entries(storeKeyPaths)) {
@@ -29,11 +29,56 @@ async function seedDatabase(page, libraryKeyPath = 'id', includeLegacyRecords = 
         type: 'image',
         pathHint: 'samples/schema-six-library.jpg',
         sourceUrl: 'https://media.example.test/schema-six-library.jpg',
-        size: 128
+        size: 128,
+        addedAt: 1700000000002
       };
+      if (seedFutureFields) {
+        savedItem.futureMetadata = {
+          schema: 'blend.library.v-next',
+          details: { quality: 'lossless', retention: 7 }
+        };
+      }
       if (keyPath === 'url') savedItem.url = 'https://media.example.test/schema-six-library.jpg';
       event.target.transaction.objectStore('library').put(savedItem);
+      if (seedFutureFields) {
+        event.target.transaction.objectStore('library').put({
+          id: 'untouched-schema-six-library',
+          name: 'untouched-schema-six-library.jpg',
+          type: 'image',
+          pathHint: 'samples/untouched-schema-six-library.jpg',
+          sourceUrl: 'https://media.example.test/untouched-schema-six-library.jpg',
+          size: 64,
+          addedAt: 1700000000000
+        });
+      }
       if (seedLegacyRecords) {
+        event.target.transaction.objectStore('dirHandles').put({
+          id: 'schema-six-directory',
+          handle: { kind: 'directory', name: 'schema-six-folder', opaqueToken: 'handle-sentinel' },
+          name: 'schema-six-folder',
+          addedAt: 1700000000001
+        });
+        event.target.transaction.objectStore('aliases').put({
+          id: 'schema-six-alias',
+          from: './schema-six-legacy-route',
+          to: './index.html',
+          type: 'navigation',
+          match: 'exact',
+          status: 200,
+          preserveQuery: true,
+          preserveHash: true,
+          enabled: true,
+          priority: 70,
+          expiresAt: null
+        });
+        event.target.transaction.objectStore('aliasMeta').put({
+          key: 'manifest',
+          schema: 'blend.aliases.v1',
+          version: 99,
+          generatedAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          aliasCount: 1
+        });
         event.target.transaction.objectStore('playlist').put({
           key: 'default',
           items: [{ id: 'saved-schema-six-playlist-item', addedAt: 2 }],
@@ -54,7 +99,40 @@ async function seedDatabase(page, libraryKeyPath = 'id', includeLegacyRecords = 
       request.result.close();
       resolve();
     };
-  }), { storeKeyPaths: STORE_KEY_PATHS, libraryKeyPath, includeLegacyRecords });
+  }), { storeKeyPaths: STORE_KEY_PATHS, libraryKeyPath, includeLegacyRecords, includeFutureFields, databaseVersion });
+}
+
+async function readDatabaseRecords(page, storeNames = Object.keys(STORE_KEY_PATHS)) {
+  return page.evaluate(names => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const transaction = database.transaction(names, 'readonly');
+      const records = {};
+      for (const storeName of names) {
+        const read = transaction.objectStore(storeName).getAll();
+        read.onsuccess = () => { records[storeName] = read.result; };
+        read.onerror = () => reject(read.error);
+      }
+      transaction.oncomplete = () => {
+        const version = database.version;
+        database.close();
+        resolve({ version, records });
+      };
+      transaction.onerror = () => reject(transaction.error);
+    };
+  }), storeNames);
+}
+
+async function changeBlendOpacityAndSave(page) {
+  await page.locator('#config-gear').click();
+  const slider = page.getByRole('slider', { name: 'Blend opacity' });
+  await slider.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(slider).toHaveValue('38');
+  await page.evaluate(() => window.Blend.saveStateNow());
+  await expect(page.locator('#save-status')).toHaveText('All changes saved');
 }
 
 async function suppressFirstRunPrompts(page) {
@@ -153,6 +231,68 @@ test('opens a higher database version when required stores and key paths remain 
   expect(pageErrors).toEqual([]);
 });
 
+test('current-version baseline keeps settings, aliases, directory handles, and media after an edit', async ({ page }) => {
+  await seedDatabase(page, 'id', true, false, 5);
+  await suppressFirstRunPrompts(page);
+  const before = await readDatabaseRecords(page);
+  expect(before.version).toBe(5);
+  await page.goto('/index.html');
+  await page.waitForFunction(() => window.Blend?.state?.library?.has('saved-in-schema-six'));
+
+  await changeBlendOpacityAndSave(page);
+
+  const after = await readDatabaseRecords(page);
+  expect(after.version).toBe(5);
+  const mediaBefore = before.records.library.find(item => item.id === 'saved-in-schema-six');
+  const mediaAfter = after.records.library.find(item => item.id === 'saved-in-schema-six');
+  expect(mediaAfter.name).toBe(mediaBefore.name);
+  for (const key of ['id', 'type', 'pathHint', 'sourceUrl', 'size', 'addedAt']) {
+    expect(mediaAfter[key]).toEqual(mediaBefore[key]);
+  }
+  expect(after.records.dirHandles).toEqual(before.records.dirHandles);
+  expect(after.records.aliases).toEqual(before.records.aliases);
+  expect(after.records.aliasMeta).toEqual(before.records.aliasMeta);
+  expect(after.records.settings.find(item => item.key === 'global')?.projectName)
+    .toBe(before.records.settings.find(item => item.key === 'global')?.projectName);
+  expect(after.records.settings.find(item => item.key === 'global')?.opacity).toBe(0.38);
+  expect(after.records.playlist.find(item => item.key === 'default')?.items[0]?.id)
+    .toBe('saved-schema-six-playlist-item');
+});
+
+test('preserves future library fields when this version edits and saves a compatible newer database', async ({ page }) => {
+  await seedDatabase(page, 'id', true, true);
+  await suppressFirstRunPrompts(page);
+  const before = await readDatabaseRecords(page);
+  expect(before.version).toBe(6);
+  await page.goto('/index.html');
+  await page.waitForFunction(() => window.Blend?.state?.library?.has('saved-in-schema-six'));
+
+  await changeBlendOpacityAndSave(page);
+
+  const after = await readDatabaseRecords(page);
+  expect(after.version).toBe(6);
+  const editedItem = after.records.library.find(item => item.id === 'saved-in-schema-six');
+  expect(editedItem.name).toBe('schema-six-library.jpg');
+  expect(editedItem.futureMetadata).toEqual({
+    schema: 'blend.library.v-next',
+    details: { quality: 'lossless', retention: 7 }
+  });
+  const untouchedBefore = before.records.library.find(item => item.id === 'untouched-schema-six-library');
+  const untouchedAfter = after.records.library.find(item => item.id === 'untouched-schema-six-library');
+  for (const key of ['id', 'name', 'type', 'pathHint', 'sourceUrl', 'size', 'addedAt']) {
+    expect(untouchedAfter[key]).toEqual(untouchedBefore[key]);
+  }
+  expect(after.records.dirHandles).toEqual(before.records.dirHandles);
+  expect(after.records.aliases).toEqual(before.records.aliases);
+  expect(after.records.aliasMeta).toEqual(before.records.aliasMeta);
+  expect(after.records.settings.find(item => item.key === 'global')?.opacity).toBe(0.38);
+  expect(after.records.settings.find(item => item.key === 'global')?.autoVerifyOnStartup).toBe(false);
+  expect(after.records.playlist.find(item => item.key === 'default')?.items[0]?.id)
+    .toBe('saved-schema-six-playlist-item');
+  expect(after.records.settings.find(item => item.key === 'global')?.projectName)
+    .toBe(before.records.settings.find(item => item.key === 'global')?.projectName);
+});
+
 test('opens a compatible higher schema without database enumeration support', async ({ page }) => {
   await seedDatabase(page, 'id', true);
   await suppressFirstRunPrompts(page);
@@ -216,7 +356,15 @@ test('rejects an incompatible higher schema without changing its saved records',
   }));
 
   expect(savedDatabase.version).toBe(6);
-  expect(savedDatabase.records).toHaveLength(1);
-  expect(savedDatabase.records[0].id).toBe('saved-in-schema-six');
+  expect(savedDatabase.records).toEqual([{
+    id: 'saved-in-schema-six',
+    name: 'schema-six-library.jpg',
+    type: 'image',
+    pathHint: 'samples/schema-six-library.jpg',
+    sourceUrl: 'https://media.example.test/schema-six-library.jpg',
+    size: 128,
+    addedAt: 1700000000002,
+    url: 'https://media.example.test/schema-six-library.jpg'
+  }]);
   expect(pageErrors).toEqual([]);
 });

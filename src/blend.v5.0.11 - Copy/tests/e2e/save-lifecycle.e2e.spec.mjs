@@ -46,6 +46,26 @@ async function reversePlaylist(page, blendPage) {
     .toEqual([...BASE_ORDER].reverse());
 }
 
+async function reversePlaylistAndWaitFromClick(page, blendPage, delayMs) {
+  await blendPage.openConfig();
+  await page.locator('button[data-tab="playlist"]').click();
+  await page.evaluate(waitMs => {
+    window.__issue05ReloadDelay = new Promise(resolve => {
+      const onClick = event => {
+        if (!event.target?.closest?.('#list-reverse')) return;
+        document.removeEventListener('click', onClick, true);
+        window.setTimeout(resolve, waitMs);
+      };
+      document.addEventListener('click', onClick, true);
+    });
+  }, delayMs);
+  await page.locator('#list-reverse').click();
+  await expect(page.locator('#save-status')).toHaveText('Unsaved changes');
+  await expect.poll(() => page.evaluate(() => window.Blend.state.playlist.map(item => item.id)))
+    .toEqual([...BASE_ORDER].reverse());
+  await page.evaluate(() => window.__issue05ReloadDelay);
+}
+
 async function readPersistedPlaylist(page, experienceId) {
   return page.evaluate(id => new Promise((resolve, reject) => {
     const request = indexedDB.open('player-blend-v1', 5);
@@ -109,8 +129,10 @@ async function installOneShotWriteFailure(page) {
   await page.evaluate(() => {
     window.__issue07FailureSentinel = 'private-path-and-token-sentinel';
     window.__issue07FailNextSnapshot = true;
+    window.__issue05SnapshotPersistCalls = 0;
     window.__BLEND_TEST_HOOKS__ ||= {};
     window.__BLEND_TEST_HOOKS__.beforeSnapshotPersist = () => {
+      window.__issue05SnapshotPersistCalls += 1;
       if (!window.__issue07FailNextSnapshot) return;
       window.__issue07FailNextSnapshot = false;
       throw new DOMException(window.__issue07FailureSentinel, 'QuotaExceededError');
@@ -123,6 +145,17 @@ async function closeAndReopen(context, oldPage) {
   const reopened = await context.newPage();
   await new BlendAppPage(reopened).boot('/index.html');
   return reopened;
+}
+
+async function reloadAndCompareSnapshot(page, sourceId, expectedPlaylist = null) {
+  await page.reload();
+  await page.waitForFunction(() => !!window.Blend?.state?.activeExperienceId);
+  await expect(page.locator('#save-status')).toHaveText('All changes saved', { timeout: 10_000 });
+  const reopenedPlaylist = await page.evaluate(() => window.Blend.state.playlist.map(item => item.id));
+  const persistedPlaylist = await readPersistedPlaylist(page, sourceId);
+  expect(reopenedPlaylist).toEqual(persistedPlaylist);
+  if (expectedPlaylist) expect(reopenedPlaylist).toEqual(expectedPlaylist);
+  return reopenedPlaylist;
 }
 
 test('closing inside the debounce window attempts a best-effort flush and keeps the prior snapshot intact', async ({ page }) => {
@@ -152,6 +185,22 @@ test('closing after the 850 ms debounce reopens with the committed edit', async 
   await reopened.close();
 });
 
+for (const delayMs of [100, 800, 1000]) {
+  test(`reload around ${delayMs} ms compares a fresh page with the complete persisted snapshot`, async ({ page }) => {
+    const blendPage = new BlendAppPage(page);
+    const { sourceId } = await prepareSourceAndTarget(page, blendPage);
+    await reversePlaylistAndWaitFromClick(page, blendPage, delayMs);
+
+    if (delayMs > 850) {
+      await expect(page.locator('#save-status')).toHaveText('All changes saved', { timeout: 10_000 });
+      await reloadAndCompareSnapshot(page, sourceId, [...BASE_ORDER].reverse());
+    } else {
+      const playlist = await reloadAndCompareSnapshot(page, sourceId);
+      expect([BASE_ORDER, [...BASE_ORDER].reverse()]).toContainEqual(playlist);
+    }
+  });
+}
+
 test('experience switching waits for the latest in-window revision before leaving', async ({ page }) => {
   const blendPage = new BlendAppPage(page);
   const { sourceId, targetId } = await prepareSourceAndTarget(page, blendPage);
@@ -175,6 +224,20 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
   const blendPage = new BlendAppPage(page);
   const { sourceId } = await prepareSourceAndTarget(page, blendPage);
   await reversePlaylist(page, blendPage);
+  const retainedUiState = await page.evaluate(() => {
+    const state = window.Blend.state;
+    state.ui.listSelection = new Set(['issue07-b', 'issue07-c']);
+    state.ui.listSelectionAnchorId = 'issue07-b';
+    state.runtime.playlistIndex = 1;
+    window.Blend.renderListEditor();
+    return {
+      selection: Array.from(state.ui.listSelection).sort(),
+      selectionAnchorId: state.ui.listSelectionAnchorId,
+      playlistIndex: state.runtime.playlistIndex,
+      isPlaying: state.runtime.isPlaying,
+      transport: window.Blend.transport
+    };
+  });
   await installOneShotWriteFailure(page);
 
   const saved = await page.evaluate(() => window.Blend.saveStateNow());
@@ -185,6 +248,16 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
   await expect(status).toHaveAttribute('aria-live', 'polite');
   expect(await page.evaluate(() => window.Blend.state.playlist.map(item => item.id)))
     .toEqual([...BASE_ORDER].reverse());
+  expect(await page.evaluate(() => {
+    const state = window.Blend.state;
+    return {
+      selection: Array.from(state.ui.listSelection).sort(),
+      selectionAnchorId: state.ui.listSelectionAnchorId,
+      playlistIndex: state.runtime.playlistIndex,
+      isPlaying: state.runtime.isPlaying,
+      transport: window.Blend.transport
+    };
+  })).toEqual(retainedUiState);
   expect(await readPersistedPlaylist(page, sourceId)).toEqual(BASE_ORDER);
 
   const alert = page.getByRole('alert').filter({ hasText: FAILURE_COPY });
@@ -226,4 +299,29 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
   await expect(status).toHaveText('All changes saved');
   await expect(alert).not.toBeVisible();
   expect(await readPersistedPlaylist(page, sourceId)).toEqual([...BASE_ORDER].reverse());
+});
+
+test('a rejected pagehide flush does not throw, announce success, or start overlapping writes', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  const { sourceId } = await prepareSourceAndTarget(page, blendPage);
+  await reversePlaylist(page, blendPage);
+  await installOneShotWriteFailure(page);
+
+  const dispatched = await page.evaluate(() => {
+    window.__issue05UnhandledRejection = false;
+    window.addEventListener('unhandledrejection', () => { window.__issue05UnhandledRejection = true; });
+    return window.dispatchEvent(new Event('pagehide'));
+  });
+  expect(dispatched).toBe(true);
+  const status = page.locator('#save-status');
+  await expect(status).toHaveText(FAILURE_COPY);
+  await expect(status).toHaveAttribute('role', 'status');
+  expect(await page.evaluate(() => window.__issue05UnhandledRejection)).toBe(false);
+  expect(await page.evaluate(() => window.__issue05SnapshotPersistCalls)).toBe(1);
+  expect(await page.evaluate(() => window.Blend.state.playlist.map(item => item.id)))
+    .toEqual([...BASE_ORDER].reverse());
+  expect(await readPersistedPlaylist(page, sourceId)).toEqual(BASE_ORDER);
+  const alert = page.getByRole('alert').filter({ hasText: FAILURE_COPY });
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(alert.getByRole('button', { name: 'Export Backup' })).toBeVisible();
 });

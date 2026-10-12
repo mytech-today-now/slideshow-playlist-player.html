@@ -163,6 +163,112 @@ test('GitHub connect, read, explicit import, and confirmed publish stay separate
   expect(pageErrors).toEqual([]);
 });
 
+test('accepted GitHub write with a lost response retains the review and waits for a remote comparison', async ({ page }) => {
+  const calls = [];
+  let remoteText = JSON.stringify(playlistDocument);
+  let remoteSha = FILE_SHA;
+  let branchHead = HEAD_SHA;
+  let putCount = 0;
+  let downloadCount = 0;
+  page.on('download', () => { downloadCount += 1; });
+  await page.route('https://api.github.com/**', async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const method = request.method();
+    calls.push({ method, path: url.pathname });
+    if (method === 'OPTIONS') return fulfillPreflight(route);
+    if (url.pathname === '/repos/blend-team/playlists' && method === 'GET') {
+      return fulfillJson(route, { private: true, full_name: 'blend-team/playlists' });
+    }
+    if (url.pathname === '/repos/blend-team/playlists/git/ref/heads/main' && method === 'GET') {
+      return fulfillJson(route, { ref: 'refs/heads/main', object: { sha: branchHead, type: 'commit' } });
+    }
+    if (url.pathname === '/repos/blend-team/playlists/contents/playlists/ambient.json') {
+      if (method === 'PUT') {
+        putCount += 1;
+        const body = request.postDataJSON();
+        remoteText = Buffer.from(body.content, 'base64').toString('utf8');
+        remoteSha = COMMIT_SHA;
+        branchHead = COMMIT_SHA;
+        return route.abort('failed');
+      }
+      return fulfillJson(route, githubContents(remoteText, remoteSha));
+    }
+    return fulfillJson(route, { message: 'not found' }, 404);
+  });
+
+  const app = new BlendAppPage(page);
+  await app.boot();
+  await app.importList('playlist', {
+    name: 'local-playlist.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      schema: 'player.blend.list.v1',
+      type: 'playlist',
+      name: 'Reviewed local copy',
+      items: [{
+        id: 'local-track',
+        path: 'https://media.example.org/local.mp3',
+        sourceUrl: 'https://media.example.org/local.mp3',
+        pathKind: 'remote',
+        name: 'Local track',
+        type: 'audio',
+        order: 0
+      }]
+    }))
+  });
+  await app.openConfig();
+  await page.locator('#git-playlist-provider').selectOption('github');
+  await page.locator('#git-playlist-owner').fill('blend-team');
+  await page.locator('#git-playlist-repository').fill('playlists');
+  await page.locator('#git-playlist-branch').fill('main');
+  await page.locator('#git-playlist-path').fill('playlists/ambient.json');
+  await page.locator('#git-playlist-token').fill(TOKEN);
+  await page.locator('#git-playlist-connect').click();
+  await page.locator('#git-playlist-review').click();
+  await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
+  const reviewedJson = await page.locator('#git-playlist-publish-data').textContent();
+  await expect(page.locator('#git-playlist-publish-revision')).toContainText(`Observed GitHub branch revision: ${HEAD_SHA}`);
+
+  const localState = await page.evaluate(() => window.Blend.state.playlist.map(({ id, sourceUrl, name }) => ({ id, sourceUrl, name })));
+  await page.locator('#git-playlist-confirm-publish').check();
+  await page.locator('#git-playlist-publish').click();
+  await expect(page.locator('#git-playlist-connection')).toContainText('may have accepted this playlist');
+  expect(putCount).toBe(1);
+  expect(downloadCount).toBe(0);
+  await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
+  await expect(page.locator('#git-playlist-publish-data')).toHaveText(reviewedJson);
+  await expect(page.locator('#git-playlist-publish-revision')).toContainText(`reviewed file SHA: ${FILE_SHA}`);
+  await expect(page.locator('#git-playlist-confirm-publish')).toBeDisabled();
+  await expect(page.locator('#git-playlist-publish')).toBeDisabled();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#git-playlist-download-review').click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  expect(Buffer.concat(chunks).toString('utf8')).toBe(reviewedJson);
+  expect(Buffer.concat(chunks).toString('utf8')).not.toContain(TOKEN);
+  expect(downloadCount).toBe(1);
+
+  await page.locator('#git-playlist-read').click();
+  await expect(page.locator('#git-playlist-connection')).toContainText('newest remote playlist exactly matches the reviewed JSON');
+  await expect(page.locator('#git-playlist-read-data')).toHaveText(reviewedJson);
+  await expect(page.locator('#git-playlist-read-revision')).toContainText(`Observed GitHub branch revision: ${COMMIT_SHA}`);
+  await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
+  await expect(page.locator('#git-playlist-publish-data')).toHaveText(reviewedJson);
+  await expect(page.locator('#git-playlist-publish')).toBeDisabled();
+  expect(putCount).toBe(1, 'a lost response must not trigger an automatic retry');
+  expect(await page.evaluate(() => window.Blend.state.playlist.map(({ id, sourceUrl, name }) => ({ id, sourceUrl, name })))).toEqual(localState);
+  expect(calls.filter(call => call.method === 'PUT')).toHaveLength(1);
+
+  await page.locator('#git-playlist-review').click();
+  await expect(page.locator('#git-playlist-connection')).toContainText('already matches this exact review');
+  await expect(page.locator('#git-playlist-confirm-publish')).toBeDisabled();
+  expect(putCount).toBe(1, 'a fresh review of content already present remotely must not create a duplicate commit');
+});
+
 test('remembered credentials stay scoped to their provider and do not trigger startup requests', async ({ page }) => {
   const calls = [];
   await page.addInitScript(() => localStorage.setItem('blend-git-playlist-credential-v1', JSON.stringify({
@@ -198,6 +304,7 @@ test('remembered credentials stay scoped to their provider and do not trigger st
 
 test('remote read denial and stale publish review preserve the local playlist and playback indices', async ({ page }) => {
   const calls = [];
+  let downloads = 0;
   let fileMode = 'denied';
   let fileGets = 0;
   let writes = 0;
@@ -227,6 +334,7 @@ test('remote read denial and stale publish review preserve the local playlist an
 
   const app = new BlendAppPage(page);
   await app.boot();
+  page.on('download', () => { downloads += 1; });
   await app.importList('playlist', {
     name: 'local-playlist.json',
     mimeType: 'application/json',
@@ -270,17 +378,35 @@ test('remote read denial and stale publish review preserve the local playlist an
   await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
   await page.locator('#git-playlist-confirm-publish').check();
   await page.locator('#git-playlist-publish').click();
-  await expect(page.locator('#git-playlist-connection')).toContainText('remote branch or playlist changed');
+  await expect(page.locator('#git-playlist-connection')).toHaveText('The remote playlist changed while you were publishing. Your local copy is unchanged. Review the newest remote version and choose which version to publish.');
+  await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
+  await expect(page.locator('#git-playlist-publish-revision')).toContainText(`reviewed file SHA: ${FILE_SHA}`);
+  await expect(page.locator('#git-playlist-publish-data')).toContainText('local.mp3');
+  await expect(page.locator('#git-playlist-confirm-publish')).toBeDisabled();
+  expect(downloads).toBe(0, 'a conflict must not download the outgoing copy without user action');
+  const reviewedJson = await page.locator('#git-playlist-publish-data').textContent();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#git-playlist-download-review').click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  expect(Buffer.concat(chunks).toString('utf8')).toBe(reviewedJson);
+  expect(Buffer.concat(chunks).toString('utf8')).not.toContain(TOKEN);
+  expect(downloads).toBe(1);
+  await page.locator('#git-playlist-read').click();
+  await expect(page.locator('#git-playlist-read-result')).toBeVisible();
+  await expect(page.locator('#git-playlist-read-revision')).toContainText(`current file SHA: ${COMMIT_SHA}`);
+  await expect(page.locator('#git-playlist-publish-review')).toBeVisible();
+  await expect(page.locator('#git-playlist-publish-data')).toHaveText(reviewedJson);
   expect(await snapshotLocalState()).toEqual(before);
   expect(writes).toBe(0);
   expect(calls.filter(call => call.method === 'PUT')).toHaveLength(0);
 });
 
-test('Bitbucket read and publish show repository visibility and the documented branch race limit', async ({ page }) => {
+test('Bitbucket read and review remain available while unsafe branch writes are disabled', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const calls = [];
-  let postBody = '';
-  let postContentType = '';
   await page.route('https://api.bitbucket.org/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -302,8 +428,6 @@ test('Bitbucket read and publish show repository visibility and the documented b
       return route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', headers: corsHeaders, body: JSON.stringify(playlistDocument) });
     }
     if (url.pathname === '/2.0/repositories/blend-workspace/playlists/src' && method === 'POST') {
-      postBody = request.postData() || '';
-      postContentType = request.headers()['content-type'] || '';
       return route.fulfill({ status: 201, headers: corsHeaders, body: '' });
     }
     return fulfillJson(route, { error: { message: 'not found' } }, 404);
@@ -334,15 +458,21 @@ test('Bitbucket read and publish show repository visibility and the documented b
   expect(await page.locator('#git-playlist-publish-data').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
   await expect(page.locator('#git-playlist-public-warning')).toBeHidden();
   await expect(page.locator('#git-playlist-bitbucket-race')).toBeVisible();
+  await expect(page.locator('#git-playlist-bitbucket-race')).toContainText('Blend does not send a branch write');
+  await expect(page.locator('#git-playlist-publish-revision')).toContainText(`Observed Bitbucket branch revision: ${HEAD_SHA}`);
+  await expect(page.locator('#git-playlist-confirm-publish')).toBeDisabled();
+  await expect(page.locator('#git-playlist-publish')).toBeDisabled();
   expect(calls.filter(call => call.method === 'POST')).toHaveLength(0);
   for (const call of calls) expect(call.authorization).toBe(`Bearer ${TOKEN}`);
   await captureReviewScreenshot(page, 'git-playlist-bitbucket-review.png');
 
-  await page.locator('#git-playlist-confirm-publish').check();
-  await page.locator('#git-playlist-publish').click();
-  await expect(page.locator('#git-playlist-connection')).toContainText('provider confirmed the playlist commit was created');
-  expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
-  expect(postContentType).toMatch(/^multipart\/form-data; boundary=/);
-  expect(postBody).toContain('name="/playlists/ambient.json"');
-  expect(postBody).toContain(`name="parents"\r\n\r\n${HEAD_SHA}`);
+  const reviewedJson = await page.locator('#git-playlist-publish-data').textContent();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#git-playlist-download-review').click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  expect(Buffer.concat(chunks).toString('utf8')).toBe(reviewedJson);
+  expect(calls.filter(call => call.method === 'POST')).toHaveLength(0);
 });

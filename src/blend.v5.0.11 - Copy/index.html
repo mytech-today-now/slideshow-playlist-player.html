@@ -423,7 +423,7 @@
         </section>
         <section class="setting setting--wide git-catalog-setting git-playlist-setting" aria-labelledby="git-playlist-title">
           <h2 id="git-playlist-title">Connect and publish your playlist</h2>
-          <p class="setting__hint">Connect directly from this browser to your GitHub or Bitbucket Cloud repository. Reading and publishing are separate actions. Blend never publishes during startup, playback, or local playlist edits.</p>
+          <p class="setting__hint">Connect directly from this browser to your GitHub or Bitbucket Cloud repository. Reads and writes are separate actions. GitHub writes require an explicit reviewed confirmation; Bitbucket branch writes are paused until the API documents an atomic revision condition.</p>
           <div class="git-catalog__fields">
             <div class="setting">
               <label for="git-playlist-provider">Provider</label>
@@ -454,7 +454,7 @@
           <div class="setting setting--wide">
             <label for="git-playlist-token">Provider token</label>
             <input id="git-playlist-token" type="password" maxlength="2048" autocomplete="new-password" spellcheck="false" aria-describedby="git-playlist-token-help git-playlist-storage-help">
-            <p id="git-playlist-token-help" class="setting__hint">GitHub: use a fine-grained personal access token restricted to this repository, with Contents read for reading and Contents write for publishing. Bitbucket Cloud: use a repository access token scoped to this repository. Select Repository Read for reading and Repository Write for publishing. Bitbucket repository tokens are tied to this repository, and commits may appear under the token identity.</p>
+            <p id="git-playlist-token-help" class="setting__hint">GitHub: use a fine-grained personal access token restricted to this repository, with Contents read for reading and Contents write for publishing. Bitbucket Cloud: use a repository access token scoped to this repository with Repository Read. Blend currently reads and reviews Bitbucket playlists but pauses branch writes because the documented API does not guarantee atomic compare-and-set.</p>
             <label class="setting setting--toggle" for="git-playlist-remember">
               <input id="git-playlist-remember" type="checkbox" aria-describedby="git-playlist-storage-help analytics-consent-status">
               <span>Remember on this device</span>
@@ -475,6 +475,7 @@
           <div id="git-playlist-read-result" class="git-playlist__review" role="region" aria-labelledby="git-playlist-read-title" hidden>
             <h3 id="git-playlist-read-title" tabindex="-1">Remote playlist read</h3>
             <p id="git-playlist-read-summary" class="setting__hint"></p>
+            <p id="git-playlist-read-revision" class="setting__hint" role="note"></p>
             <pre id="git-playlist-read-data" class="git-playlist__data" tabindex="0"></pre>
             <button id="git-playlist-import-read" type="button" class="list-action" hidden>Import read playlist into Blend</button>
           </div>
@@ -482,15 +483,17 @@
             <h3 id="git-playlist-publish-title" tabindex="-1">Review before publishing</h3>
             <p id="git-playlist-destination" class="setting__hint"></p>
             <p id="git-playlist-public-warning" class="setting__status" data-state="error" role="note" hidden></p>
-            <p class="setting__hint">This review shows the exact playlist JSON sent by the publish action. Only the fields shown here are serialized. Media URLs are public HTTPS references checked by format; Blend cannot prove that a media host is private, safe, or free of tracking.</p>
+            <p class="setting__hint">This review shows the exact allowlisted playlist JSON for this repository. No credentials or other app state are included. Media URLs are public HTTPS references checked by format; Blend cannot prove that a media host is private, safe, or free of tracking.</p>
+            <p id="git-playlist-publish-revision" class="setting__hint" role="note"></p>
             <pre id="git-playlist-publish-data" class="git-playlist__data" tabindex="0"></pre>
             <label class="setting setting--toggle" for="git-playlist-confirm-publish">
               <input id="git-playlist-confirm-publish" type="checkbox">
-              <span>I reviewed this playlist and want to publish it to the destination shown above.</span>
+              <span id="git-playlist-confirm-publish-label">I reviewed this playlist and want to publish it to the destination shown above.</span>
             </label>
-            <p id="git-playlist-bitbucket-race" class="setting__status" data-state="error" role="note" hidden>Bitbucket checks the selected branch and parent revision before publishing, but its documented API does not guarantee atomic compare-and-set protection. A concurrent remote change may race with this check.</p>
+            <p id="git-playlist-bitbucket-race" class="setting__status" data-state="error" role="note" hidden>Bitbucket reads and reviews remain available. Blend does not send a branch write because the documented Source API does not promise atomic compare-and-set protection. Read the newest remote playlist and compare it with this retained copy. You can download the exact reviewed JSON below.</p>
             <div class="git-catalog__actions">
               <button id="git-playlist-publish" type="button" class="list-action primary" disabled>Publish reviewed playlist</button>
+              <button id="git-playlist-download-review" type="button" class="list-action">Download reviewed JSON copy</button>
               <button id="git-playlist-cancel-review" type="button" class="list-action">Cancel review</button>
             </div>
           </div>

@@ -435,6 +435,8 @@ let gitPlaylistSettings = null;
 let gitPlaylistConnection = null;
 let gitPlaylistReadResult = null;
 let gitPlaylistPublishReview = null;
+let gitPlaylistNeedsRemoteReconciliation = false;
+let gitPlaylistReviewStale = false;
 let gitPlaylistBusy = false;
 let slideshowMedia = null; // current img or video in top layer
 let kenBurnsRAF = null;
@@ -10350,10 +10352,11 @@ function gitPlaylistErrorMessage(error) {
     invalid_playlist: 'The local Playlist is empty or exceeds the supported item limit.',
     unsafe_playlist_content: 'The local Playlist contains local paths, private or signed URLs, credentials, or unsupported media. Nothing was sent.',
     not_connected: 'Connect and verify repository access before reading or publishing.',
-    remote_conflict: 'The remote branch or playlist changed after review. Nothing was written. Read the remote playlist and prepare a new review.',
+    remote_conflict: 'The remote playlist changed while you were publishing. Your local copy is unchanged. Review the newest remote version and choose which version to publish.',
+    conditional_write_unavailable: 'Bitbucket publishing is paused because its documented upload API does not guarantee an atomic branch update. Nothing was written. Your reviewed local copy is unchanged; read the newest remote version and compare it with this review.',
+    remote_reconciliation_required: 'The previous publish outcome is unresolved. Read the newest remote playlist and compare it with the retained review before trying again.',
     provider_rejected_write: 'The provider rejected the publish request. No automatic retry was made.',
-    write_outcome_uncertain: 'The provider may have accepted this commit, but its response did not establish the result. Do not retry yet. Read the remote playlist to inspect the repository.',
-    form_data_unavailable: 'This browser cannot create the request format required by Bitbucket Cloud.',
+    write_outcome_uncertain: 'The provider may have accepted this playlist, but its response did not establish the result. No retry was made. Read the newest remote playlist and compare it with the retained review before trying again.',
     invalid_publish_review: 'The publish review is no longer valid. Prepare a new review.'
   };
   return messages[error instanceof GitPlaylistError ? error.code : '']
@@ -10383,6 +10386,7 @@ function clearGitPlaylistReadResult() {
   gitPlaylistReadResult = null;
   const result = $('#git-playlist-read-result');
   if (result) result.hidden = true;
+  $('#git-playlist-read-revision')?.replaceChildren();
   $('#git-playlist-read-data')?.replaceChildren();
   const importButton = $('#git-playlist-import-read');
   if (importButton) importButton.hidden = true;
@@ -10392,8 +10396,11 @@ function clearGitPlaylistReadResult() {
 
 function clearGitPlaylistPublishReview() {
   gitPlaylistPublishReview = null;
+  gitPlaylistNeedsRemoteReconciliation = false;
+  gitPlaylistReviewStale = false;
   const review = $('#git-playlist-publish-review');
   if (review) review.hidden = true;
+  $('#git-playlist-publish-revision')?.replaceChildren();
   $('#git-playlist-publish-data')?.replaceChildren();
   const confirmation = $('#git-playlist-confirm-publish');
   if (confirmation) confirmation.checked = false;
@@ -10406,6 +10413,45 @@ function clearGitPlaylistPublishReview() {
   if (bitbucketWarning) bitbucketWarning.hidden = true;
   const publishButton = $('#git-playlist-publish');
   if (publishButton) publishButton.disabled = true;
+  const confirmPublish = $('#git-playlist-confirm-publish');
+  if (confirmPublish) confirmPublish.disabled = true;
+}
+
+function sameGitPlaylistSnapshot(provider, before, current) {
+  if (!before || !current || before.exists !== current.exists) return false;
+  if (provider === 'github') return before.head === current.head && (!before.exists || before.sha === current.sha);
+  return before.head === current.head && (!before.exists || before.text === current.text);
+}
+
+function describeGitPlaylistRevision(review) {
+  const snapshot = review.snapshot;
+  if (review.settings.provider === 'github') {
+    return snapshot.exists
+      ? `Observed GitHub branch revision: ${snapshot.head}; reviewed file SHA: ${snapshot.sha}`
+      : `Observed GitHub branch revision: ${snapshot.head}; playlist file did not exist.`;
+  }
+  return `Observed Bitbucket branch revision: ${snapshot.head}`;
+}
+
+function describeCurrentGitPlaylistRevision(provider, snapshot) {
+  if (provider === 'github') return `Observed GitHub branch revision: ${snapshot.head}; current file SHA: ${snapshot.sha}`;
+  return `Observed Bitbucket branch revision: ${snapshot.head}`;
+}
+
+function reconcileGitPlaylistReview(review, remoteSnapshot) {
+  const provider = review.settings.provider;
+  const sameBaseline = sameGitPlaylistSnapshot(provider, review.snapshot, remoteSnapshot);
+  const sameOutgoing = !!remoteSnapshot?.exists && remoteSnapshot.text === review.text;
+  gitPlaylistNeedsRemoteReconciliation = false;
+  gitPlaylistReviewStale = !sameBaseline || sameOutgoing;
+  if (sameOutgoing) {
+    return 'The newest remote playlist exactly matches the reviewed JSON. The earlier request remains unconfirmed, but no further publish is needed for this copy.';
+  }
+  if (sameBaseline) {
+    gitPlaylistReviewStale = false;
+    return 'The newest remote branch and playlist still match the version reviewed before the uncertain request. Its outcome remains unconfirmed; review and confirm again only if you want to retry.';
+  }
+  return 'The newest remote branch or playlist differs from the reviewed version. Compare the remote JSON with the retained local copy, then prepare a new review if you choose to continue.';
 }
 
 function updateGitPlaylistControls() {
@@ -10418,12 +10464,18 @@ function updateGitPlaylistControls() {
   const read = $('#git-playlist-read');
   const review = $('#git-playlist-review');
   const publish = $('#git-playlist-publish');
+  const confirmPublish = $('#git-playlist-confirm-publish');
+  const reviewProvider = gitPlaylistPublishReview?.settings?.provider;
+  const activeSettings = client.getConnection()?.settings;
+  const reviewConnectionMismatch = !activeSettings || JSON.stringify(activeSettings) !== JSON.stringify(gitPlaylistPublishReview?.settings);
+  const publishBlocked = !gitPlaylistPublishReview || reviewConnectionMismatch || gitPlaylistNeedsRemoteReconciliation || gitPlaylistReviewStale || reviewProvider === 'bitbucket';
   if (connect) connect.disabled = gitPlaylistBusy;
   if (disconnect) disconnect.disabled = gitPlaylistBusy || !connected;
   if (forget) forget.disabled = gitPlaylistBusy || (!connected && !remembered);
   if (read) read.disabled = gitPlaylistBusy || !connected;
   if (review) review.disabled = gitPlaylistBusy || !connected;
-  if (publish) publish.disabled = gitPlaylistBusy || !gitPlaylistPublishReview || !$('#git-playlist-confirm-publish')?.checked;
+  if (confirmPublish) confirmPublish.disabled = gitPlaylistBusy || publishBlocked;
+  if (publish) publish.disabled = gitPlaylistBusy || publishBlocked || !confirmPublish?.checked;
   const reset = $('#clear-browser-storage');
   if (reset) reset.disabled = gitPlaylistBusy || publicCatalogBusy;
 }
@@ -10442,7 +10494,10 @@ function describeGitPlaylistConnection(settings, result, remembered) {
   const persistence = remembered
     ? ' The credential is remembered in browser storage on this device.'
     : ' The credential is session-only and will be cleared on disconnect or reload.';
-  return `Connected to ${provider} ${destination}, branch ${settings.branch}. Repository and read access are confirmed. Publish permission is unverified and cannot be safely probed without a write. ${visibility}${persistence}`;
+  const publishing = settings.provider === 'bitbucket'
+    ? ' Bitbucket playlist publishing is paused because the documented upload API does not guarantee an atomic branch update.'
+    : ' Publish permission is unverified and cannot be safely probed without a write.';
+  return `Connected to ${provider} ${destination}, branch ${settings.branch}. Repository and read access are confirmed.${publishing} ${visibility}${persistence}`;
 }
 
 async function connectGitPlaylistWithBoundary(settings, token, remember) {
@@ -10525,7 +10580,6 @@ async function connectGitPlaylist() {
   if (tokenInput) tokenInput.value = '';
   setGitPlaylistBusy(true);
   clearGitPlaylistReadResult();
-  clearGitPlaylistPublishReview();
   setGitPlaylistStatus('Checking repository and branch access with read-only provider requests…', 'loading');
   try {
     const settings = gitPlaylistSettingsFromForm();
@@ -10561,7 +10615,6 @@ function disconnectGitPlaylist() {
   getGitPlaylistClient().disconnect();
   gitPlaylistConnection = null;
   clearGitPlaylistReadResult();
-  clearGitPlaylistPublishReview();
   const saved = getGitPlaylistClient().hasRememberedCredential();
   setGitPlaylistStatus(saved
     ? 'Disconnected. The active credential was cleared. A previously remembered browser copy remains until you choose Forget credential.'
@@ -10575,7 +10628,6 @@ function forgetGitPlaylistCredential() {
   if (remember) remember.checked = false;
   gitPlaylistConnection = null;
   clearGitPlaylistReadResult();
-  clearGitPlaylistPublishReview();
   setGitPlaylistStatus(removed
     ? 'Credential forgotten from this browser. This does not revoke the provider token.'
     : 'The active credential was cleared, but browser storage could not confirm removal of a saved copy. Revoke the provider token if needed.', removed ? 'ready' : 'error');
@@ -10601,7 +10653,6 @@ function gitPlaylistSettingsChanged() {
   gitPlaylistSettings = null;
   gitPlaylistConnection = null;
   clearGitPlaylistReadResult();
-  clearGitPlaylistPublishReview();
   setGitPlaylistStatus('Repository settings changed. Connect again to verify access.', 'idle');
   updateGitPlaylistControls();
 }
@@ -10610,16 +10661,21 @@ async function readGitPlaylist() {
   if (gitPlaylistBusy || !gitPlaylistConnection || !gitPlaylistSettings) return;
   setGitPlaylistBusy(true);
   clearGitPlaylistReadResult();
-  clearGitPlaylistPublishReview();
   setGitPlaylistStatus('Reading and validating the remote playlist…', 'loading');
   try {
     const result = await getGitPlaylistClient().readPlaylist(gitPlaylistSettings);
     gitPlaylistReadResult = result.playlist;
     $('#git-playlist-read-data').textContent = result.text;
+    $('#git-playlist-read-revision').textContent = describeCurrentGitPlaylistRevision(gitPlaylistSettings.provider, result.snapshot);
     $('#git-playlist-read-summary').textContent = `Validated ${result.playlist.items.length} playlist items. This read did not change the local Playlist or remote repository.`;
     $('#git-playlist-read-result').hidden = false;
     $('#git-playlist-import-read').hidden = false;
-    setGitPlaylistStatus('Remote playlist read and validated. Import it into Blend only if you choose the separate import action below.', 'ready');
+    const reconciliation = gitPlaylistNeedsRemoteReconciliation && gitPlaylistPublishReview
+      ? reconcileGitPlaylistReview(gitPlaylistPublishReview, result.snapshot)
+      : '';
+    setGitPlaylistStatus(reconciliation
+      ? `${reconciliation} The newest remote JSON is displayed below for comparison.`
+      : 'Remote playlist read and validated. Import it into Blend only if you choose the separate import action below.', 'ready');
     focusGitPlaylistConfigHeading('#git-playlist-read-title');
   } catch (error) {
     setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
@@ -10658,17 +10714,31 @@ function currentGitPlaylistItems() {
 
 async function reviewLocalGitPlaylist() {
   if (gitPlaylistBusy || !gitPlaylistConnection || !gitPlaylistSettings) return;
+  const retainedReview = gitPlaylistPublishReview;
+  const needsReconciliation = gitPlaylistNeedsRemoteReconciliation;
   setGitPlaylistBusy(true);
-  clearGitPlaylistPublishReview();
   setGitPlaylistStatus('Preparing the playlist review and checking the current remote file…', 'loading');
   try {
     const meta = normalizeListMeta('playlist', state.listMeta.playlist);
     const text = serializeRemotePlaylist(currentGitPlaylistItems(), meta.name);
     const review = await getGitPlaylistClient().preparePublish(gitPlaylistSettings, text);
+    const reconciliation = needsReconciliation && retainedReview
+      ? reconcileGitPlaylistReview(retainedReview, review.snapshot)
+      : '';
+    clearGitPlaylistPublishReview();
     gitPlaylistPublishReview = review;
+    const alreadyCurrent = review.snapshot.exists && review.snapshot.text === review.text;
+    gitPlaylistReviewStale = alreadyCurrent;
     const provider = review.settings.provider === 'github' ? 'GitHub' : 'Bitbucket Cloud';
     const action = review.snapshot.exists ? 'Replace the existing validated playlist file' : 'Create a new playlist file';
-    $('#git-playlist-destination').textContent = `${action}: ${provider} ${review.settings.owner}/${review.settings.repository}, branch ${review.settings.branch}, path ${review.settings.path}. Read access is confirmed. Publish permission remains unverified until the provider accepts a user-confirmed write.`;
+    const publishing = review.settings.provider === 'bitbucket'
+      ? 'Bitbucket publishing is paused because the documented upload API does not guarantee an atomic branch update.'
+      : 'Publish permission remains unverified until the provider accepts a user-confirmed write.';
+    $('#git-playlist-destination').textContent = `${action}: ${provider} ${review.settings.owner}/${review.settings.repository}, branch ${review.settings.branch}, path ${review.settings.path}. Read access is confirmed. ${publishing}`;
+    $('#git-playlist-publish-revision').textContent = describeGitPlaylistRevision(review);
+    $('#git-playlist-confirm-publish-label').textContent = review.settings.provider === 'bitbucket'
+      ? 'Bitbucket writes are paused. Read and compare the remote playlist; Blend will not send a branch write.'
+      : 'I reviewed this playlist and want to publish it to the destination shown above.';
     $('#git-playlist-publish-data').textContent = review.text;
     const warning = $('#git-playlist-public-warning');
     if (warning) {
@@ -10680,7 +10750,11 @@ async function reviewLocalGitPlaylist() {
     $('#git-playlist-bitbucket-race').hidden = review.settings.provider !== 'bitbucket';
     $('#git-playlist-publish-review').hidden = false;
     $('#git-playlist-confirm-publish').checked = false;
-    setGitPlaylistStatus('Review the destination and exact JSON. Publishing requires the separate confirmation control and button.', 'ready');
+    setGitPlaylistStatus(alreadyCurrent
+      ? 'The newest remote playlist already matches this exact review. No write is needed; download the reviewed JSON or cancel this review.'
+      : reconciliation || (review.settings.provider === 'bitbucket'
+        ? 'Review the destination, exact JSON, and observed branch revision. Bitbucket publishing is paused; you can download this reviewed copy or read the newest remote playlist.'
+        : 'Review the destination and exact JSON. Publishing requires the separate confirmation control and button.'), 'ready');
     focusGitPlaylistConfigHeading('#git-playlist-publish-title');
   } catch (error) {
     setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
@@ -10692,18 +10766,50 @@ async function reviewLocalGitPlaylist() {
 async function publishReviewedGitPlaylist() {
   if (gitPlaylistBusy || !gitPlaylistPublishReview || !$('#git-playlist-confirm-publish')?.checked) return;
   const review = gitPlaylistPublishReview;
+  if (review.settings.provider === 'bitbucket' || gitPlaylistNeedsRemoteReconciliation || gitPlaylistReviewStale) return;
   setGitPlaylistBusy(true);
   setGitPlaylistStatus('Checking for remote changes, then publishing the reviewed playlist…', 'loading');
   try {
     const result = await getGitPlaylistClient().publish(review);
-    setGitPlaylistStatus(result.commit
-      ? `Published playlist successfully. Provider commit ${result.commit}.`
-      : 'The provider confirmed the playlist commit was created.', 'ready');
+    if (result.alreadyCurrent) {
+      gitPlaylistReviewStale = true;
+      setGitPlaylistStatus('The current remote playlist already matches this exact review. No new write was sent.', 'ready');
+    } else {
+      setGitPlaylistStatus(result.commit
+        ? `Published playlist successfully. Provider commit ${result.commit}.`
+        : 'The provider confirmed the playlist commit was created.', 'ready');
+      clearGitPlaylistPublishReview();
+    }
   } catch (error) {
+    if (error?.code === 'write_outcome_uncertain') gitPlaylistNeedsRemoteReconciliation = true;
+    if (error?.code === 'remote_conflict') gitPlaylistReviewStale = true;
+    const confirmation = $('#git-playlist-confirm-publish');
+    if (confirmation) confirmation.checked = false;
     setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
   } finally {
-    clearGitPlaylistPublishReview();
     setGitPlaylistBusy(false);
+  }
+}
+
+function downloadReviewedGitPlaylistCopy() {
+  const review = gitPlaylistPublishReview;
+  if (!review) return;
+  try {
+    const name = String(review.settings.path.split('/').at(-1) || 'playlist.json')
+      .replace(/[^A-Za-z0-9._-]/g, '_');
+    const stem = name.toLowerCase().endsWith('.json') ? name.slice(0, -5) : name;
+    const objectUrl = URL.createObjectURL(new Blob([review.text], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `${stem}.reviewed-copy.json`;
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    setGitPlaylistStatus('Downloaded the exact reviewed playlist JSON. No credential or other app state was included.', 'ready');
+  } catch (_) {
+    setGitPlaylistStatus('The reviewed playlist copy could not be downloaded. Its exact JSON remains available in the review above.', 'error');
   }
 }
 
@@ -10727,6 +10833,7 @@ function wireGitPlaylistControls() {
   $('#git-playlist-review').onclick = () => { void reviewLocalGitPlaylist(); };
   $('#git-playlist-import-read').onclick = () => { void importReadGitPlaylist(); };
   $('#git-playlist-publish').onclick = () => { void publishReviewedGitPlaylist(); };
+  $('#git-playlist-download-review').onclick = downloadReviewedGitPlaylistCopy;
   $('#git-playlist-cancel-review').onclick = () => {
     clearGitPlaylistPublishReview();
     setGitPlaylistStatus('Publish review cancelled. No remote write was made.', 'idle');

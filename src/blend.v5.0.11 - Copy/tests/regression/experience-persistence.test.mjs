@@ -8,7 +8,7 @@ import {
   persistExperienceSnapshotAtomically
 } from '../../experience-persistence.js';
 
-function createFakeTransaction(currentRecordsByStore = {}) {
+function createFakeTransaction(currentRecordsByStore = {}, { readErrorStore = null, readError = new Error('synthetic read failure') } = {}) {
   const databaseRecordsByStore = Object.fromEntries(EXPERIENCE_SNAPSHOT_STORE_NAMES.map(name => [
     name,
     (currentRecordsByStore[name] || []).map(record => ({ ...record }))
@@ -24,9 +24,14 @@ function createFakeTransaction(currentRecordsByStore = {}) {
     objectStore(storeName) {
       return {
         getAll() {
-          const request = { result: null, onsuccess: null, onerror: null };
+          const request = { result: null, error: null, onsuccess: null, onerror: null };
           queueMicrotask(() => {
             if (aborted) return;
+            if (storeName === readErrorStore) {
+              request.error = readError;
+              request.onerror?.({ target: request });
+              return;
+            }
             request.result = databaseRecordsByStore[storeName] || [];
             request.onsuccess?.({ target: request });
             readsRemaining -= 1;
@@ -109,6 +114,34 @@ test('merges disjoint library additions and reports an overlapping list edit', (
     'existing', 'local-addition', 'remote-addition'
   ]);
   assert.deepEqual(result.conflicts, [{ storeName: 'playlist', key: 'default' }]);
+});
+
+test('preserves unknown top-level library fields while applying current app fields', () => {
+  const futureField = { version: 6, nested: { owner: 'newer-blend' } };
+  const baseRecordsByStore = emptyRecords();
+  baseRecordsByStore.library = [{ id: 'future-row', name: 'before.png', futureField }];
+  const recordsByStore = emptyRecords();
+  recordsByStore.library = [{ id: 'future-row', name: 'after.png' }];
+  const currentRecordsByStore = emptyRecords();
+  currentRecordsByStore.library = [{ id: 'future-row', name: 'before.png', futureField }];
+
+  const result = mergeExperienceSnapshotRecords({
+    baseRecordsByStore,
+    recordsByStore,
+    currentRecordsByStore,
+    keepLibraryKeys: ['future-row']
+  });
+
+  assert.deepEqual(result.conflicts, []);
+  assert.deepEqual(result.recordsByStore.library, [{
+    id: 'future-row',
+    name: 'after.png',
+    futureField
+  }]);
+  assert.deepEqual(result.changedOperationsByStore.library, [{
+    operation: 'put',
+    record: { id: 'future-row', name: 'after.png', futureField }
+  }]);
 });
 
 test('queues writes only for changed rows and the snapshot revision', async () => {
@@ -352,6 +385,69 @@ test('aborts the transaction on a queued-write failure and keeps the snapshot at
     { storeName: 'library', operation: 'put', record: { id: 'replacement', name: 'replacement.png' } }
   ]);
   assert.deepEqual(fake.databaseRecordsByStore, currentRecordsByStore);
+});
+
+test('aborting after a future-field merge leaves all original snapshot rows and revision unchanged', async () => {
+  const originalRecords = sampleRecords();
+  const futureField = { version: 6, nested: { preserved: true } };
+  originalRecords.library = [{ id: 'future-row', name: 'before.png', futureField }];
+  const fake = createFakeTransaction(originalRecords);
+  const localRecords = emptyRecords();
+  localRecords.library = [{ id: 'future-row', name: 'after.png' }];
+  const injectedFailure = new Error('synthetic failure after future-field merge');
+
+  await assert.rejects(
+    persistExperienceSnapshotAtomically({
+      db: {},
+      recordsByStore: localRecords,
+      baseRecordsByStore: originalRecords,
+      expectedRevision: 0,
+      keepLibraryKeys: ['future-row'],
+      transactionFactory: () => fake.transaction,
+      afterWriteQueued: context => {
+        if (context.storeName === 'library' && context.operation === 'put') {
+          throw injectedFailure;
+        }
+      }
+    }),
+    error => error === injectedFailure
+  );
+
+  assert.equal(fake.wasAborted(), true);
+  assert.deepEqual(fake.operations, [
+    { storeName: 'library', operation: 'put', record: { id: 'future-row', name: 'after.png', futureField } }
+  ]);
+  assert.deepEqual(fake.databaseRecordsByStore, originalRecords);
+  assert.equal(fake.databaseRecordsByStore.settings.some(record => record.key === EXPERIENCE_SNAPSHOT_REVISION_KEY), false);
+});
+
+test('a snapshot read error aborts before writes and preserves unknown library fields and all prior rows', async () => {
+  const originalRecords = sampleRecords();
+  const futureField = { version: 6, nested: { preserved: true } };
+  originalRecords.library = [{ id: 'future-row', name: 'before.png', futureField }];
+  const injectedFailure = new Error('synthetic snapshot read failure');
+  const fake = createFakeTransaction(originalRecords, {
+    readErrorStore: 'library',
+    readError: injectedFailure
+  });
+  const localRecords = emptyRecords();
+  localRecords.library = [{ id: 'future-row', name: 'after.png' }];
+
+  await assert.rejects(
+    persistExperienceSnapshotAtomically({
+      db: {},
+      recordsByStore: localRecords,
+      baseRecordsByStore: originalRecords,
+      keepLibraryKeys: ['future-row'],
+      transactionFactory: () => fake.transaction
+    }),
+    error => error === injectedFailure
+  );
+
+  assert.equal(fake.wasAborted(), true);
+  assert.deepEqual(fake.operations, []);
+  assert.deepEqual(fake.databaseRecordsByStore, originalRecords);
+  assert.equal(fake.databaseRecordsByStore.settings.some(record => record.key === EXPERIENCE_SNAPSHOT_REVISION_KEY), false);
 });
 
 test('faults after writes are queued in every experience store leave the old snapshot intact', async () => {

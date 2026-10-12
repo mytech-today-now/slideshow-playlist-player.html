@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-12
+goal: Keep forward-compatible newer database records intact during old-app
+  writes without changing the schema version or transaction contract.

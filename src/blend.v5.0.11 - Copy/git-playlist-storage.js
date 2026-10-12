@@ -373,20 +373,24 @@ function snapshotMatches(provider, before, current) {
   return before.head === current.head && (!before.exists || before.text === current.text);
 }
 
-function writeFormData(settings, revision, text) {
-  if (typeof FormData !== 'function' || typeof Blob !== 'function') fail('form_data_unavailable');
-  const form = new FormData();
-  const filename = settings.path.split('/').at(-1) || 'playlist.json';
-  form.append(`/${settings.path}`, new Blob([text], { type: 'application/json;charset=utf-8' }), filename);
-  form.append('message', 'Publish Blend playlist');
-  form.append('branch', settings.branch);
-  form.append('parents', revision);
-  return form;
-}
-
 export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis.fetch } = {}) {
   let sessionCredential = null;
   let activeConnection = null;
+  let uncertainSubmission = null;
+
+  function sameSettings(left, right) {
+    return !!left && !!right && JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function reconcileUncertainSubmission(settings, remote) {
+    if (!uncertainSubmission || !sameSettings(uncertainSubmission.review.settings, settings)) return;
+    uncertainSubmission = Object.freeze({
+      ...uncertainSubmission,
+      reconciled: true,
+      matchesReviewedSnapshot: snapshotMatches(settings.provider, uncertainSubmission.review.snapshot, remote),
+      matchesOutgoing: !!remote.exists && remote.text === uncertainSubmission.review.text
+    });
+  }
 
   function rememberedCredential() {
     try {
@@ -524,6 +528,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
       const remote = await currentRemoteState(settings, sessionToken(settings.provider));
       if (!remote.exists) fail('file_not_found');
       const playlist = parseRemotePlaylist(remote.text);
+      reconcileUncertainSubmission(settings, remote);
       return Object.freeze({ playlist, text: JSON.stringify(playlist, null, 2), snapshot: Object.freeze(remote) });
     },
 
@@ -536,6 +541,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
       const canonicalText = JSON.stringify(playlist, null, 2);
       const snapshot = await currentRemoteState(settings, sessionToken(settings.provider));
       if (snapshot.exists) parseRemotePlaylist(snapshot.text);
+      reconcileUncertainSubmission(settings, snapshot);
       return Object.freeze({
         text: canonicalText,
         snapshot: Object.freeze(snapshot),
@@ -547,10 +553,16 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
     async publish(review) {
       if (!review || typeof review.text !== 'string') fail('invalid_publish_review');
       const settings = requireConnection(review.settings);
+      if (uncertainSubmission && sameSettings(uncertainSubmission.review.settings, settings) && !uncertainSubmission.reconciled) {
+        fail('remote_reconciliation_required');
+      }
       const token = sessionToken(settings.provider);
       const remote = await currentRemoteState(settings, token);
       if (!snapshotMatches(settings.provider, review.snapshot, remote)) fail('remote_conflict');
       if (remote.exists) parseRemotePlaylist(remote.text);
+      if (remote.exists && remote.text === review.text) {
+        return Object.freeze({ commit: '', provider: settings.provider, alreadyCurrent: true });
+      }
 
       if (settings.provider === 'github') {
         const url = githubFileUrl(settings);
@@ -560,34 +572,29 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
           branch: settings.branch,
           ...(review.snapshot.exists ? { sha: review.snapshot.sha } : {})
         };
-        const request = await requestApi(fetchImpl, settings.provider, url, token, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          write: true
-        });
-        let result;
-        try { result = parseJson(await request.readText(128_000)); }
-        catch (_) { fail('write_outcome_uncertain'); }
-        if (![200, 201].includes(request.response.status) || !/^[a-f0-9]{40,64}$/i.test(String(result?.commit?.sha || ''))
-            || !/^[a-f0-9]{40,64}$/i.test(String(result?.content?.sha || ''))) fail('write_outcome_uncertain');
-        return Object.freeze({ commit: result.commit.sha.toLowerCase(), provider: 'github' });
+        try {
+          const request = await requestApi(fetchImpl, settings.provider, url, token, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            write: true
+          });
+          let result;
+          try { result = parseJson(await request.readText(128_000)); }
+          catch (_) { fail('write_outcome_uncertain'); }
+          if (![200, 201].includes(request.response.status) || !/^[a-f0-9]{40,64}$/i.test(String(result?.commit?.sha || ''))
+              || !/^[a-f0-9]{40,64}$/i.test(String(result?.content?.sha || ''))) fail('write_outcome_uncertain');
+          if (uncertainSubmission && sameSettings(uncertainSubmission.review.settings, settings)) uncertainSubmission = null;
+          return Object.freeze({ commit: result.commit.sha.toLowerCase(), provider: 'github' });
+        } catch (error) {
+          if (error?.code === 'write_outcome_uncertain') {
+            uncertainSubmission = Object.freeze({ review, reconciled: false });
+          }
+          throw error;
+        }
       }
 
-      const form = writeFormData(settings, review.snapshot.head, review.text);
-      const request = await requestApi(fetchImpl, settings.provider, `${repoBase(settings, 'bitbucket')}/src`, token, {
-        method: 'POST',
-        body: form,
-        write: true
-      });
-      if (request.response.status !== 201) fail('write_outcome_uncertain');
-      request.finish();
-      try { void request.response.body?.cancel?.().catch?.(() => {}); } catch (_) {}
-      return Object.freeze({
-        commit: '',
-        provider: 'bitbucket',
-        confirmed: true
-      });
+      fail('conditional_write_unavailable');
     }
   });
 }

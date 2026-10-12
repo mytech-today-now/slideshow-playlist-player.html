@@ -92,8 +92,12 @@ function mergeStore({
     const localHasRecord = local.has(key);
     const localExists = localHasRecord || (!deleteMissingLocal && baseExists);
     const baseRecord = base.get(key);
-    const localRecord = localHasRecord ? local.get(key) : (localExists ? baseRecord : undefined);
     const currentRecord = current.get(key);
+    const incomingLocalRecord = localHasRecord ? local.get(key) : (localExists ? baseRecord : undefined);
+    // The library serializer only knows this version's fields; retain extra top-level fields from the transaction snapshot.
+    const localRecord = storeName === 'library' && localHasRecord && incomingLocalRecord && typeof incomingLocalRecord === 'object'
+      ? { ...(currentRecord ?? baseRecord ?? {}), ...incomingLocalRecord }
+      : incomingLocalRecord;
     const localChanged = !optionalRecordsEqual(baseExists, baseRecord, localExists, localRecord, equalityOptions);
     const currentChanged = !optionalRecordsEqual(baseExists, baseRecord, currentExists, currentRecord, equalityOptions);
 
