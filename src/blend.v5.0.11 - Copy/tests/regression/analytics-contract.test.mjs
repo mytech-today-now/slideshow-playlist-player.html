@@ -54,10 +54,24 @@ test('analytics requires affirmative consent before a loader can be requested', 
     consent: false,
     allowed: false,
     blockedBySignal: false,
+    blockedByCredential: false,
     shouldLoadScript: false
   });
   assert.equal(getAnalyticsConsentDecision({ consent: false }).shouldLoadScript, false);
   assert.equal(getAnalyticsConsentDecision({ consent: true }).shouldLoadScript, true);
+});
+
+test('remembered or unreadable Git credential state blocks analytics loading', () => {
+  for (const credentialState of ['present', 'unavailable']) {
+    const decision = getAnalyticsConsentDecision({ consent: true, credentialState });
+    assert.equal(decision.allowed, false, credentialState);
+    assert.equal(decision.blockedByCredential, true, credentialState);
+    assert.equal(decision.shouldLoadScript, false, credentialState);
+  }
+
+  const clear = getAnalyticsConsentDecision({ consent: true, credentialState: 'clear' });
+  assert.equal(clear.allowed, true);
+  assert.equal(clear.shouldLoadScript, true);
 });
 
 test('DNT, GPC, and local-file safeguards block saved consent', () => {

@@ -1287,6 +1287,9 @@ button {
 .setting__status[data-state="error"] {
   color: var(--warning, #f59e0b);
 }
+.setting__status[data-state^="blocked"] {
+  color: var(--warning, #f59e0b);
+}
 .git-catalog-setting {
   grid-column: 1 / -1;
   gap: 10px;

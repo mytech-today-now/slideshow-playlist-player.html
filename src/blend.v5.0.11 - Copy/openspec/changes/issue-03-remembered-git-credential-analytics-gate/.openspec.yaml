@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-12
+goal: Enforce a reversible, fail-closed boundary between remembered Git write
+  credentials and consented analytics script execution.

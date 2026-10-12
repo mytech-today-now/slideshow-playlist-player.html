@@ -98,6 +98,8 @@ import {
 import {
   GitPlaylistError,
   createGitPlaylistClient,
+  gitPlaylistCredentialKey,
+  inspectRememberedGitPlaylistCredential,
   loadGitPlaylistSettings,
   normalizeGitPlaylistSettings,
   removeGitPlaylistSettings,
@@ -223,6 +225,7 @@ const DEFAULT_EXPERIENCE_NAME = 'Untitled Session';
 const INSTALL_BANNER_KEY = 'blend-install-banner-hidden-v4';
 const WELCOME_KEY = 'blend-welcome-v4';
 const ANALYTICS_CONSENT_KEY = 'blend-analytics-consent-v1';
+const ANALYTICS_CREDENTIAL_BOUNDARY_LOCK = 'blend-git-credential-analytics-boundary-v1';
 const MASTODON_INSTANCE_KEY = 'blend-share-mastodon-instance-v1';
 const GA_MEASUREMENT_ID = 'G-5NVWHE6T4V';
 const SHARE_DEEP_LINK_PARAM_EXPERIENCE = 'exp';
@@ -498,6 +501,10 @@ let analyticsConfigured = false;
 let analyticsScriptStatus = 'idle';
 let analyticsLoadAttempts = 0;
 let analyticsScriptElement = null;
+let analyticsBoundaryState = 'idle';
+let analyticsBoundaryLockHeld = false;
+let analyticsBoundaryLockPending = false;
+let analyticsBoundaryLockRelease = null;
 let lastTrackedVirtualPageKey = '';
 let lastTrackedVirtualPageAt = 0;
 let pendingIpfsExperienceRequest = null;
@@ -1768,10 +1775,19 @@ function getPrivacyPreferenceSignals() {
   };
 }
 
+function analyticsCredentialState() {
+  try {
+    return inspectRememberedGitPlaylistCredential(window.localStorage);
+  } catch (_) {
+    return 'unavailable';
+  }
+}
+
 function analyticsDecision(signals = getPrivacyPreferenceSignals(), retryRequested = false) {
   return getAnalyticsConsentDecision({
     consent: analyticsConsentGranted,
     ...signals,
+    credentialState: analyticsCredentialState(),
     scriptStatus: analyticsScriptStatus,
     loadAttempts: analyticsLoadAttempts,
     retryRequested
@@ -1785,7 +1801,22 @@ function syncAnalyticsConsentStatus(signals = getPrivacyPreferenceSignals()) {
   let message = 'Analytics does not load until you enable it.';
   let stateName = 'off';
 
-  if (analyticsConsentGranted && decision.blockedBySignal) {
+  if (decision.blockedByCredential && analyticsCredentialState() === 'present') {
+    message = 'Analytics is off while a repository credential is remembered on this device. Forget the credential or continue without analytics. The playlist connection remains available.';
+    stateName = 'blocked-credential';
+  } else if (decision.blockedByCredential && analyticsCredentialState() === 'unavailable' && analyticsConsentGranted) {
+    message = 'Analytics is off because saved repository credential storage could not be checked. The in-memory Git connection remains available.';
+    stateName = 'blocked-storage';
+  } else if (analyticsConsentGranted && analyticsBoundaryState === 'checking') {
+    message = 'Checking whether analytics can load without overlapping a remembered repository credential…';
+    stateName = 'checking';
+  } else if (analyticsConsentGranted && analyticsBoundaryState === 'busy') {
+    message = 'Analytics is off because another Blend tab is using the shared credential boundary. It can retry when this tab is focused.';
+    stateName = 'blocked-boundary';
+  } else if (analyticsConsentGranted && analyticsBoundaryState === 'unavailable') {
+    message = 'Analytics is off because this browser cannot safely coordinate analytics with remembered repository credentials. The Git connection remains available for this session.';
+    stateName = 'blocked-boundary';
+  } else if (analyticsConsentGranted && decision.blockedBySignal) {
     message = 'Analytics is off because a browser privacy setting or local-file mode blocks it.';
     stateName = 'blocked';
   } else if (analyticsConsentGranted && analyticsScriptStatus === 'loading') {
@@ -1807,13 +1838,21 @@ function syncAnalyticsConsentStatus(signals = getPrivacyPreferenceSignals()) {
 
 function syncAnalyticsConsentControl(signals = getPrivacyPreferenceSignals()) {
   const control = $('#analytics-consent');
-  if (!control) return;
-  control.checked = !!analyticsConsentGranted;
-  const blockedBySignal = signals.doNotTrack || signals.globalPrivacyControl || signals.localFileContext;
-  if (blockedBySignal && analyticsConsentGranted) {
-    control.title = 'Analytics is currently blocked by a privacy or local-file safeguard.';
-  } else {
-    control.title = 'Allow usage analytics with event counts, broad media categories, and share outcomes.';
+  if (control) {
+    control.checked = !!analyticsConsentGranted;
+    const credentialState = analyticsCredentialState();
+    const blockedBySignal = signals.doNotTrack || signals.globalPrivacyControl || signals.localFileContext;
+    if (credentialState === 'present') {
+      control.title = 'Analytics remains off while a repository credential is remembered on this device.';
+    } else if (credentialState === 'unavailable') {
+      control.title = 'Analytics is blocked because saved repository credential storage cannot be checked.';
+    } else if (blockedBySignal && analyticsConsentGranted) {
+      control.title = 'Analytics is currently blocked by a privacy or local-file safeguard.';
+    } else if (analyticsBoundaryState === 'unavailable' || analyticsBoundaryState === 'busy') {
+      control.title = 'Analytics is blocked because the shared credential boundary is unavailable.';
+    } else {
+      control.title = 'Allow usage analytics with event counts, broad media categories, and share outcomes.';
+    }
   }
   syncAnalyticsConsentStatus(signals);
 }
@@ -1846,7 +1885,82 @@ function configureAnalyticsAfterLoad() {
   return true;
 }
 
+function requestAnalyticsScriptBoundary() {
+  if (analyticsBoundaryLockHeld) {
+    if (analyticsDecision().shouldLoadScript) loadAnalyticsScript();
+    return;
+  }
+  if (analyticsBoundaryLockPending || !analyticsDecision().shouldLoadScript) return;
+
+  let locks = null;
+  try { locks = navigator.locks; } catch (_) {}
+  if (!locks || typeof locks.request !== 'function') {
+    analyticsBoundaryState = 'unavailable';
+    syncAnalyticsConsentControl();
+    return;
+  }
+
+  analyticsBoundaryState = 'checking';
+  analyticsBoundaryLockPending = true;
+  syncAnalyticsConsentControl();
+
+  let acquired = false;
+  let request;
+  try {
+    request = locks.request(ANALYTICS_CREDENTIAL_BOUNDARY_LOCK, {
+      mode: 'exclusive',
+      ifAvailable: true
+    }, async lock => {
+      analyticsBoundaryLockPending = false;
+      if (!lock) {
+        analyticsBoundaryState = 'busy';
+        syncAnalyticsConsentControl();
+        return;
+      }
+
+      const decision = analyticsDecision();
+      if (!decision.shouldLoadScript) {
+        analyticsBoundaryState = 'idle';
+        syncAnalyticsConsentControl();
+        return;
+      }
+
+      acquired = true;
+      analyticsBoundaryLockHeld = true;
+      analyticsBoundaryState = 'held';
+      const hold = new Promise(resolve => { analyticsBoundaryLockRelease = resolve; });
+      loadAnalyticsScript();
+      syncAnalyticsConsentControl();
+      await hold;
+      analyticsBoundaryLockRelease = null;
+      analyticsBoundaryLockHeld = false;
+      analyticsBoundaryState = 'idle';
+    });
+  } catch (_) {
+    analyticsBoundaryLockPending = false;
+    analyticsBoundaryState = 'unavailable';
+    syncAnalyticsConsentControl();
+    return;
+  }
+
+  void Promise.resolve(request).catch(() => {
+    analyticsBoundaryLockPending = false;
+    if (!analyticsBoundaryLockHeld) analyticsBoundaryState = 'unavailable';
+  }).finally(() => {
+    if (!acquired) {
+      analyticsBoundaryLockPending = false;
+      syncAnalyticsConsentControl();
+    }
+  });
+}
+
 function loadAnalyticsScript() {
+  if (!analyticsBoundaryLockHeld) {
+    analyticsBoundaryState = 'unavailable';
+    syncAnalyticsConsentControl();
+    return false;
+  }
+
   window.dataLayer = window.dataLayer || [];
   if (typeof window.gtag !== 'function') {
     window.gtag = function gtag() { window.dataLayer.push(arguments); };
@@ -1888,6 +2002,7 @@ function loadAnalyticsScript() {
   };
 
   document.head.append(script);
+  return true;
 }
 
 function cancelPendingAnalyticsScript() {
@@ -1916,7 +2031,7 @@ function updateAnalyticsConsentState(opts = {}) {
       trackVirtualPageView(activeExperienceContext, 'analytics_consent');
     }
   } else if (decision.shouldLoadScript) {
-    loadAnalyticsScript();
+    requestAnalyticsScriptBoundary();
   }
 
   try {
@@ -8690,6 +8805,9 @@ function clearPlaylistPreloads() {
 function handlePageHide() {
   // Last-chance persistence only: pagehide cannot keep the browser alive until
   // IndexedDB finishes, so app-controlled navigation must flush before leaving.
+  const releaseAnalyticsBoundary = analyticsBoundaryLockRelease;
+  analyticsBoundaryLockRelease = null;
+  if (releaseAnalyticsBoundary) releaseAnalyticsBoundary();
   if (saveRevisionCoordinator.isDirty()) void flushSaveState();
   cleanupRuntimeResources();
 }
@@ -10327,6 +10445,78 @@ function describeGitPlaylistConnection(settings, result, remembered) {
   return `Connected to ${provider} ${destination}, branch ${settings.branch}. Repository and read access are confirmed. Publish permission is unverified and cannot be safely probed without a write. ${visibility}${persistence}`;
 }
 
+async function connectGitPlaylistWithBoundary(settings, token, remember) {
+  const client = getGitPlaylistClient();
+  if (!remember) {
+    return {
+      connection: await client.connect(settings, token, { remember: false }),
+      rememberBlocked: false,
+      blockedReason: ''
+    };
+  }
+
+  let locks = null;
+  try { locks = navigator.locks; } catch (_) {}
+  if (!locks || typeof locks.request !== 'function') {
+    return {
+      connection: await client.connect(settings, token, {
+        remember: false,
+        preserveRememberedCredential: true
+      }),
+      rememberBlocked: true,
+      blockedReason: 'unavailable'
+    };
+  }
+
+  let callbackStarted = false;
+  try {
+    return await locks.request(ANALYTICS_CREDENTIAL_BOUNDARY_LOCK, {
+      mode: 'exclusive',
+      ifAvailable: true
+    }, async lock => {
+      callbackStarted = true;
+      if (!lock) {
+        return {
+          connection: await client.connect(settings, token, {
+            remember: false,
+            preserveRememberedCredential: true
+          }),
+          rememberBlocked: true,
+          blockedReason: 'busy'
+        };
+      }
+
+      if (analyticsCredentialState() === 'unavailable') {
+        return {
+          connection: await client.connect(settings, token, {
+            remember: false,
+            preserveRememberedCredential: true
+          }),
+          rememberBlocked: true,
+          blockedReason: 'storage'
+        };
+      }
+
+      const connection = await client.connect(settings, token, { remember: true });
+      return {
+        connection,
+        rememberBlocked: false,
+        blockedReason: ''
+      };
+    });
+  } catch (error) {
+    if (callbackStarted) throw error;
+    return {
+      connection: await client.connect(settings, token, {
+        remember: false,
+        preserveRememberedCredential: true
+      }),
+      rememberBlocked: true,
+      blockedReason: 'unavailable'
+    };
+  }
+}
+
 async function connectGitPlaylist() {
   if (gitPlaylistBusy) return;
   const tokenInput = $('#git-playlist-token');
@@ -10339,17 +10529,26 @@ async function connectGitPlaylist() {
   setGitPlaylistStatus('Checking repository and branch access with read-only provider requests…', 'loading');
   try {
     const settings = gitPlaylistSettingsFromForm();
-    const connection = await getGitPlaylistClient().connect(settings, token, { remember });
+    const result = await connectGitPlaylistWithBoundary(settings, token, remember);
+    const connection = result.connection;
     gitPlaylistSettings = settings;
     gitPlaylistConnection = connection;
     let settingsSaved = true;
     try { gitPlaylistSettings = saveGitPlaylistSettings(gitPlaylistStorage(), settings); }
     catch (_) { settingsSaved = false; }
     const status = describeGitPlaylistConnection(settings, connection, connection.credentialRemembered);
-    const credentialNote = remember && !connection.credentialRemembered
-      ? ' The browser could not save a remembered copy, so this connection is session-only.'
-      : '';
+    let credentialNote = '';
+    if (remember && result.rememberBlocked && result.blockedReason === 'busy') {
+      credentialNote = ' The connection remains available for this session. This tab or another Blend tab is using analytics, so the credential was not remembered. Turn off analytics, close the other Blend tabs, reload, then connect again to remember it.';
+    } else if (remember && result.rememberBlocked && result.blockedReason === 'storage') {
+      credentialNote = ' The connection remains available for this session. Saved repository credential storage could not be checked, so the credential was not remembered.';
+    } else if (remember && result.rememberBlocked) {
+      credentialNote = ' The connection remains available for this session. This browser could not coordinate analytics and credential storage, so the credential was not remembered.';
+    } else if (remember && !connection.credentialRemembered) {
+      credentialNote = ' The browser could not save a remembered copy, so this connection is session-only.';
+    }
     setGitPlaylistStatus(status + credentialNote + (settingsSaved ? '' : ' Repository settings could not be saved.'), settingsSaved ? 'ready' : 'error');
+    updateAnalyticsConsentState({ consent: analyticsConsentGranted });
   } catch (error) {
     gitPlaylistConnection = null;
     setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
@@ -10380,6 +10579,19 @@ function forgetGitPlaylistCredential() {
   setGitPlaylistStatus(removed
     ? 'Credential forgotten from this browser. This does not revoke the provider token.'
     : 'The active credential was cleared, but browser storage could not confirm removal of a saved copy. Revoke the provider token if needed.', removed ? 'ready' : 'error');
+  updateGitPlaylistControls();
+  updateAnalyticsConsentState({ consent: analyticsConsentGranted });
+}
+
+function handleCredentialStorageChange(event) {
+  if (event?.key !== gitPlaylistCredentialKey() && event?.key !== null) return;
+  if (event?.key === null) analyticsConsentGranted = readStoredAnalyticsConsent();
+  updateAnalyticsConsentState({ consent: analyticsConsentGranted });
+  const remember = $('#git-playlist-remember');
+  if (remember && !gitPlaylistBusy) {
+    const provider = $('#git-playlist-provider')?.value || '';
+    remember.checked = getGitPlaylistClient().hasRememberedCredential(provider);
+  }
   updateGitPlaylistControls();
 }
 
@@ -12724,6 +12936,7 @@ async function runBootstrap() {
   // is enabled, prepare its saved indices in a paused state below.
   applyTransportMode(transportMode);
   window.addEventListener('focus', () => updateAnalyticsConsentState({ consent: analyticsConsentGranted }), { passive: true });
+  window.addEventListener('storage', handleCredentialStorageChange, { passive: true });
   setBootstrapStage('pwa_setup');
   await setupPWA();
   window.addEventListener('pagehide', handlePageHide, { once: true });

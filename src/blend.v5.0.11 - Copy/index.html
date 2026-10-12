@@ -350,7 +350,7 @@
         </label>
         <div class="setting setting--wide">
           <label class="setting setting--toggle" for="analytics-consent">
-            <input type="checkbox" id="analytics-consent" aria-describedby="analytics-consent-description">
+            <input type="checkbox" id="analytics-consent" aria-describedby="analytics-consent-description analytics-consent-status">
             <span>Allow usage analytics (event counts and broad media/share categories)</span>
           </label>
           <p id="analytics-consent-description" class="setting__hint">Tracks page, playback, and share events with media type/layer and share method/outcome. Google also receives a fixed Blend Player title/origin and standard browser/session metadata. Blend event parameters exclude user names, media IDs, item URLs/paths, and caller metadata.</p>
@@ -456,10 +456,10 @@
             <input id="git-playlist-token" type="password" maxlength="2048" autocomplete="new-password" spellcheck="false" aria-describedby="git-playlist-token-help git-playlist-storage-help">
             <p id="git-playlist-token-help" class="setting__hint">GitHub: use a fine-grained personal access token restricted to this repository, with Contents read for reading and Contents write for publishing. Bitbucket Cloud: use a repository access token scoped to this repository. Select Repository Read for reading and Repository Write for publishing. Bitbucket repository tokens are tied to this repository, and commits may appear under the token identity.</p>
             <label class="setting setting--toggle" for="git-playlist-remember">
-              <input id="git-playlist-remember" type="checkbox">
+              <input id="git-playlist-remember" type="checkbox" aria-describedby="git-playlist-storage-help analytics-consent-status">
               <span>Remember on this device</span>
             </label>
-            <p id="git-playlist-storage-help" class="setting__hint">By default, the token stays in memory for this app session. Remembering it saves a provider-tagged token in browser storage on Blend's origin, where JavaScript running on this origin can read it. It is used only for that provider, and this is not a secure vault. Disconnect clears the in-memory token. Forget credential also deletes the saved browser copy, but does not revoke the provider token.</p>
+            <p id="git-playlist-storage-help" class="setting__hint">By default, the token stays in memory for this app session. Remembering it saves a provider-tagged token in browser storage on Blend's origin, where JavaScript running on this origin can read it. Blend keeps its consented analytics script and remembered credentials mutually exclusive across open Blend tabs; if analytics is active, this connection stays session-only. This is not a secure vault. Disconnect clears the in-memory token. Forget credential also deletes the saved browser copy, but does not revoke the provider token.</p>
           </div>
           <div class="git-catalog__actions">
             <button id="git-playlist-connect" type="button" class="list-action primary">Connect and verify access</button>

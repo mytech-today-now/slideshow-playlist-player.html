@@ -104,6 +104,15 @@ export function removeGitPlaylistSettings(storage) {
   }
 }
 
+export function inspectRememberedGitPlaylistCredential(storage) {
+  if (!storage || typeof storage.getItem !== 'function') return 'unavailable';
+  try {
+    return storage.getItem(CREDENTIAL_KEY) == null ? 'clear' : 'present';
+  } catch (_) {
+    return 'unavailable';
+  }
+}
+
 export function hasRememberedGitPlaylistCredential(storage) {
   try {
     const credential = JSON.parse(storage?.getItem(CREDENTIAL_KEY) || 'null');
@@ -451,7 +460,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
   return Object.freeze({
     hasRememberedCredential,
 
-    async connect(settingsValue, tokenValue = '', { remember = false } = {}) {
+    async connect(settingsValue, tokenValue = '', { remember = false, preserveRememberedCredential = false } = {}) {
       const settings = normalizeGitPlaylistSettings(settingsValue);
       const typedToken = String(tokenValue || '').trim();
       const savedCredential = rememberedCredential();
@@ -477,7 +486,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
         } catch (_) {
           credentialRemembered = false;
         }
-      } else if (savedCredential?.provider === settings.provider) {
+      } else if (!preserveRememberedCredential && savedCredential?.provider === settings.provider) {
         try { storage?.removeItem?.(CREDENTIAL_KEY); } catch (_) {}
       }
       return Object.freeze({ visibility, readAccess: 'confirmed', writeAccess: 'unverified', credentialRemembered });

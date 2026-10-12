@@ -6,6 +6,7 @@ import {
   gitPlaylistCredentialKey,
   gitPlaylistSettingsKey,
   hasRememberedGitPlaylistCredential,
+  inspectRememberedGitPlaylistCredential,
   loadGitPlaylistSettings,
   normalizeGitPlaylistSettings,
   saveGitPlaylistSettings,
@@ -64,6 +65,22 @@ function memoryStorage() {
     removeItem(key) { values.delete(key); }
   };
 }
+
+test('credential storage inspector fails closed without returning stored values', () => {
+  const storage = memoryStorage();
+  assert.equal(inspectRememberedGitPlaylistCredential(storage), 'clear');
+
+  storage.setItem(gitPlaylistCredentialKey(), JSON.stringify({
+    provider: 'github',
+    token: TOKEN
+  }));
+  assert.equal(inspectRememberedGitPlaylistCredential(storage), 'present');
+
+  storage.setItem(gitPlaylistCredentialKey(), 'malformed sentinel payload');
+  assert.equal(inspectRememberedGitPlaylistCredential(storage), 'present');
+  assert.equal(inspectRememberedGitPlaylistCredential({ getItem() { throw new Error(TOKEN); } }), 'unavailable');
+  assert.equal(inspectRememberedGitPlaylistCredential(null), 'unavailable');
+});
 
 function githubFetch({ privateRepo = false, fileText = playlistDocument(), fileSha = SHA_A, onPut = null, refSha = SHA_A } = {}) {
   const calls = [];
@@ -250,6 +267,11 @@ test('session credentials default to memory, explicit remembering is separate, d
   const restoredResult = await restored.connect(settings(), '', { remember: true });
   assert.equal(restoredResult.credentialRemembered, true);
   assert.equal(restoredFetch.calls[0].options.headers.Authorization, `Bearer ${TOKEN}`);
+
+  const preservedFetch = githubFetch();
+  const preserved = createGitPlaylistClient({ storage, fetchImpl: preservedFetch.fetchImpl });
+  await preserved.connect(settings(), '', { remember: false, preserveRememberedCredential: true });
+  assert.equal(storage.getItem(gitPlaylistCredentialKey()).includes(TOKEN), true);
 
   const optedOutFetch = githubFetch();
   const optedOut = createGitPlaylistClient({ storage, fetchImpl: optedOutFetch.fetchImpl });

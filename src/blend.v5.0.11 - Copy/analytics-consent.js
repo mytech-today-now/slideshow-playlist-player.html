@@ -5,12 +5,14 @@ export function getAnalyticsConsentDecision({
   doNotTrack = false,
   globalPrivacyControl = false,
   localFileContext = false,
+  credentialState = 'clear',
   scriptStatus = 'idle',
   loadAttempts = 0,
   retryRequested = false
 } = {}) {
   const blockedBySignal = !!doNotTrack || !!globalPrivacyControl || !!localFileContext;
-  const allowed = consent === true && !blockedBySignal;
+  const blockedByCredential = credentialState !== 'clear';
+  const allowed = consent === true && !blockedBySignal && !blockedByCredential;
   const attempts = Number.isFinite(Number(loadAttempts))
     ? Math.max(0, Math.floor(Number(loadAttempts)))
     : 0;
@@ -25,6 +27,7 @@ export function getAnalyticsConsentDecision({
     consent: consent === true,
     allowed,
     blockedBySignal,
+    blockedByCredential,
     shouldLoadScript
   };
 }
