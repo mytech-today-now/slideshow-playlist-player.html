@@ -15,3 +15,12 @@
 ## 4. Documentation
 
 - [ ] 4.1 Update the README Accessibility section with only the browser, screen reader, and state transitions actually tested; confirm DOM tests are not described as a human screen-reader audit or WCAG conformance.
+
+## Verification refresh (2026-10-12)
+
+- `npm run check` passed; `npm run test:regression` passed 349/349.
+- `npm run test:e2e -- tests/e2e/player-controls.e2e.spec.mjs` passed 12/12 in Chromium. `npm run test:e2e -- tests/e2e/responsiveness.e2e.spec.mjs` passed 7/7 in Chromium.
+- `npm run test:e2e -- tests/e2e/list-playback-accessibility.e2e.spec.mjs` passed 1/2. The current-row navigation test failed at line 92 while waiting for the slideshow index to advance; an isolated rerun reproduced the same timeout. The page snapshot showed `Loading next slide…`. The experience-switch test passed. This is not spoken-output evidence and did not confirm a screen-reader defect.
+- Environment checked: Microsoft Windows NT 10.0.26300.0 and Microsoft Edge 155.0.4283.45; NVDA was not found on PATH or in standard install locations checked. `C:\WINDOWS\System32\Narrator.exe` exists but was not running, and the Browser plugin reported no available browser sessions. No human speech-output review or actual 200% browser-zoom review was performed. Automated responsive checks are not a substitute for either manual review.
+- The supplied README line references have drifted in this checkout: the current-row manual-review note is at `README.md:538`, and the separate manual disclosure check is at `README.md:739`.
+- Tasks 2.1, 3.1, and 4.1 remain open. No app or README behavior change was made because no speech output was observed.

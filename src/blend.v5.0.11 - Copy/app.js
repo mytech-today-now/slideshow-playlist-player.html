@@ -5083,7 +5083,7 @@ async function addFolderFromPicker() {
       const scan = await pickFilesWithInput({ directory: true, withStatus: true });
       if (scan.status === 'cancelled') return;
       if (scan.status === 'unsupported') {
-        showToast('Folder selection is unavailable in this browser. Use Add Files to select media individually.', {
+        showToast('This browser cannot open a folder here. Choose media files individually, or continue with saved items.', {
           role: 'status',
           timeout: 10000
         });
@@ -5116,7 +5116,14 @@ async function addFolderFromPicker() {
     await scanAndImportDirectory(dirHandle, {
       completeMessage: result => `Added ${result.added} item${result.added === 1 ? '' : 's'} from "${dirHandle.name}" (${result.existing} already present)`
     });
-  } catch (e) { if (e.name !== 'AbortError') showToast('Folder picker cancelled or blocked'); }
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    const denied = e.name === 'NotAllowedError' || e.name === 'SecurityError';
+    const message = denied
+      ? 'Folder access was denied. Your current library is unchanged. Use Add Files to select media individually, or continue with saved items.'
+      : 'Folder selection could not be opened. Your current library is unchanged. Use Add Files to select media individually, or continue with saved items.';
+    showToast(message, { role: 'status', timeout: 10000 });
+  }
 }
 
 async function rememberDirectoryHandle(handle) {
@@ -9491,7 +9498,7 @@ function wireTransport() {
       return;
     }
     if (typeof v.requestFullscreen !== 'function') {
-      showToast('Fullscreen is unavailable in this browser. Playback remains available in the current window.', {
+      showToast('Fullscreen is unavailable; playback controls remain on screen.', {
         role: 'status'
       });
       return;
@@ -9499,7 +9506,7 @@ function wireTransport() {
     try {
       await v.requestFullscreen();
     } catch (_) {
-      showToast('Fullscreen could not be started. Playback remains available in the current window.', {
+      showToast('Fullscreen could not be started. Playback controls remain on screen.', {
         role: 'status'
       });
     }

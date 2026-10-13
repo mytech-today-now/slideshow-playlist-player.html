@@ -163,9 +163,9 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Playback | Experience playback modes | Yes | Loop, Stop at End, Go to Next Experience |
 | Playback | Playlist order | Yes | Sequential or random; sequential by default |
 | Playback | Slideshow order | Yes | Sequential or random; sequential by default |
-| Playback | Fullscreen | Yes | `requestFullscreen()` on viewport |
-| Library | Add files | Yes | File System Access API + input fallback |
-| Library | Add folder (recursive) | Yes | Directory picker + fallback; depth limit 6; 250 supported media files per selection |
+| Playback | Fullscreen | Browser-dependent | `requestFullscreen()` on viewport; playback controls remain available when fullscreen cannot start. Mobile device behavior is unverified. |
+| Library | Add files | Browser-dependent | File System Access API where available, otherwise file-input fallback. Named iOS and Android import/persistence runs are unverified. |
+| Library | Add folder (recursive) | Browser-dependent | Directory picker + supported input fallback; Add Files remains available when folder selection is unavailable. Mobile device behavior is unverified; depth limit 6; 250 supported media files per selection |
 | Library | Add URL | Yes | `http(s)`, `supabase://`, legacy `ipfs://` refs |
 | Library | Drag-and-drop import | Yes | Files/directories/list files |
 | Library | Search/filter/sort | Yes | Type + source filters, worker projection for large sets |
@@ -182,7 +182,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Remote Playlists | User-owned Git read and publish | Partial | GitHub read and SHA-guarded publish; Bitbucket read and review only while atomic writes are undocumented |
 | Sharing | Deep links | Yes | `exp`, `layer`, `item`, optional `autoplay` |
 | Sharing | Social share menu | Yes | Native share, copy, and platform links |
-| PWA | Service worker shell cache | Yes | App shell cached; media/range requests bypass cache |
+| PWA | Service worker shell cache | Browser-dependent | Desktop Chromium offline-shell reload is covered; iOS/Android installation and offline reload with saved media are unverified. Media/range requests bypass cache. |
 
 ## Detailed Feature Documentation
 
@@ -539,9 +539,10 @@ Manual screen-reader review of the current-playback row state is still outstandi
 
 ## Mobile Usage
 
-- Works on modern mobile browsers for core playback and editing.
-- iOS install guidance is provided through install/help banner.
-- Folder/file API support varies by browser; fallback input flows are used where possible.
+- Mobile core playback and editing have not been verified on named physical devices; iOS Safari and Android Chrome support remains partial.
+- iOS install guidance is provided through the install/help banner, but mobile PWA installation and offline reload with saved media are unverified.
+- Folder and fullscreen APIs vary by browser. If folder selection is unavailable or denied, use **Add Files** or continue with saved items; playback controls remain available when fullscreen cannot start.
+- See [Browser Compatibility](#browser-compatibility) for the exact mobile device acceptance paths that remain unverified.
 
 ## Desktop Usage
 
@@ -870,8 +871,10 @@ Dev/test (`package.json` in this project root):
 Compatibility notes:
 
 - CI runs the full suite in Chromium and focused fallback, accessibility, viewport, and service-worker shell smoke checks in Playwright Firefox and WebKit. Each compatibility result records the Playwright project and runtime engine version in the HTML report.
-- The last full-suite HTML report, before the added auth-failure smoke case, recorded all 24 compatibility cases passing (8 per project) and 18 failures in other Chromium tests (171 passed out of 189). The current focused HTML report passes 27/27 cases (9 per project) and records Chromium 153.0.8010.12, Firefox 155.0, and WebKit 26.6; every result attaches its project and runtime version.
+- The last full-suite report, before the added auth-failure smoke case, recorded 24 compatibility passes (8 per project) and 18 failures elsewhere in Chromium (171 passed of 189). The latest focused compatibility run passed 30/30 cases (10 per project) with Chromium 153.0.8010.12, Firefox 155.0, and WebKit 26.6. The latest Chromium PWA offline-shell run passed 5/5 cases, including offline shell reload. These are local browser-engine results.
 - These results describe Playwright browser-engine builds. They do not establish branded Chrome, Edge, Firefox, or Safari application coverage, or mobile-device coverage.
+- No named iOS or Android device run is recorded. On both iOS Safari and Android Chrome, local import/save and playback; folder selection and its individual-file fallback; fullscreen; rotation; PWA install and offline reload with saved media; quota/permission recovery; and keyboard, touch, assistive-technology, and 200 percent text-zoom access remain **unverified**. Desktop engines and viewport sizes do not establish those device results.
+- Record the device model, operating-system version, browser version, network state, workflow, and exact outcome before marking any mobile path verified.
 - File-input fallback imports remain available in memory if browser storage rejects the selected file data. Blend reports that outcome as session-only and the files must be selected again after reload; it does not report a successful save.
 - Actual media decode depends on browser codec support.
 - HEIC/HEIF and some MKV/AVI/FLAC/AAC combinations may vary by browser/platform.

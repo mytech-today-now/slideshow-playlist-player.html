@@ -95,14 +95,17 @@ test('file-input fallback reports reload persistence and keeps list editing keyb
   ]);
 
   await page.waitForFunction(() => window.Blend?.state?.library?.size === 2);
-  const saveNotice = page.locator('#toast-container .toast[role="status"]').last();
+  const saveNotice = page.locator('#toast-container .toast').last();
+  await expect(saveNotice).toBeVisible();
   const saveNoticeText = await saveNotice.innerText();
   const fileDataSaved = saveNoticeText.includes('saved the selected file data in this browser');
   if (fileDataSaved) {
+    await expect(saveNotice).toHaveAttribute('role', 'status');
     await expect(saveNotice).toContainText('Added 2 media files.');
     await expect(saveNotice).toContainText('Source-folder access is not retained');
     await expect(page.locator('#save-status')).toHaveText('All changes saved', { timeout: 15000 });
   } else {
+    await expect(saveNotice).toHaveAttribute('role', 'alert');
     await expect(saveNotice).toContainText('available for this session only');
     await expect(saveNotice).toContainText('select them again after reload');
   }
@@ -177,7 +180,7 @@ test('directory-input fallback imports synthetic folder files or explains unavai
     if (!directoryInputAvailable) {
       await page.getByRole('button', { name: 'Add Folder' }).click();
       await expect(page.locator('#toast-container .toast[role="status"]').last())
-        .toHaveText('Folder selection is unavailable in this browser. Use Add Files to select media individually.');
+        .toHaveText('This browser cannot open a folder here. Choose media files individually, or continue with saved items.');
       expect((await stateSnapshot(page)).library).toEqual([]);
       return;
     }
@@ -235,7 +238,10 @@ test('file and folder picker cancellation preserve library, lists, selection, an
     .toMatch(/^(saved|failed)$/);
 
   const before = await stateSnapshot(page);
-  const statusBefore = await page.locator('#toast-container .toast').allTextContents();
+  const saveStatusBefore = await page.locator('#save-status').evaluate(node => ({
+    state: node.getAttribute('data-state'),
+    text: node.innerText
+  }));
   await page.evaluate(() => {
     window.__pickerCancelCalls = { files: 0, folders: 0 };
     window.showOpenFilePicker = async () => {
@@ -254,7 +260,13 @@ test('file and folder picker cancellation preserve library, lists, selection, an
   await page.getByRole('button', { name: 'Add Folder' }).click();
   await page.waitForFunction(() => window.__pickerCancelCalls?.folders === 1);
   expect(await stateSnapshot(page)).toEqual(before);
-  expect(await page.locator('#toast-container .toast').allTextContents()).toEqual(statusBefore);
+  expect(await page.locator('#save-status').evaluate(node => ({
+    state: node.getAttribute('data-state'),
+    text: node.innerText
+  }))).toEqual(saveStatusBefore);
+  await expect(page.locator('#toast-container .toast').filter({
+    hasText: /File picker error|Folder picker (?:error|cancelled|blocked)/i
+  })).toHaveCount(0);
 });
 
 test('expired private media auth failure preserves its portable reference without leaking private path or bearer URL', async ({ page }) => {
@@ -366,13 +378,36 @@ test('directory input absence is announced and Add Files remains available', asy
 
   await page.getByRole('button', { name: 'Add Folder' }).click();
   await expect(page.locator('#toast-container .toast[role="status"]').last())
-    .toHaveText('Folder selection is unavailable in this browser. Use Add Files to select media individually.');
+    .toHaveText('This browser cannot open a folder here. Choose media files individually, or continue with saved items.');
   await expect(page.getByRole('button', { name: 'Add Files' })).toBeEnabled();
   expect((await stateSnapshot(page)).library).toEqual([]);
 });
 
+test('denied folder picker preserves the current library and explains the individual-file fallback', async ({ page }) => {
+  const app = await bootApp(page);
+  await app.openConfig();
+  await chooseSyntheticFiles(page, [
+    { name: 'saved-before-folder-denial.mp4', mimeType: 'video/mp4', buffer: Buffer.from('synthetic-saved-media') }
+  ]);
+  await page.waitForFunction(() => window.Blend?.state?.library?.size === 1);
+  const before = await stateSnapshot(page);
+
+  await page.evaluate(() => {
+    window.showDirectoryPicker = async () => {
+      throw new DOMException('Synthetic permission denial', 'NotAllowedError');
+    };
+  });
+  await page.getByRole('button', { name: 'Add Folder' }).click();
+
+  await expect(page.locator('#toast-container .toast[role="status"]').last())
+    .toHaveText('Folder access was denied. Your current library is unchanged. Use Add Files to select media individually, or continue with saved items.');
+  await expect(page.getByRole('button', { name: 'Add Files' })).toBeEnabled();
+  expect(await stateSnapshot(page)).toEqual(before);
+});
+
 test('fullscreen API absence and rejection produce accessible feedback', async ({ page }) => {
-  await bootApp(page);
+  const app = await bootApp(page);
+  await app.openConfig();
   const fullscreenButton = page.getByRole('button', { name: 'Toggle fullscreen viewport' });
   await expect(fullscreenButton).toBeVisible();
 
@@ -384,7 +419,7 @@ test('fullscreen API absence and rejection produce accessible feedback', async (
   });
   await fullscreenButton.click();
   await expect(page.locator('#toast-container .toast[role="status"]').last())
-    .toContainText('Fullscreen is unavailable in this browser');
+    .toHaveText('Fullscreen is unavailable; playback controls remain on screen.');
 
   await page.evaluate(() => {
     Object.defineProperty(document.querySelector('#viewport'), 'requestFullscreen', {
@@ -394,7 +429,7 @@ test('fullscreen API absence and rejection produce accessible feedback', async (
   });
   await fullscreenButton.click();
   await expect(page.locator('#toast-container .toast[role="status"]').last())
-    .toContainText('Fullscreen could not be started');
+    .toHaveText('Fullscreen could not be started. Playback controls remain on screen.');
 
   await page.evaluate(() => {
     Object.defineProperty(document, 'fullscreenElement', {
