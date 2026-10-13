@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 import { readFile } from 'node:fs/promises';
 import { BlendAppPage } from './support/blend-app-page.mjs';
 
@@ -282,6 +283,11 @@ async function readPersistedLibraryNames(page) {
   });
 }
 
+test.describe('Cross-engine thumbnail failure smoke', { tag: '@cross-engine-smoke' }, () => {
+test.beforeEach(async ({ browser }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
+});
+
 test('image thumbnails settle once, clean up, and use the icon fallback for browser faults', async ({ page }) => {
   await bootThumbnailApp(page);
 
@@ -500,4 +506,5 @@ test('a canvas failure releases queue capacity and preserves imported rows and p
   expect(logs).not.toContain('synthetic-queue-canvas-detail');
   if (browserName === 'webkit' && !saveSucceeded) expect(handledPersistenceErrors.length).toBeGreaterThan(0);
   expect(browserErrors).toEqual([]);
+});
 });

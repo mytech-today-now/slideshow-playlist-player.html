@@ -1,0 +1,11 @@
+# Tasks
+
+## 1. Bounded cross-engine smoke selection
+
+- [x] 1.1 Add shared browser-engine evidence and the `@cross-engine-smoke` tags to the existing compatibility smoke plus the selected atomic import-recovery, save-retry, and offline-shell cases; verify the Firefox/WebKit `--list` output retains the current smoke and includes only the tagged additions. Result: 27 cases per engine, 24 retained plus 3 additions; WebKit's offline-shell case is explicitly skipped after an isolated internal-navigation-error reproduction.
+- [x] 1.2 Extend the Firefox/WebKit project selection, keep Chromium unfiltered, and update the README engine/workflow matrix; verify the list per project and confirm the CI report verifier still runs after test failure and before upload. Result: Chromium lists 237 cases in all 46 spec files; `playwright-workflow-contract.test.mjs` verifies report validation remains after a failed Playwright step and before upload; the final focused HTML report also passed the safety verifier.
+
+## 2. Verification
+
+- [x] 2.1 Run `npm run test:e2e -- --project=firefox --project=webkit --grep=@cross-engine-smoke --workers=1` where the runner permits browser and worker processes; record exact project/browser versions, passed/failed/skipped counts, and report artifact, and report any engine launch failure as not run. Result: 49 passed, 0 failed, 5 skipped; Firefox 155.0 had 25 passed/2 skipped and WebKit 26.6 had 24 passed/3 skipped. All 54 results have engine-version annotations and attachments in `playwright-report/issue-09-20261013-final/`; the report safety verifier passed. A three-case Chromium baseline run passed 3/3. The full Chromium suite was inventoried (237 cases) but not executed. WebKit offline-shell remains explicitly unverified because navigation returned an internal error.
+- [x] 2.2 Run `npm run check`, `npm run test:regression`, strict OpenSpec validation, and final worktree/diff inspection; verify Beads `blend-d9n` and this change link to the exact Issue 09 title and report source. Result: syntax checks passed; 360/360 regression tests passed; strict OpenSpec validation passed; `git diff --check` passed; Beads `blend-d9n` links this change and the report issue, and remains in progress pending WebKit offline-shell verification.

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 import { LOCAL_IMPORT_MAX_MEDIA_FILES } from '../../local-import-limits.js';
 
 async function bootAddFiles(page) {
@@ -90,6 +91,11 @@ async function expectOversizedSelectionNotice(page, selected) {
   );
   return notice;
 }
+
+test.describe('Cross-engine Add Files limit smoke', { tag: '@cross-engine-smoke' }, () => {
+test.beforeEach(async ({ browser }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
+});
 
 test('native Add Files rejects an oversized selection before reading or saving handles', async ({ page }) => {
   await bootAddFiles(page);
@@ -321,4 +327,5 @@ test('quota failure retains imported rows and the save retry persists them witho
     'synthetic-001.png',
     'synthetic-002.png'
   ]);
+});
 });

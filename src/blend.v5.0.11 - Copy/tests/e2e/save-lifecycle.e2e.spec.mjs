@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 
 const SOURCE_NAME = 'Issue 07 Source';
 const TARGET_NAME = 'Issue 07 Target';
@@ -220,7 +221,10 @@ test('experience switching waits for the latest in-window revision before leavin
   expect(await readPersistedPlaylist(page, sourceId)).toEqual([...BASE_ORDER].reverse());
 });
 
-test('failed save keeps edits exportable, announces status, and supports keyboard retry', async ({ page }) => {
+test('failed save keeps edits exportable, announces status, and supports keyboard retry', {
+  tag: '@cross-engine-smoke'
+}, async ({ page, browser }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
   const blendPage = new BlendAppPage(page);
   const { sourceId } = await prepareSourceAndTarget(page, blendPage);
   await reversePlaylist(page, blendPage);

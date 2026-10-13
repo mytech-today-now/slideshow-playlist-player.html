@@ -29,12 +29,14 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility)\.e2e\.spec\.mjs$/,
+      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility|experience-import-atomicity|save-lifecycle|pwa-offline)\.e2e\.spec\.mjs$/,
+      grep: /@cross-engine-smoke/,
       use: { browserName: 'firefox' }
     },
     {
       name: 'webkit',
-      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility)\.e2e\.spec\.mjs$/,
+      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility|experience-import-atomicity|save-lifecycle|pwa-offline)\.e2e\.spec\.mjs$/,
+      grep: /@cross-engine-smoke/,
       use: { browserName: 'webkit' }
     }
   ],

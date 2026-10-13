@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-13
+goal: Run critical synthetic persistence and offline-shell workflows in Firefox
+  and WebKit with engine/version evidence and truthful engine-only labels.
+skip_specs: true

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 
 const IMPORT_FAILURE_MESSAGE = 'The import could not be completed. Your previous experience is still available; export a backup before retrying.';
 const FAULT_SENTINEL = 'private/path?token=issue05-secret';
@@ -43,7 +44,8 @@ function makeImportPayload(origin, name = 'Issue 05 Imported') {
 
 async function chooseExperienceFile(page, content) {
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#experience-import').click();
+  await page.locator('#experience-import').focus();
+  await page.keyboard.press('Enter');
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: 'issue05-experience.json',
@@ -149,7 +151,10 @@ for (const fault of [
   { mode: 'active-marker', title: 'rolls back when the active experience marker cannot be saved' },
   { mode: 'rollback-fails', title: 'reports the catalog and library left by a failed rollback' }
 ]) {
-  test(`experience import ${fault.title} without changing live or reloaded state`, async ({ page }) => {
+  test(`experience import ${fault.title} without changing live or reloaded state`, {
+    tag: fault.mode === 'queued-write' ? '@cross-engine-smoke' : undefined
+  }, async ({ page, browser }, testInfo) => {
+    if (fault.mode === 'queued-write') await attachBrowserEngineEvidence(browser, testInfo);
     const blendPage = new BlendAppPage(page);
     const before = await seedPreviousExperience(blendPage, page);
     const origin = new URL(page.url()).origin;

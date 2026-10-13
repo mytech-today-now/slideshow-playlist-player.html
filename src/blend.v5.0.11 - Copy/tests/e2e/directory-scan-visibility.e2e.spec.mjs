@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 import { BlendAppPage } from './support/blend-app-page.mjs';
 
 const PAUSED_STATUS = 'Folder scanning is paused while this tab is in the background. Return to Blend to resume or cancel. Saved batches remain available.';
@@ -65,6 +66,11 @@ async function installGatedDirectory(page, { fakeVisibility = true } = {}) {
     });
   }, fakeVisibility);
 }
+
+test.describe('Cross-engine directory visibility smoke', { tag: '@cross-engine-smoke' }, () => {
+test.beforeEach(async ({ browser }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
+});
 
 test('visibility changes pause and resume the same directory scan without repeating entries', async ({ page, browserName }) => {
   test.setTimeout(60000);
@@ -137,4 +143,5 @@ test('a native background tab pauses and resumes the same directory scan', async
   } finally {
     await backgroundPage.close();
   }
+});
 });

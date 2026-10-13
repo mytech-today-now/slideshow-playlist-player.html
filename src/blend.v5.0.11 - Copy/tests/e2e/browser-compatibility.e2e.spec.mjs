@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 
 const VIEWPORTS = [
   { label: '4K desktop', width: 3840, height: 2160 },
@@ -16,13 +17,9 @@ const VIEWPORTS = [
 
 const pageErrors = new WeakMap();
 
-test.beforeEach(async ({ page }, testInfo) => {
-  const browser = page.context().browser();
-  const evidence = `${testInfo.project.name}\n${browser?.version() || 'version unavailable'}\n`;
-  await testInfo.attach('browser-engine-version.txt', {
-    body: Buffer.from(evidence, 'utf8'),
-    contentType: 'text/plain'
-  });
+test.describe('Cross-engine compatibility smoke', { tag: '@cross-engine-smoke' }, () => {
+test.beforeEach(async ({ browser, page }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
 
   const errors = [];
   pageErrors.set(page, errors);
@@ -552,4 +549,5 @@ test('responsive viewport, text scale, and touch targets remain usable', async (
       await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
     }
   }
+});
 });
