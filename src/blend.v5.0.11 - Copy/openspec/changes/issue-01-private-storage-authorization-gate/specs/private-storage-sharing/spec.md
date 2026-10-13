@@ -11,7 +11,7 @@ The app MUST block compressed experience URL sharing whenever the referenced pay
 
 #### Scenario: A referenced private object blocks URL sharing
 - **WHEN** a user starts compressed URL sharing for an experience with a referenced private Supabase object
-- **THEN** the app MUST create or present no compressed share URL, MUST show `Private media access could not be verified. Contact the project owner before sharing.`, and MUST preserve the user's active media and experience state
+- **THEN** the app MUST create or present no compressed share URL, MUST explain that private URL sharing is blocked until the project owner verifies Storage access and offer public-only sharing or continued local playback, and MUST preserve the user's active media and experience state
 
 #### Scenario: Unreferenced private library entries do not block URL sharing
 - **WHEN** an experience references only public or non-Supabase media but its unused library contains a private Supabase object

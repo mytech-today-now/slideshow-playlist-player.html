@@ -20,7 +20,8 @@ const REFRESH_TOKEN = 'synthetic-browser-refresh-sentinel';
 async function openAuthDialog(app) {
   await app.openConfig();
   await expect(app.page.locator('#private-media-policy-warning'))
-    .toHaveText('Private media access could not be verified. Contact the project owner before sharing.');
+    .toHaveText('Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.');
+  await expect(app.page.locator('#supabase-signed-url-ttl')).toHaveValue('3600');
   await app.page.locator('#supabase-sign-in').click();
   await expect(app.page.locator('#supabase-auth-modal')).toBeVisible();
   await expect(app.page.locator('#supabase-auth-persist-session')).not.toBeChecked();
@@ -38,6 +39,161 @@ async function readExperienceExport(app, testInfo) {
   await download.saveAs(outputPath);
   return await readFile(outputPath, 'utf8');
 }
+
+async function readPersistedMediaStores(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1');
+    request.onerror = () => reject(new Error('Could not inspect saved media records'));
+    request.onsuccess = () => {
+      const database = request.result;
+      const stores = ['library', 'playlist', 'slideshow', 'experiences']
+        .filter(name => database.objectStoreNames.contains(name));
+      if (!stores.length) {
+        database.close();
+        resolve('{}');
+        return;
+      }
+      const transaction = database.transaction(stores, 'readonly');
+      const records = {};
+      for (const name of stores) {
+        const read = transaction.objectStore(name).getAll();
+        read.onsuccess = () => { records[name] = read.result || []; };
+      }
+      transaction.oncomplete = () => {
+        database.close();
+        resolve(JSON.stringify(records, (key, value) => {
+          if (key === 'handle') return value && typeof value === 'object'
+            ? { remote: !!value.remote, sourceUrl: value.sourceUrl || null }
+            : null;
+          if (key === 'file') return value && typeof value === 'object'
+            ? { name: value.name || '', type: value.type || '', size: value.size || 0 }
+            : null;
+          return value;
+        }));
+      };
+      transaction.onerror = () => {
+        database.close();
+        reject(new Error('Could not inspect saved media records'));
+      };
+      transaction.onabort = () => {
+        database.close();
+        reject(new Error('Could not inspect saved media records'));
+      };
+    };
+  }));
+}
+
+async function seedLegacySignedUrlTtl(page, activeExperienceId) {
+  await page.evaluate(activeId => new Promise((resolve, reject) => {
+    const signedUrl = 'http://127.0.0.1:4191/storage/v1/object/sign/media/private/legacy.mp4?token=legacy-persisted-sentinel';
+    const storageReference = 'supabase://media/private/legacy.mp4';
+    const metadata = {
+      sourceUrl: signedUrl,
+      signedUrlExpiresAt: Date.now() + 60_000,
+      storageReference,
+      storageBucket: 'media',
+      storagePath: 'private/legacy.mp4',
+      curatorNote: 'keep legacy media note'
+    };
+    const request = indexedDB.open('player-blend-v1');
+    request.onerror = () => reject(new Error('Could not seed legacy TTL settings'));
+    request.onsuccess = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains('experiences') || !database.objectStoreNames.contains('library')) {
+        database.close();
+        reject(new Error('Saved media stores are unavailable'));
+        return;
+      }
+      const transaction = database.transaction(['experiences', 'library'], 'readwrite');
+      const experienceStore = transaction.objectStore('experiences');
+      const libraryStore = transaction.objectStore('library');
+      const read = experienceStore.get(activeId);
+      read.onsuccess = () => {
+        if (!read.result) {
+          try { transaction.abort(); } catch (_) {}
+          return;
+        }
+        const record = read.result;
+        const payloadKey = ['payload', 'snapshot', 'data'].find(key => record[key] && typeof record[key] === 'object');
+        const payload = payloadKey ? record[payloadKey] : {};
+        const settings = { ...(payload.settings || {}), storageSignedUrlTtlSeconds: 1209600 };
+        delete settings.storageSignedUrlTtlPolicyVersion;
+        const playlist = Array.isArray(payload.playlist) ? payload.playlist.slice() : [];
+        playlist.push({
+          id: 'legacy-private-media',
+          name: 'Legacy private.mp4',
+          type: 'video',
+          path: storageReference,
+          sourceUrl: signedUrl,
+          available: true,
+          metadata: { ...metadata }
+        });
+        record[payloadKey || 'payload'] = { ...payload, settings, playlist };
+        record.updatedAt = Date.now();
+        experienceStore.put(record);
+        libraryStore.put({
+          id: 'legacy-private-media',
+          name: 'Legacy private.mp4',
+          type: 'video',
+          pathHint: storageReference,
+          sourceUrl: signedUrl,
+          metadata: { ...metadata }
+        });
+      };
+      read.onerror = () => {
+        try { transaction.abort(); } catch (_) {}
+      };
+      transaction.oncomplete = () => {
+        database.close();
+        resolve();
+      };
+      transaction.onerror = () => {
+        database.close();
+        reject(new Error('Could not seed legacy TTL settings'));
+      };
+      transaction.onabort = () => {
+        database.close();
+        reject(new Error('Could not seed legacy TTL settings'));
+      };
+    };
+  }), activeExperienceId);
+}
+
+test('migrates the previous default TTL to one hour and persists the policy marker', async ({ page }) => {
+  const app = new BlendAppPage(page);
+  await app.boot();
+  await app.createExperience('Legacy TTL Fixture');
+  await page.evaluate(() => window.Blend.flushSaveState());
+  const activeExperienceId = await page.evaluate(() => window.Blend.state.activeExperienceId);
+  expect(activeExperienceId).toBeTruthy();
+  await seedLegacySignedUrlTtl(page, activeExperienceId);
+
+  await page.reload();
+  await page.waitForFunction(() => !!window.Blend?.state);
+  await page.waitForSelector('#playlist-layer video');
+  await app.openConfig();
+  await expect(page.locator('#supabase-signed-url-ttl')).toHaveValue('3600');
+
+  await page.evaluate(() => window.Blend.flushSaveState());
+  const saved = JSON.parse(await readPersistedMediaStores(page));
+  const migrated = saved.experiences.find(record => record.id === activeExperienceId);
+  const payload = migrated?.payload || migrated?.snapshot || migrated?.data;
+  expect(payload?.settings?.storageSignedUrlTtlSeconds).toBe(3600);
+  expect(payload?.settings?.storageSignedUrlTtlPolicyVersion).toBe(1);
+  const legacyReference = 'supabase://media/private/legacy.mp4';
+  expect(payload?.playlist?.find(item => item.id === 'legacy-private-media')?.metadata?.storageReference).toBe(legacyReference);
+  const legacyLibraryItem = saved.library.find(record => record.id === 'legacy-private-media');
+  expect(legacyLibraryItem?.metadata?.storageReference).toBe(legacyReference);
+  expect(legacyLibraryItem?.metadata?.curatorNote).toBe('keep legacy media note');
+  const hydratedLegacy = await page.evaluate(() => ({
+    library: window.Blend.state.library.get('legacy-private-media'),
+    playlist: window.Blend.state.playlist.find(item => item.id === 'legacy-private-media')
+  }));
+  expect(JSON.stringify(hydratedLegacy)).not.toContain('legacy-persisted-sentinel');
+  expect(hydratedLegacy.library?.metadata?.storageReference).toBe(legacyReference);
+  expect(hydratedLegacy.playlist?.metadata?.storageReference).toBe(legacyReference);
+  expect(await readPersistedMediaStores(page)).not.toContain('legacy-persisted-sentinel');
+});
 
 test('fresh profile uses a tab-only session by default and keeps private media gated after reload', async ({ page }, testInfo) => {
   const consoleEntries = [];
@@ -329,7 +485,7 @@ test('explicit opt-in persists documented fields, restores after reload, and sig
 });
 
 test('sign-out clears both cached private playback layers and allows public, local, and authenticated retry', async ({ page }) => {
-  const signedOutCopy = 'You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.';
+  const signedOutCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
   const videoPath = fileURLToPath(new URL('../../samples/nyc-01.mp4', import.meta.url));
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const signingRequests = [];
@@ -434,6 +590,19 @@ test('sign-out clears both cached private playback layers and allows public, loc
   await expect.poll(() => page.locator('#slideshow-layer img').evaluateAll(elements =>
     elements.some(element => element.currentSrc.includes('private-image-copy-sentinel')))).toBe(true);
 
+  const liveSignedSources = await page.evaluate(() => [
+    window.Blend.state.library.get('private-video')?.sourceUrl,
+    window.Blend.state.slideshow[0]?.sourceUrl
+  ]);
+  expect(liveSignedSources.join('\n')).toContain('private-video-copy-sentinel');
+  expect(liveSignedSources.join('\n')).toContain('private-image-copy-sentinel');
+  await page.evaluate(() => window.Blend.flushSaveState());
+  const durableBeforeSignOut = await readPersistedMediaStores(page);
+  expect(durableBeforeSignOut).not.toContain('private-video-copy-sentinel');
+  expect(durableBeforeSignOut).not.toContain('private-image-copy-sentinel');
+  expect(durableBeforeSignOut).toContain('supabase://media/private/playlist.mp4');
+  expect(durableBeforeSignOut).toContain('supabase://media/private/slideshow.jpeg');
+
   const activeExperienceId = await page.evaluate(() => window.Blend.state.activeExperienceId);
   await app.openConfig();
   await page.locator('#supabase-sign-out').click();
@@ -510,6 +679,9 @@ test('sign-out clears both cached private playback layers and allows public, loc
   expect(afterSignOut.log).not.toContain('private-video-copy-sentinel');
   expect(afterSignOut.log).not.toContain('private-image-copy-sentinel');
   expect(afterSignOut.body).not.toMatch(/signed URLs? (?:were )?revoked/i);
+  const durableAfterSignOut = await readPersistedMediaStores(page);
+  expect(durableAfterSignOut).not.toContain('private-video-copy-sentinel');
+  expect(durableAfterSignOut).not.toContain('private-image-copy-sentinel');
 
   const copiedLinkStatus = await page.evaluate(async url => (await fetch(url)).status, copiedUrl);
   expect(copiedLinkStatus).toBe(200);
@@ -555,10 +727,108 @@ test('sign-out clears both cached private playback layers and allows public, loc
   await expect.poll(() => signingRequests.length).toBe(1);
   await expect.poll(() => page.locator('#playlist-layer video').evaluateAll(elements =>
     elements.some(element => element.currentSrc.includes('private-media-retry-1')))).toBe(true);
+  await page.evaluate(() => window.Blend.flushSaveState());
+  const durableAfterRetry = await readPersistedMediaStores(page);
+  expect(durableAfterRetry).not.toContain('private-media-retry-1');
+  expect(durableAfterRetry).toContain('supabase://media/private/playlist.mp4');
+});
+
+test('sign-out offers an accessible retry when local media cleanup fails without logging bearer data', async ({ page }) => {
+  const normalCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
+  const incompleteCopy = 'You are signed out. Local cleanup is incomplete. Retry to clear remaining sources and save private references. Copied links can remain usable until expiry, and cached responses may last longer.';
+  const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
+  const sourceUrl = 'http://127.0.0.1:4191/storage/v1/object/sign/media/private/failure.jpeg?token=cleanup-failure-sentinel';
+  const reference = 'supabase://media/private/failure.jpeg';
+  await page.route('**/auth/v1/logout', route => route.fulfill({ status: 200, body: '{}' }));
+  await page.route('**/storage/v1/object/sign/**', route => route.fulfill({ status: 200, contentType: 'image/jpeg', path: imagePath }));
+
+  const app = new BlendAppPage(page);
+  await page.addInitScript(() => {
+    try { Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true }); } catch (_) {}
+  });
+  await app.boot();
+  await openAuthDialog(app);
+  await page.locator('#supabase-auth-token').fill(ACCESS_TOKEN);
+  await page.locator('#supabase-auth-refresh-token').fill(REFRESH_TOKEN);
+  await page.locator('[data-auth-submit]').click();
+  await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
+
+  await page.evaluate(({ sourceUrl, reference }) => {
+    const B = window.Blend;
+    const metadata = {
+      sourceUrl,
+      signedUrlExpiresAt: Date.now() + 60_000,
+      storageReference: reference,
+      storageBucket: 'media',
+      storagePath: 'private/failure.jpeg',
+      curatorNote: 'keep failure record'
+    };
+    B.state.library.set('cleanup-failure', {
+      id: 'cleanup-failure', name: 'Cleanup failure.jpeg', type: 'image', sourceUrl,
+      pathHint: reference, handle: { remote: true, sourceUrl }, metadata: { ...metadata }
+    });
+    B.state.slideshow = [{
+      id: 'cleanup-failure', name: 'Cleanup failure.jpeg', type: 'image', sourceUrl,
+      path: reference, available: true, metadata: { ...metadata }
+    }];
+    B.renderLibrary();
+    B.renderListEditor();
+
+    const probe = document.createElement('img');
+    probe.id = 'signed-cleanup-failure-probe';
+    probe.setAttribute('src', sourceUrl);
+    document.body.append(probe);
+    const remove = probe.removeAttribute.bind(probe);
+    let failOnce = true;
+    probe.removeAttribute = name => {
+      if (name === 'src' && failOnce) {
+        failOnce = false;
+        throw new Error(`${sourceUrl} ${reference}`);
+      }
+      return remove(name);
+    };
+  }, { sourceUrl, reference });
+  await page.evaluate(() => window.Blend.flushSaveState());
+  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
+
+  await app.openConfig();
+  await page.locator('#supabase-sign-out').click();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByRole('alert')).toContainText(incompleteCopy);
+  const retryButton = page.getByRole('button', { name: 'Retry cleanup', exact: true });
+  await expect(retryButton).toBeVisible();
+  const alertBox = await page.getByRole('alert').boundingBox();
+  const retryBox = await retryButton.boundingBox();
+  expect(alertBox).toBeTruthy();
+  expect(retryBox).toBeTruthy();
+  expect(alertBox.x).toBeGreaterThanOrEqual(0);
+  expect(alertBox.x + alertBox.width).toBeLessThanOrEqual(375);
+  expect(retryBox.x).toBeGreaterThanOrEqual(0);
+  expect(retryBox.x + retryBox.width).toBeLessThanOrEqual(375);
+
+  const failedCleanupState = await page.evaluate(() => ({
+    mediaSource: document.querySelector('#signed-cleanup-failure-probe')?.getAttribute('src'),
+    itemSource: window.Blend.state.library.get('cleanup-failure')?.sourceUrl,
+    reference: window.Blend.state.library.get('cleanup-failure')?.metadata?.storageReference,
+    log: window.Blend.log.exportJson()
+  }));
+  expect(failedCleanupState.mediaSource).toContain('cleanup-failure-sentinel');
+  expect(failedCleanupState.itemSource).toBeNull();
+  expect(failedCleanupState.reference).toBe(reference);
+  expect(failedCleanupState.log).not.toContain('cleanup-failure-sentinel');
+  expect(failedCleanupState.log).not.toContain('private/failure.jpeg');
+  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
+
+  await retryButton.focus();
+  await expect(retryButton).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#toast-container')).toContainText(normalCopy);
+  expect(await page.locator('#signed-cleanup-failure-probe').getAttribute('src')).toBeNull();
+  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
 });
 
 test('sign-out cancels pending private signing and ignores its late response', async ({ page }) => {
-  const signedOutCopy = 'You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.';
+  const signedOutCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const signingRequests = [];
   let releaseSigning;
@@ -697,7 +967,7 @@ test('a peer tab clears signed media when it receives the existing local-reset e
     channel.postMessage({ type: 'local-reset', nonce: 'synthetic-peer-local-reset' });
     channel.close();
   });
-  await expect(peer.locator('#toast-container')).toContainText('You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.');
+  await expect(peer.locator('#toast-container')).toContainText('You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.');
   const peerState = await peer.evaluate(() => ({
     listUrl: window.Blend.state.slideshow[0]?.sourceUrl,
     itemUrl: window.Blend.state.library.get('peer-private-image')?.sourceUrl,

@@ -23,14 +23,17 @@ function asRecords(value) {
 function collectExperienceReferences(experiences) {
   const references = [];
   for (const experience of asRecords(experiences)) {
-    const payload = experience?.payload;
+    const payload = experience?.payload || experience?.snapshot || experience?.data;
     references.push(...asRecords(payload?.playlist), ...asRecords(payload?.slideshow));
   }
   return references;
 }
 
 /** Build a deterministic cleanup plan without changing the supplied media state. */
-export function planSignedMediaUrlCleanup({ library, playlist, slideshow, experiences } = {}) {
+export function planSignedMediaUrlCleanup(
+  { library, playlist, slideshow, experiences } = {},
+  { requireExpiry = true } = {}
+) {
   const records = [
     ...asRecords(library),
     ...asRecords(playlist),
@@ -53,11 +56,12 @@ export function planSignedMediaUrlCleanup({ library, playlist, slideshow, experi
   for (const record of uniqueRecords) {
     const relatedMetadata = metadataById.get(String(record?.id ?? '')) || [];
     const metadataRecords = [record?.metadata, ...relatedMetadata];
-    if (!metadataRecords.some(hasSignedUrlExpiry)) continue;
+    if (requireExpiry && !metadataRecords.some(hasSignedUrlExpiry)) continue;
 
     const fields = [
       { owner: record, key: 'sourceUrl', clearWith: null },
       { owner: record?.metadata, key: 'sourceUrl', clearWith: undefined },
+      { owner: record?.metadata?.socialResolved, key: 'image', clearWith: undefined },
       { owner: record?.handle, key: 'sourceUrl', clearWith: null }
     ];
     let recordChanged = false;
@@ -83,6 +87,70 @@ export function applySignedMediaUrlCleanup(plan) {
     clearedFieldCount++;
   }
   return clearedFieldCount;
+}
+
+function cloneHandleForPersistence(handle) {
+  if (!handle || typeof handle !== 'object') return handle;
+  const prototype = Object.getPrototypeOf(handle);
+  return prototype === Object.prototype || prototype === null ? { ...handle } : handle;
+}
+
+function cloneMediaRecordForPersistence(record) {
+  if (!record || typeof record !== 'object') return record;
+  const clone = { ...record };
+  if (record.metadata && typeof record.metadata === 'object') {
+    clone.metadata = { ...record.metadata };
+    if (record.metadata.socialResolved && typeof record.metadata.socialResolved === 'object') {
+      clone.metadata.socialResolved = { ...record.metadata.socialResolved };
+    }
+  }
+  if (record.handle && typeof record.handle === 'object') clone.handle = cloneHandleForPersistence(record.handle);
+  return clone;
+}
+
+function cloneListStoreRowForPersistence(record) {
+  if (!record || typeof record !== 'object') return record;
+  const clone = { ...record };
+  if (Array.isArray(record.items)) clone.items = record.items.map(cloneMediaRecordForPersistence);
+  return clone;
+}
+
+function cloneExperienceForPersistence(record) {
+  if (!record || typeof record !== 'object') return record;
+  const clone = { ...record };
+  const payloadKey = ['payload', 'snapshot', 'data'].find(key => record[key] && typeof record[key] === 'object');
+  if (!payloadKey) return clone;
+  const payload = { ...record[payloadKey] };
+  if (Array.isArray(payload.playlist)) payload.playlist = payload.playlist.map(cloneMediaRecordForPersistence);
+  if (Array.isArray(payload.slideshow)) payload.slideshow = payload.slideshow.map(cloneMediaRecordForPersistence);
+  clone[payloadKey] = payload;
+  return clone;
+}
+
+/** Clone IndexedDB snapshot records and remove resolver-issued bearer URLs from the copies. */
+export function sanitizeSignedMediaPersistenceSnapshot(recordsByStore = {}) {
+  const safeRecordsByStore = { ...recordsByStore };
+  if (Array.isArray(recordsByStore.library) || recordsByStore.library instanceof Map) {
+    safeRecordsByStore.library = asRecords(recordsByStore.library).map(cloneMediaRecordForPersistence);
+  }
+  if (Array.isArray(recordsByStore.playlist) || recordsByStore.playlist instanceof Map) {
+    safeRecordsByStore.playlist = asRecords(recordsByStore.playlist).map(cloneListStoreRowForPersistence);
+  }
+  if (Array.isArray(recordsByStore.slideshow) || recordsByStore.slideshow instanceof Map) {
+    safeRecordsByStore.slideshow = asRecords(recordsByStore.slideshow).map(cloneListStoreRowForPersistence);
+  }
+  if (Array.isArray(recordsByStore.experiences) || recordsByStore.experiences instanceof Map) {
+    safeRecordsByStore.experiences = asRecords(recordsByStore.experiences).map(cloneExperienceForPersistence);
+  }
+
+  const plan = planSignedMediaUrlCleanup({
+    library: safeRecordsByStore.library,
+    playlist: asRecords(safeRecordsByStore.playlist).flatMap(record => asRecords(record?.items)),
+    slideshow: asRecords(safeRecordsByStore.slideshow).flatMap(record => asRecords(record?.items)),
+    experiences: safeRecordsByStore.experiences
+  }, { requireExpiry: false });
+  const clearedFieldCount = applySignedMediaUrlCleanup(plan);
+  return { recordsByStore: safeRecordsByStore, clearedFieldCount };
 }
 
 function sanitizedErrorName(error) {

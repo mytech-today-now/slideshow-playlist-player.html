@@ -2,6 +2,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES } from '../../local-import-limits.js';
 
 const ROOT_NAME = 'Assets';
 
@@ -541,6 +542,38 @@ test('a relink scan reaching 250 media files stops partially and keeps matches',
   expect(await page.evaluate(() => window.__relinkVisited())).toBe(250);
   expect((await readHandleContents(page, 'playlist', 0)).text).toBe('synthetic-249');
   expect((await missingRefSnapshot(page, 'playlist', 0)).available).toBe(true);
+});
+
+test('a relink scan stops at the entry ceiling before a later match and preserves the missing reference', async ({ page }) => {
+  await bootRelinkPage(page, 'playlist');
+  await importMissingList(page, 'playlist', [
+    { id: 'bounded-missing-track', name: 'track.mp4', path: 'Assets/track.mp4', type: 'video' }
+  ]);
+  const before = await missingRefSnapshot(page, 'playlist', 0);
+  await page.evaluate(entryLimit => {
+    let yieldedEntries = 0;
+    const root = Object.create({
+      async *values() {
+        for (let index = 0; index < entryLimit; index += 1) {
+          yieldedEntries += 1;
+          yield { kind: 'file', name: `unsupported-${String(index).padStart(5, '0')}.txt` };
+        }
+        yieldedEntries += 1;
+        yield { kind: 'file', name: 'track.mp4' };
+      }
+    });
+    Object.assign(root, { kind: 'directory', name: 'Assets' });
+    window.__relinkEntriesYielded = () => yieldedEntries;
+    window.showDirectoryPicker = async () => root;
+  }, LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES);
+
+  await clickResolve(page, 'playlist');
+  const notice = page.locator('.toast-directory-scan');
+  await expect(notice).toContainText(`Missing-media scan stopped after visiting ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES} entries. Later entries were not inspected.`);
+  await expect(notice).toContainText('Resolved 0/1 missing path from 0 found media files.');
+  await expect(notice.getByRole('button', { name: 'Choose smaller folder' })).toBeVisible();
+  expect(await page.evaluate(() => window.__relinkEntriesYielded())).toBe(LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES);
+  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
 });
 
 test('a relink scan above 250 media files stops at the bound and retains unresolved entries', async ({ page }) => {

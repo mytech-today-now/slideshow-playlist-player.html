@@ -381,7 +381,7 @@ export class BlendAppPage {
     await this.page.evaluate(({ endpoint, gateway }) => {
       Object.assign(window.Blend.state.settings, {
         storageDefaultBucket: 'media',
-        storageSignedUrlTtlSeconds: 1209600,
+        storageSignedUrlTtlSeconds: 3600,
         privateMediaRequiresAuth: false,
         ipfsEnabled: true,
         ipfsMode: 'kubo',

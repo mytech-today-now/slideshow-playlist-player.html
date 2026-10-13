@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES } from '../../local-import-limits.js';
 
 const RESPONSIVE_VIEWPORTS = [
   { label: '4K desktop', width: 3840, height: 2160 },
@@ -103,6 +104,29 @@ async function installDirectoryPicker(page, mode) {
       window.__directoryEnumerationCount = () => enumerationCount;
       window.__directoryPickerCalls = () => pickerCalls;
       window.showDirectoryPicker = async () => { pickerCalls += 1; return root; };
+      return;
+    } else if (scanMode.startsWith('entry-limit:')) {
+      const entryLimit = Number(scanMode.slice('entry-limit:'.length));
+      const supportedFiles = makeSyntheticFiles(250);
+      const unsupportedCount = Math.max(0, entryLimit - supportedFiles.length - 2);
+      let yieldedEntries = 0;
+      const tracked = entry => {
+        yieldedEntries += 1;
+        return entry;
+      };
+      const unsupportedBranch = makeDirectory('UnsupportedFiles', async function* () {
+        for (let index = 0; index < unsupportedCount; index += 1) {
+          yield tracked(makeFile(`Unsupported-${String(index).padStart(5, '0')}.txt`, 'unsupported'));
+        }
+      });
+      root = makeDirectory('EntryLimitRoot', async function* () {
+        for (const file of supportedFiles) yield tracked(file);
+        yield tracked(unsupportedBranch);
+        yield tracked(makeFile('AtCutoff.mp4', 'at-cutoff'));
+        yield tracked(makeFile('AfterCutoff.mp4', 'not-visited'));
+      });
+      window.__directoryEntriesYielded = () => yieldedEntries;
+      window.showDirectoryPicker = async () => root;
       return;
     } else if (scanMode === 'limit-recovery') {
       const importedBranch = makeSixLevelBranch('Imported', makeSyntheticFiles(250));
@@ -513,7 +537,7 @@ test('a limited scan reports pending files and recovers from a smaller folder wi
 });
 
 for (const count of [1_000, 10_000]) {
-  test(`a broad six-level folder imports only the limit and reports every pending file (${count})`, async ({ page }) => {
+  test(`a broad six-level folder respects media and entry bounds (${count})`, async ({ page }) => {
     test.setTimeout(120000);
     await bootApp(page);
     await installDirectoryPicker(page, `broad-load:${count}`);
@@ -522,17 +546,74 @@ for (const count of [1_000, 10_000]) {
     await page.locator('#add-folder').click();
     await page.waitForFunction(() => window.Blend?.state?.library?.size === 250);
     const status = page.locator('.toast-directory-scan');
-    await expect(status).toContainText(`${count} supported media files found; 250 added, 0 skipped (0 already present), ${count - 250} pending.`, { timeout: 30000 });
+    const reachedEntryLimit = count > LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES;
+    if (reachedEntryLimit) {
+      await expect(status).toContainText(`Folder scan stopped after visiting ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES} entries.`, { timeout: 30000 });
+      await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
+    }
     const metrics = await readFolderBenchmark(page);
+    if (reachedEntryLimit) {
+      expect(metrics.finalProgressCount).toBeGreaterThanOrEqual(250);
+      expect(metrics.finalProgressCount).toBeLessThan(count);
+      await expect(status).toContainText(`${metrics.finalProgressCount} supported media files found within the visited entries; 250 added, 0 skipped (0 already present), ${metrics.finalProgressCount - 250} pending within the visited entries.`);
+    } else {
+      await expect(status).toContainText(`${count} supported media files found; 250 added, 0 skipped (0 already present), ${count - 250} pending.`, { timeout: 30000 });
+      expect(metrics.finalProgressCount).toBe(count);
+    }
     expect(metrics.peakRetained).toBe(250);
-    expect(metrics.finalProgressCount).toBe(count);
-    expect(250 + 0 + (count - 250)).toBe(count);
     expect(metrics.firstWriteMs).not.toBeNull();
     expect(metrics.firstWriteMs).toBeLessThan(10000);
     expect(metrics.progressUpdateCount).toBeLessThanOrEqual(Math.ceil(metrics.elapsedMs / 1000) + 2);
-    console.log(`[ISSUE07 CAPPED] ${JSON.stringify({ fixtureFiles: count, importedFiles: 250, pendingFiles: count - 250, ...metrics })}`);
+    console.log(`[ISSUE04 ENTRY BUDGET] ${JSON.stringify({ fixtureFiles: count, entryLimit: LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES, importedFiles: 250, ...metrics })}`);
   });
 }
+
+test('a folder scan stops at the total entry budget and preserves its committed media batch', async ({ page }) => {
+  test.setTimeout(60000);
+  const entryLimit = LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES;
+  await page.setViewportSize({ width: 360, height: 800 });
+  await bootApp(page);
+  await installDirectoryPicker(page, `entry-limit:${entryLimit}`);
+
+  await page.locator('#add-folder').click();
+  const status = page.locator('#config-panel > .toast-directory-scan');
+  await expect(status).toHaveAttribute('role', 'status');
+  await expect(status).toContainText(`Folder scan stopped after visiting ${entryLimit} entries. Later entries were not visited.`);
+  await expect(status).toContainText('251 supported media files found within the visited entries; 250 added, 0 skipped (0 already present), 1 pending within the visited entries.');
+  const chooseSmaller = status.getByRole('button', { name: 'Choose smaller folder' });
+  await expect(chooseSmaller).toHaveCount(1);
+  await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
+  await expectDirectoryToastFits(page, status);
+
+  await page.locator('#close-config').focus();
+  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ).length);
+  let reachedChooseSmaller = false;
+  for (let index = 0; index < focusableCount; index += 1) {
+    await page.keyboard.press('Tab');
+    if (await chooseSmaller.evaluate(node => node === document.activeElement)) {
+      reachedChooseSmaller = true;
+      break;
+    }
+  }
+  expect(reachedChooseSmaller).toBe(true);
+  await expect(chooseSmaller).toBeFocused();
+
+  const scan = await page.evaluate(() => ({
+    yieldedEntries: window.__directoryEntriesYielded(),
+    names: Array.from(window.Blend.state.library.values(), item => item.name)
+  }));
+  expect(scan.yieldedEntries).toBe(entryLimit);
+  expect(scan.names).toHaveLength(250);
+  expect(scan.names).toContain('Synthetic-00000.mp4');
+  expect(scan.names).not.toContain('AtCutoff.mp4');
+  expect(scan.names).not.toContain('AfterCutoff.mp4');
+
+  const persisted = await readPersistedFolderImport(page);
+  expect(persisted.library).toHaveLength(250);
+  expect(new Set(persisted.library.map(item => item.id)).size).toBe(250);
+});
 
 test('directory-input folder fallback retains only the limit and offers a smaller-folder recovery', async ({ page }) => {
   test.setTimeout(60000);

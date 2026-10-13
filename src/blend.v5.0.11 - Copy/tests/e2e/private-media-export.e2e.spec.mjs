@@ -9,7 +9,7 @@ const PORTABLE_REFERENCE = 'supabase://private-media/private/video.mp4';
 const PUBLIC_URL = 'https://cdn.example.test/media/public.mp4?version=3';
 const PUBLIC_STORAGE_REFERENCE = 'supabase://public/codex-policy-check/public-video.mp4';
 const UNUSED_PRIVATE_STORAGE_REFERENCE = 'supabase://private-media/codex-policy-check/unused-private-video.mp4';
-const PRIVATE_POLICY_WARNING = 'Private media access could not be verified. Contact the project owner before sharing.';
+const PRIVATE_POLICY_WARNING = 'Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.';
 const PATH_OMISSION_NOTICE = 'Local file path details were omitted from this export for privacy. Media references and the saved library were not changed.';
 const PATH_CREDENTIAL_MARKER = 'issue05-e2e-synthetic-credential-marker';
 const ABSOLUTE_PATH_SENTINELS = [

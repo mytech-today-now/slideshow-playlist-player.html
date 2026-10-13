@@ -1,10 +1,14 @@
+export const DEFAULT_SIGNED_URL_TTL_SECONDS = 3600;
+export const LEGACY_DEFAULT_SIGNED_URL_TTL_SECONDS = 1209600;
+export const SIGNED_URL_TTL_POLICY_VERSION = 1;
+
 const PLACEHOLDER_DEFAULTS = Object.freeze({
   SUPABASE_URL: 'https://lqpmmviiloztbanshfxy.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxcG1tdmlpbG96dGJhbnNoZnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Mjc3MjgsImV4cCI6MjA5NjQwMzcyOH0.B7Oy2oH7YFPxgIvXLTPvduP7YFViiDaLfhROIJ44pOQ',
   SUPABASE_STORAGE_BUCKET: 'https://lqpmmviiloztbanshfxy.storage.supabase.co/storage/v1/s3',
   SUPABASE_CDN_BASE_URL: 'https://api.cloudflare.com/client/v4/accounts/<account_id>/d1/database',
   SUPABASE_AUTH_REDIRECT_URL: 'https://mytech.today/tools/player/v/index.html',
-  SIGNED_URL_TTL_SECONDS: '1209600',
+  SIGNED_URL_TTL_SECONDS: String(DEFAULT_SIGNED_URL_TTL_SECONDS),
   MEDIA_METADATA_SOURCE: 'browser',
   SUPABASE_MEDIA_BUCKET: 'media',
   SUPABASE_PUBLIC_BUCKETS: 'public'
@@ -28,6 +32,23 @@ function asPositiveInt(value, fallback) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(1, Math.floor(parsed));
+}
+
+export function isLegacySignedUrlTtlSetting(settings = {}) {
+  return Number(settings?.storageSignedUrlTtlSeconds) === LEGACY_DEFAULT_SIGNED_URL_TTL_SECONDS &&
+    Number(settings?.storageSignedUrlTtlPolicyVersion || 0) < SIGNED_URL_TTL_POLICY_VERSION;
+}
+
+export function normalizeSavedSignedUrlTtlSettings(settings = {}) {
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return {};
+  const normalized = { ...settings };
+  if (isLegacySignedUrlTtlSetting(settings)) {
+    normalized.storageSignedUrlTtlSeconds = DEFAULT_SIGNED_URL_TTL_SECONDS;
+  }
+  if (Number(settings.storageSignedUrlTtlPolicyVersion || 0) < SIGNED_URL_TTL_POLICY_VERSION) {
+    normalized.storageSignedUrlTtlPolicyVersion = SIGNED_URL_TTL_POLICY_VERSION;
+  }
+  return normalized;
 }
 
 function splitList(value) {
@@ -78,7 +99,7 @@ export function getBlendRuntimeConfig(overrides = {}) {
     storageBucket: String(source.SUPABASE_STORAGE_BUCKET || PLACEHOLDER_DEFAULTS.SUPABASE_STORAGE_BUCKET).trim(),
     cdnBaseUrl,
     authRedirectUrl,
-    signedUrlTtlSeconds: asPositiveInt(source.SIGNED_URL_TTL_SECONDS, 1209600),
+    signedUrlTtlSeconds: asPositiveInt(source.SIGNED_URL_TTL_SECONDS, DEFAULT_SIGNED_URL_TTL_SECONDS),
     mediaMetadataSource: stripWrappedQuotes(source.MEDIA_METADATA_SOURCE || PLACEHOLDER_DEFAULTS.MEDIA_METADATA_SOURCE) || 'browser',
     defaultBucket,
     publicBucketAllowList,

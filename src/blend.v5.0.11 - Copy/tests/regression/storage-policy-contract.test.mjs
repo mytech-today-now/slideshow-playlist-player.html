@@ -49,7 +49,7 @@ test('settings surface the required private-policy verification fallback as a no
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(
     html,
-    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Private media access could not be verified\. Contact the project owner before sharing\.<\/p>/
+    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Private URL sharing is blocked until the project owner verifies Storage access\. You can share a public-only experience or continue local playback\.<\/p>/
   );
 });
 

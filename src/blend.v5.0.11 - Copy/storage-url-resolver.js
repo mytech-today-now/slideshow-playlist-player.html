@@ -412,7 +412,7 @@ export function createStorageUrlResolver({
 
     const bucketName = normalizeBucket(bucket);
     const cleanPath = encodePath(path);
-    const ttlSeconds = Math.max(1, Number(options.signedUrlTtlSeconds || config.signedUrlTtlSeconds) || 1209600);
+    const ttlSeconds = Math.max(1, Number(options.signedUrlTtlSeconds || config.signedUrlTtlSeconds) || 3600);
     const endpoint = `${normalizeUrl(config.supabaseUrl || '')}/storage/v1/object/sign/${bucketName}/${cleanPath}`;
     const budget = createRequestBudget({
       signal: options.signal,

@@ -7,12 +7,18 @@ import {
   LocalImportLimitError,
   LOCAL_IMPORT_MAX_ARRAY_ITEMS,
   LOCAL_IMPORT_MAX_BYTES,
+  LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES,
   LOCAL_IMPORT_MAX_MEDIA_FILES,
   LOCAL_IMPORT_SIZE_LIMIT_MESSAGE,
   getLocalMediaSelectionCounts,
   parseBoundedImportJson,
   readLocalImportFile
 } from '../../local-import-limits.js';
+
+test('folder scan entry budget is finite and separate from the supported-media cap', () => {
+  assert.equal(LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES, 2_000);
+  assert.ok(LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES > LOCAL_IMPORT_MAX_MEDIA_FILES);
+});
 
 test('direct media selection boundary accepts 250 and rejects 251 without truncating', () => {
   assert.deepEqual(getLocalMediaSelectionCounts(LOCAL_IMPORT_MAX_MEDIA_FILES), {

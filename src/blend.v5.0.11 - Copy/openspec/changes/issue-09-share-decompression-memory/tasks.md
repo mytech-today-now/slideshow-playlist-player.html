@@ -17,7 +17,7 @@
 - [x] 3.1 Preserve the gzip/Base64URL format, parameter names, error code, and ordinary round trips.
 - [x] 3.2 Run focused regression, output-limit E2E, and share-import/playback E2E coverage; record exact outcomes.
 - [x] 3.3 Advance the asset/cache generation consistently and run the PWA version contract checks.
-- [ ] 3.4 Measure peak memory for representative 1 MiB, 10 MiB, and cap-sized payloads on an owner-agreed low-memory browser/device profile and compare against its agreed budget. Desktop informational heap readings do not complete this task.
+- [ ] 3.4 On an Android 13 (API 33) x86_64 Google Play AVD configured with 2 GiB guest RAM and a 720 by 1600 display, measure peak additional anonymous RSS for valid 1 MiB and exact 8 MiB outputs and a 10 MiB over-limit output using Chrome for Android stable 155.0.8059.39 as the baseline. Use a five-second idle-page baseline and Perfetto memory counters where available; each case must stay at or below 64 MiB additional renderer RSS. Run three trials per case and record the worst peak, exact emulator image/configuration and installed browser build, duration, responsiveness, and URL/state recovery. Mark the evidence as emulated; it does not prove Motorola moto e13, Android Go, or physical-device behavior.
 
 ## Tracking
 
@@ -31,4 +31,12 @@
 - `npm run test:e2e -- tests/e2e/url-share-output-limit.e2e.spec.mjs` passed 1/1 in Chromium. Oversized and transaction-abort failures retained state and URL; retry succeeded and cleared the parameters after commit.
 - `npm run test:e2e -- tests/e2e/experience-share-import-playback.e2e.spec.mjs` passed 2/2 in Chromium.
 - `openspec validate issue-09-share-decompression-memory` passed.
-- The E2E `performance.memory` reading was `10,000,000` bytes before and after the rejected share. This browser reading is informational and is not a peak allocation measurement. No owner-agreed low-memory profile or budget is available; task 3.4 and the Beads issue remain in progress.
+- The E2E `performance.memory` reading was `10,000,000` bytes before and after the rejected share. This browser reading is informational and is not a peak allocation measurement. The owner delegated profile and budget selection; the Android 13 2 GiB AVD and 64 MiB incremental renderer RSS budget are now selected. Task 3.4 remains open pending three measured trials per payload size.
+
+## Emulator bring-up (2026-10-13)
+
+- Installed Android command-line tools, ADB 37.0.1, Emulator 37.2.12, Android 13 x86_64 Google Play system image, and Microsoft OpenJDK 21 under the task temp directory; created `blend-issue05-api33-lowmem` with 2 GiB guest RAM and a 720 by 1600 display.
+- The AVD points to the `google_apis_playstore` system image, but generated `config.ini` reports `PlayStore.enabled=no`; verify or correct Play Store availability and confirm the installed Chrome build before starting the trials.
+- A fresh full boot is currently responsive. ADB reports `emulator-5554 unauthorized`, so guest inspection and browser measurement cannot proceed until the on-screen USB debugging authorization is accepted.
+- Windows System log Application Popup event 26 identifies `crashpad_handler.exe` as the process that raised `0x80000003` on 2026-10-13. No matching QEMU/emulator Application Error event or emulator crash dump was found. A later full boot using `-gpu software -no-audio` selected SwiftShader/Lavapipe and remains responsive; no repeat breakpoint event appeared during the check. This isolates the observed dialog to the crash-report handler process, but its cause remains undetermined.
+- No Android memory trials have been run. Task 3.4 remains open.

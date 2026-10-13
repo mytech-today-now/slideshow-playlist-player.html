@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261013-v5.0.11-directory-scan-visibility-pause`
+- **Cache/app shell version key:** `20261013-v5.0.11-signed-media-url-lifetime`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -165,7 +165,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Playback | Slideshow order | Yes | Sequential or random; sequential by default |
 | Playback | Fullscreen | Browser-dependent | `requestFullscreen()` on viewport; playback controls remain available when fullscreen cannot start. Mobile device behavior is unverified. |
 | Library | Add files | Browser-dependent | File System Access API where available, otherwise file-input fallback. Named iOS and Android import/persistence runs are unverified. |
-| Library | Add folder (recursive) | Browser-dependent | Directory picker + supported input fallback; Add Files remains available when folder selection is unavailable. Mobile device behavior is unverified; depth limit 6; 250 supported media files per selection |
+| Library | Add folder (recursive) | Browser-dependent | Directory picker + supported input fallback; Add Files remains available when folder selection is unavailable. Mobile device behavior is unverified; depth limit 6; 250 supported media files per selection; native directory-picker scans stop after 2,000 visited entries |
 | Library | Add URL | Yes | `http(s)`, `supabase://`, legacy `ipfs://` refs |
 | Library | Drag-and-drop import | Yes | Files/directories/list files |
 | Library | Search/filter/sort | Yes | Type + source filters, worker projection for large sets |
@@ -676,7 +676,7 @@ Import behavior rules:
 | Auto verify on startup | `#auto-verify` | IndexedDB settings | Verifies file handles |
 | Analytics consent | `#analytics-consent` | LocalStorage + runtime | Also gated by browser privacy signals, credential state, and the cross-tab execution lock |
 | Supabase default bucket | `#supabase-default-bucket` | IndexedDB settings | Default storage bucket |
-| Signed URL TTL | `#supabase-signed-url-ttl` | IndexedDB settings | Seconds |
+| Signed URL TTL | `#supabase-signed-url-ttl` | IndexedDB settings; 3,600 seconds by default, with owner-selected overrides | Seconds |
 | Require auth for private media | `#private-media-auth-required` | IndexedDB settings | Controls auth expectation |
 | Public Git catalog | `#git-catalog-*` controls | LocalStorage `blend-public-git-catalog-v1` | Stores provider and public repository location only; never stores credentials |
 | User Git repository | `#git-playlist-*` controls | LocalStorage `blend-git-playlist-repository-v1` | Provider, repository, branch, and path only |
@@ -735,7 +735,7 @@ When the stored database version is newer than this app's requested version, Ble
 - GitHub updates use the reviewed Contents blob SHA and a stale SHA returns a conflict. Bitbucket branch writes are disabled because the documented Source API does not promise atomic compare-and-set. After an uncertain GitHub submission, the review stays visible and Blend requires a successful remote read and comparison before allowing another attempt.
 - Supabase sessions stay in memory by default. Selecting **Save session in this browser** explicitly saves only `access_token`, `refresh_token`, and `expires_at` under `blend-supabase-auth-session-v2`; the previous `v1` entry is removed and never restored. The accessible disclosure says: “A saved token can be read by scripts running on this site.”
 - Supabase refresh tokens have no fixed expiry and are normally single-use, with a default 10-second reuse interval. Project Auth settings can still end sessions through inactivity or maximum-lifetime rules, and sign-out revokes the session. See [Supabase session documentation](https://supabase.com/docs/guides/auth/sessions).
-- Signing out stops private playback and clears signed Storage URLs from transient media references in the current tab while preserving portable `supabase://` references for retry after sign-in. The local-reset broadcast also triggers cleanup in peer tabs that receive it. This local cleanup does not revoke a copied URL. Supabase signed URLs remain valid until expiry, and Smart CDN may serve a cached response beyond token expiry until its cache duration ends. See [signed URL behavior](https://supabase.com/docs/guides/storage/serving/downloads) and [Smart CDN caching](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+- New private signed Storage URLs use a default TTL of 3,600 seconds (one hour). The owner-controlled Config value applies to newly issued URLs; the previous saved IndexedDB default of 1,209,600 seconds migrates once, while explicit overrides remain in effect. Signing out stops private playback and clears app-managed signed URLs from transient media references in the current tab while preserving portable `supabase://` references for retry after sign-in. Signed URLs are excluded from IndexedDB snapshots. The local-reset broadcast also triggers cleanup in peer tabs that receive it. This local cleanup does not revoke a copied URL. A copied URL keeps its own expiry, and Smart CDN may serve a cached response beyond token expiry until its cache duration ends. See [signed URL behavior](https://supabase.com/docs/guides/storage/serving/downloads) and [Smart CDN caching](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
 - To restore cross-reload access for a session, select **Save session in this browser** when connecting; that checkbox is the explicit acceptance of the LocalStorage disclosure. To return to tab-only access, sign out and reconnect with the checkbox cleared.
 - Manual fresh-profile check: in a new browser profile, confirm no Supabase session key exists; connect synthetic access and refresh tokens with the checkbox cleared; verify neither token is saved, reload, and confirm private media remains gated while public/local playback still works. Then repeat with the checkbox selected, confirm only the documented fields are saved, and sign out to clear them. Keyboard to the checkbox and confirm its adjacent disclosure is announced by a screen reader without hover.
 - Threat assumption: any script executing on this site can read an opted-in LocalStorage session. This describes the browser boundary and does not claim that this checkout contains an injection.
@@ -900,6 +900,8 @@ Verified in current implementation:
 
 - Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`). A scan that reaches this limit reports how many child folders it skipped as a partial result; choose **Choose deeper folder** in the status notice (or select the deeper folder directly) to include that media.
 - Each folder selection imports at most 250 supported media files (`MAX_FOLDER_MEDIA_FILES` in `app.js`). If more accessible files are found, the saved items stay in the library and the status notice reports added, skipped, and pending counts; choose **Choose smaller folder** to continue with a narrower folder or another folder. This limit applies to both directory-picking and directory-input fallback imports.
+- A native directory-picker scan visits at most 2,000 file and directory entries, including unsupported files. Reaching this ceiling reports a partial result with counts for visited entries, keeps already committed media, and offers **Choose smaller folder** to scan another section.
+- Missing-media relink passes use the same 2,000-entry ceiling. If it is reached, unresolved list references remain unchanged and the status offers **Choose smaller folder**.
 - Remote URL parsing generally requires media-like filenames/extensions for text list imports.
 - GitHub and Bitbucket Cloud direct BYOT reads are supported. GitHub playlist writes use the reviewed file SHA; Bitbucket playlist writes are paused because its documented Source API does not promise an atomic branch condition. The existing recorded verification used synthetic provider mocks, not a live provider account. The opt-in smoke above can verify disposable repositories in a real browser; neither mock nor disposable-repository evidence certifies production permissions or deployment behavior. See [GIT_PLAYLIST_STORAGE_DESIGN.md](GIT_PLAYLIST_STORAGE_DESIGN.md).
 - Service worker intentionally does not cache media/range responses.

@@ -17,4 +17,19 @@
 
 ## Workflow follow-up
 
-- Review and archive this OpenSpec change after implementation review if the user asks to archive it.
+- Review and archive this OpenSpec change only after the expanded issue-02 acceptance and verification pass.
+
+## 4. Signed URL lifetime, durable state, and cleanup recovery
+
+- [x] 4.1 Set the owner-approved 3,600-second default across runtime config, resolver fallbacks, Config UI, and documentation; migrate only the legacy default and test explicit overrides.
+- [x] 4.2 Strip resolver-issued signed URLs from cloned persistence snapshots and sanitize legacy IndexedDB records during startup without changing live playback, portable references, or user data; add regression and E2E coverage.
+- [x] 4.3 Wait for media and IndexedDB cleanup outcomes on sign-out, show retryable incomplete-cleanup copy on failure, and verify sanitized diagnostics plus public/local/authenticated recovery in E2E.
+
+## 5. Expanded verification and tracking
+
+- [x] 5.1 Run the focused signed URL regression test and focused Supabase auth E2E spec; record exact command outcomes and browser details.
+  - Evidence: `node --test --test-isolation=none tests/regression/signed-url-cleanup.test.mjs` exited 0 with 6/6 passing. `npm run test:e2e -- tests/e2e/supabase-auth.e2e.spec.mjs` ran in Chromium 153.0.8010.12 with 7 passed and 1 failed; all issue-02 scenarios passed, while the unrelated temporary refresh-outage assertion still found `#supabase-auth-retry` hidden.
+- [x] 5.2 Run `npm run check` and `npm run test:regression`; record exact command outcomes and assertion counts.
+  - Evidence: `npm run check` exited 0. `npm run test:regression` exited 0 with 359/359 passing.
+- [ ] 5.3 Validate the reused OpenSpec change and Beads `blend-ag8` status, then archive only after all acceptance checks pass.
+  - Pending archive: keep the change active while the focused auth spec retains its unrelated refresh-outage assertion failure.

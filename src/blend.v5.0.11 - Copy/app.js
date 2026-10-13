@@ -1,18 +1,24 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './experience-persistence.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import {
+  DEFAULT_SIGNED_URL_TTL_SECONDS,
+  SIGNED_URL_TTL_POLICY_VERSION,
+  getBlendRuntimeConfig,
+  isLegacySignedUrlTtlSetting,
+  normalizeSavedSignedUrlTtlSettings
+} from './supabase-config.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,32 +28,34 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './storage-url-resolver.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
-  planSignedMediaUrlCleanup
-} from './signed-url-cleanup.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+  planSignedMediaUrlCleanup,
+  isSignedSupabaseStorageUrl,
+  sanitizeSignedMediaPersistenceSnapshot
+} from './signed-url-cleanup.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './transition-manager.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './playback-clock.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { fetchReadme } from './readme-fetcher.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { renderMarkdown } from './markdown.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { fetchReadme } from './readme-fetcher.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -62,28 +70,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './url-share.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './url-share-diagnostics.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './timeline-analysis.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './shared-experience-download.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -94,7 +102,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './git-playlist-catalog.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -105,29 +113,30 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './git-playlist-storage.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
   assertLocalImportPayloadStructure,
   LocalImportLimitError,
   LOCAL_IMPORT_MAX_MEDIA_FILES,
+  LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES,
   parseBoundedImportJson,
   readLocalImportFile,
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './local-import-limits.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './directory-scan-yield.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+} from './resume-on-load.js?v=20261013-v5.0.11-signed-media-url-lifetime';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -222,7 +231,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261013-v5.0.11-directory-scan-visibility-pause';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261013-v5.0.11-signed-media-url-lifetime';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -275,7 +284,8 @@ const DEFAULT_SETTINGS = {
   autoVerifyOnStartup: true,
   themeMode: 'auto',
   storageDefaultBucket: RUNTIME_CONFIG.defaultBucket || 'media',
-  storageSignedUrlTtlSeconds: RUNTIME_CONFIG.signedUrlTtlSeconds || 1209600,
+  storageSignedUrlTtlSeconds: RUNTIME_CONFIG.signedUrlTtlSeconds || DEFAULT_SIGNED_URL_TTL_SECONDS,
+  storageSignedUrlTtlPolicyVersion: SIGNED_URL_TTL_POLICY_VERSION,
   privateMediaRequiresAuth: true
 };
 
@@ -285,9 +295,13 @@ function createDefaultSettings(overrides = {}) {
     enabledTransitionIds: DEFAULT_SETTINGS.enabledTransitionIds.slice(),
     transitionWeights: { ...DEFAULT_SETTINGS.transitionWeights }
   };
+  const normalizedOverrides = overrides && typeof overrides === 'object' && !Array.isArray(overrides)
+    ? { ...overrides }
+    : {};
+  normalizedOverrides.storageSignedUrlTtlPolicyVersion = SIGNED_URL_TTL_POLICY_VERSION;
   const merged = {
     ...base,
-    ...(overrides && typeof overrides === 'object' ? overrides : {})
+    ...normalizedOverrides
   };
   Object.assign(merged, normalizeResumeOnLoadSettings(merged));
   Object.assign(merged, normalizeLayerPlaybackSettings(merged));
@@ -479,7 +493,8 @@ const slideshowPreload = new Map();
 const playlistPreload = new Map();
 const activePlaybackRequests = { playlist: null, slideshow: null };
 const STORAGE_REQUEST_TIMEOUT_COPY = 'The storage request timed out. Check your connection and retry.';
-const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.';
+const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
+const PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY = 'You are signed out. Local cleanup is incomplete. Retry to clear remaining sources and save private references. Copied links can remain usable until expiry, and cached responses may last longer.';
 const thumbUrlCache = new Map();
 const thumbRequests = new Map();
 const thumbElementState = new WeakMap();
@@ -2462,7 +2477,7 @@ function ipfsConfigFromState(overrides = {}) {
   return {
     enabled: true,
     supabaseUrl: RUNTIME_CONFIG.supabaseUrl,
-    signedUrlTtlSeconds: Math.max(1, Number(state.settings.storageSignedUrlTtlSeconds) || RUNTIME_CONFIG.signedUrlTtlSeconds || 1209600),
+    signedUrlTtlSeconds: Math.max(1, Number(state.settings.storageSignedUrlTtlSeconds) || RUNTIME_CONFIG.signedUrlTtlSeconds || DEFAULT_SIGNED_URL_TTL_SECONDS),
     defaultBucket: String(state.settings.storageDefaultBucket || RUNTIME_CONFIG.defaultBucket || 'media').trim() || 'media',
     privateMediaRequiresAuth: state.settings.privateMediaRequiresAuth !== false,
     mediaMetadataSource: RUNTIME_CONFIG.mediaMetadataSource || 'browser',
@@ -2745,7 +2760,7 @@ async function shareExperienceViaUrl() {
       onMetadataPathOmitted: privacyTracker.onMetadataPathOmitted
     });
     if (hasNonPublicSupabaseStorageReference(payload, RUNTIME_CONFIG.publicBucketAllowList)) {
-      showToast('Private media access could not be verified. Contact the project owner before sharing.', {
+      showToast('Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.', {
         timeout: 6000,
         role: 'alert'
       });
@@ -3208,7 +3223,38 @@ async function loadSharedIpfsExperience(request) {
   }
 }
 
-function clearSignedPrivateMediaForSignedOut() {
+function clearSignedMediaElementsForSignOut(signedUrls) {
+  let cleanupComplete = true;
+  clearSignedMediaElements(document.querySelectorAll('video, audio, img'), {
+    signedUrls,
+    onCleanupError: ({ operation, errorName }) => {
+      cleanupComplete = false;
+      log.warn('signed media sign-out cleanup failed', { operation, errorName });
+    }
+  });
+  return cleanupComplete;
+}
+
+function showSignedOutCleanupStatus(signedUrls, cleanupComplete) {
+  const retryCleanup = () => {
+    void (async () => {
+      const mediaCleanupComplete = clearSignedMediaElementsForSignOut(signedUrls);
+      saveStateDebounced();
+      let snapshotSaved = false;
+      try { snapshotSaved = await flushSaveState(); } catch (_) {}
+      showSignedOutCleanupStatus(signedUrls, mediaCleanupComplete && snapshotSaved);
+    })();
+  };
+  showToast(cleanupComplete ? PRIVATE_MEDIA_SIGNED_OUT_COPY : PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY, {
+    timeout: 0,
+    role: 'alert',
+    action: cleanupComplete
+      ? { label: 'Sign in', run: () => { void promptSupabaseSignIn(); } }
+      : { label: 'Retry cleanup', run: retryCleanup }
+  });
+}
+
+async function clearSignedPrivateMediaForSignedOut() {
   const cleanupPlan = planSignedMediaUrlCleanup({
     library: state.library,
     playlist: state.playlist,
@@ -3231,26 +3277,16 @@ function clearSignedPrivateMediaForSignedOut() {
     }
   }
 
-  clearSignedMediaElements(document.querySelectorAll('video, audio, img'), {
-    signedUrls: cleanupPlan.signedUrls,
-    onCleanupError: ({ operation, errorName }) => {
-      log.warn('signed media sign-out cleanup failed', { operation, errorName });
-    }
-  });
+  const mediaCleanupComplete = clearSignedMediaElementsForSignOut(cleanupPlan.signedUrls);
 
   renderLibrary();
   renderListEditor();
   updateHUD();
   saveStateDebounced();
-  showToast(PRIVATE_MEDIA_SIGNED_OUT_COPY, {
-    timeout: 0,
-    role: 'alert',
-    action: {
-      label: 'Sign in',
-      run: () => { void promptSupabaseSignIn(); }
-    }
-  });
-  return true;
+  let snapshotSaved = false;
+  try { snapshotSaved = await flushSaveState(); } catch (_) {}
+  showSignedOutCleanupStatus(cleanupPlan.signedUrls, mediaCleanupComplete && snapshotSaved);
+  return mediaCleanupComplete && snapshotSaved;
 }
 
 supabaseAuthClient.onAuthStateChange(({ event }) => {
@@ -3259,7 +3295,7 @@ supabaseAuthClient.onAuthStateChange(({ event }) => {
   if (event === 'SIGNED_OUT') {
     cancelPlaybackRequest('playlist');
     cancelPlaybackRequest('slideshow');
-    clearSignedPrivateMediaForSignedOut();
+    void clearSignedPrivateMediaForSignedOut();
   }
   if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     storageUrlResolver.clearCache();
@@ -3516,6 +3552,11 @@ async function snapshotIndexedDBConnection(connection) {
 
 async function restoreIndexedDBSnapshot(snapshot) {
   if (!db || !Array.isArray(snapshot) || !snapshot.length) return;
+  const rollbackRecordsByStore = Object.fromEntries(snapshot.map(([name, storeSnapshot]) => [
+    name,
+    Array.isArray(storeSnapshot?.records) ? storeSnapshot.records.map(record => record?.value) : []
+  ]));
+  const safeRollbackRecordsByStore = sanitizeSignedMediaPersistenceSnapshot(rollbackRecordsByStore).recordsByStore;
   const restorableStores = snapshot.filter(([name]) => db.objectStoreNames.contains(name));
   if (!restorableStores.length) return;
 
@@ -3523,9 +3564,12 @@ async function restoreIndexedDBSnapshot(snapshot) {
     const transaction = db.transaction(restorableStores.map(([name]) => name), 'readwrite');
     for (const [name, storeSnapshot] of restorableStores) {
       const store = transaction.objectStore(name);
-      for (const record of storeSnapshot.records) {
-        if (store.keyPath === null) store.put(record.value, record.key);
-        else store.put(record.value);
+      const safeRecords = safeRollbackRecordsByStore[name] || [];
+      for (let index = 0; index < storeSnapshot.records.length; index++) {
+        const record = storeSnapshot.records[index];
+        const value = safeRecords[index] ?? record.value;
+        if (store.keyPath === null) store.put(value, record.key);
+        else store.put(value);
       }
     }
     transaction.oncomplete = resolve;
@@ -3536,9 +3580,12 @@ async function restoreIndexedDBSnapshot(snapshot) {
 
 async function idbPut(storeName, value) {
   if (!db) return;
+  const persistedValue = storeName === EXPERIENCE_STORE
+    ? sanitizeSignedMediaPersistenceSnapshot({ experiences: [value] }).recordsByStore.experiences[0]
+    : value;
   return new Promise((res, rej) => {
     const tx = db.transaction(storeName, 'readwrite');
-    tx.objectStore(storeName).put(value);
+    tx.objectStore(storeName).put(persistedValue);
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
@@ -4039,9 +4086,10 @@ async function persistExperienceRecordsAtomically(recordsByStore, keepLibraryKey
 
   await waitForSnapshotPersistTestHook();
   const previousBase = persistedExperienceRecordsByStore || {};
+  const persistenceSnapshot = sanitizeSignedMediaPersistenceSnapshot(recordsByStore);
   const persisted = await persistExperienceSnapshotAtomically({
     db,
-    recordsByStore,
+    recordsByStore: persistenceSnapshot.recordsByStore,
     baseRecordsByStore: previousBase,
     expectedRevision: persistedExperienceRevision,
     keepLibraryKeys,
@@ -4196,10 +4244,23 @@ function reconcilePersistedLibrary(records) {
     if (!hydrated) continue;
     const current = state.library.get(record.id);
     if (current) {
+      const liveSignedUrl = [current.sourceUrl, current.metadata?.sourceUrl, current.handle?.sourceUrl]
+        .find(value => isSignedSupabaseStorageUrl(value));
+      const liveSignedExpiry = current.metadata?.signedUrlExpiresAt;
+      const preserveLiveSignedUrl = !!liveSignedUrl && liveSignedExpiry !== undefined && liveSignedExpiry !== null;
       const runtimeHandle = current.handle;
       const preserveTransientHandle = !!runtimeHandle?.transient && !record.handle && !record.file;
       Object.assign(current, hydrated);
       if (preserveTransientHandle) current.handle = runtimeHandle;
+      if (preserveLiveSignedUrl) {
+        current.sourceUrl = liveSignedUrl;
+        current.metadata = current.metadata && typeof current.metadata === 'object' ? current.metadata : {};
+        current.metadata.sourceUrl = liveSignedUrl;
+        current.metadata.signedUrlExpiresAt = liveSignedExpiry;
+        if (current.handle && typeof current.handle === 'object' && current.handle.remote) {
+          try { current.handle.sourceUrl = liveSignedUrl; } catch (_) {}
+        }
+      }
     }
     else {
       state.library.set(record.id, hydrated);
@@ -4587,9 +4648,42 @@ async function hydrateState() {
   const storedSnapshot = await readExperienceSnapshotAtomically({ db });
   persistedExperienceRevision = storedSnapshot.revision;
   persistedExperienceRecordsByStore = storedSnapshot.recordsByStore;
+  const storedRecordsByStore = storedSnapshot.recordsByStore || {};
+  const cleanStoredSnapshot = sanitizeSignedMediaPersistenceSnapshot(storedRecordsByStore);
+  const hydratedRecordsByStore = cleanStoredSnapshot.recordsByStore;
+  const oldSettings = [
+    ...(Array.isArray(storedRecordsByStore.settings) ? storedRecordsByStore.settings : []),
+    ...(Array.isArray(storedRecordsByStore.experiences) ? storedRecordsByStore.experiences : [])
+      .map(record => record?.payload?.settings || record?.snapshot?.settings || record?.data?.settings)
+      .filter(Boolean)
+  ];
+  const hasLegacySignedUrlTtl = oldSettings.some(isLegacySignedUrlTtlSetting);
+  if (hasLegacySignedUrlTtl) {
+    if (Array.isArray(hydratedRecordsByStore.settings)) {
+      hydratedRecordsByStore.settings = hydratedRecordsByStore.settings.map(record =>
+        isLegacySignedUrlTtlSetting(record) ? { ...record, ...normalizeSavedSignedUrlTtlSettings(record) } : record
+      );
+    }
+    if (Array.isArray(hydratedRecordsByStore.experiences)) {
+      hydratedRecordsByStore.experiences = hydratedRecordsByStore.experiences.map(record => {
+        const payloadKey = ['payload', 'snapshot', 'data'].find(key => record?.[key] && typeof record[key] === 'object');
+        const payload = payloadKey ? record[payloadKey] : null;
+        if (!payload || !isLegacySignedUrlTtlSetting(payload.settings)) return record;
+        return {
+          ...record,
+          [payloadKey]: {
+            ...payload,
+            settings: normalizeSavedSignedUrlTtlSettings(payload.settings)
+          }
+        };
+      });
+    }
+  }
+  const needsPrivateMediaSnapshotRewrite = cleanStoredSnapshot.clearedFieldCount > 0 || hasLegacySignedUrlTtl;
+  let startupSnapshotWasWritten = false;
 
   // library
-  const libItems = storedSnapshot.recordsByStore.library || [];
+  const libItems = hydratedRecordsByStore.library || [];
   state.library.clear();
   for (const rec of libItems) {
     const item = hydratedLibraryItem(rec);
@@ -4597,11 +4691,11 @@ async function hydrateState() {
   }
 
   state.directoryHandles.clear();
-  for (const rec of storedSnapshot.recordsByStore.dirHandles || []) {
+  for (const rec of hydratedRecordsByStore.dirHandles || []) {
     if (rec.handle) state.directoryHandles.set(rec.id, rec);
   }
 
-  const records = storedSnapshot.recordsByStore[EXPERIENCE_STORE] || [];
+  const records = hydratedRecordsByStore[EXPERIENCE_STORE] || [];
   state.experiences = sortExperienceRecords(records.map(rec => ({
     ...rec,
     payload: normalizeExperienceSnapshot(rec.payload || rec.snapshot || rec.data || {})
@@ -4614,9 +4708,9 @@ async function hydrateState() {
   }
 
   if (!activeRecord) {
-    const legacySettings = (storedSnapshot.recordsByStore.settings || []).find(record => record?.key === 'global') || null;
-    const legacyPlaylist = (storedSnapshot.recordsByStore.playlist || []).find(record => record?.key === 'default') || null;
-    const legacySlideshow = (storedSnapshot.recordsByStore.slideshow || []).find(record => record?.key === 'default') || null;
+    const legacySettings = (hydratedRecordsByStore.settings || []).find(record => record?.key === 'global') || null;
+    const legacyPlaylist = (hydratedRecordsByStore.playlist || []).find(record => record?.key === 'default') || null;
+    const legacySlideshow = (hydratedRecordsByStore.slideshow || []).find(record => record?.key === 'default') || null;
     const legacyPlaybackSettings = {
       ...(legacySettings || {}),
       playbackModePlaylist: legacySettings?.playbackModePlaylist ?? legacyPlaylist?.mode,
@@ -4658,7 +4752,7 @@ async function hydrateState() {
       state.activeExperienceId = activeRecord.id;
       // Keep the legacy list and settings records as the rollback source until
       // the complete experience snapshot commits in one readwrite transaction.
-      await saveStateNow();
+      startupSnapshotWasWritten = await saveStateNow();
     } else {
       // Keep a genuinely empty database empty after a user reset or first launch.
       state.experiences = [];
@@ -4672,7 +4766,19 @@ async function hydrateState() {
   syncExperienceControls();
   renderExperiencePicker();
   refreshExperienceMetadataFromState();
-  persistedExperienceRecordsByStore = hydratedPersistenceBaseline();
+  if (needsPrivateMediaSnapshotRewrite && !startupSnapshotWasWritten) {
+    startupSnapshotWasWritten = await saveStateNow();
+    if (!startupSnapshotWasWritten) {
+      showToast('Saved private media cleanup is incomplete. Retry to remove old signed URLs while keeping the media item and portable reference.', {
+        timeout: 0,
+        role: 'alert',
+        action: { label: 'Retry cleanup', run: () => { void saveStateNow(); } }
+      });
+    }
+  }
+  if (startupSnapshotWasWritten || !needsPrivateMediaSnapshotRewrite) {
+    persistedExperienceRecordsByStore = hydratedPersistenceBaseline();
+  }
 }
 
 async function verifyLibraryHandles() {
@@ -5150,6 +5256,9 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
   const maxMediaFiles = Number.isFinite(opts.maxMediaFiles)
     ? Math.max(0, Math.floor(opts.maxMediaFiles))
     : Number.POSITIVE_INFINITY;
+  const maxVisitedEntries = Number.isFinite(opts.maxVisitedEntries)
+    ? Math.max(0, Math.floor(opts.maxVisitedEntries))
+    : Number.POSITIVE_INFINITY;
   const handles = [];
   let status = 'complete';
   let skippedBranches = 0;
@@ -5159,15 +5268,21 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
   let pending = 0;
   let batchCommitted = false;
   let limitReached = false;
+  let entryLimitReached = false;
 
   async function visitDirectory(handle, depth, path) {
     if (opts.signal?.aborted) status = 'cancelled';
-    if (status === 'cancelled' || status === 'persistence-failed' || limitReached) return;
+    if (status === 'cancelled' || status === 'persistence-failed' || limitReached || entryLimitReached) return;
+    if (scanned >= maxVisitedEntries) {
+      entryLimitReached = true;
+      return;
+    }
     try {
       for await (const entry of handle.values()) {
-        if (opts.signal?.aborted) status = 'cancelled';
-        if (status === 'cancelled' || status === 'persistence-failed' || limitReached) break;
         scanned++;
+        if (opts.signal?.aborted) status = 'cancelled';
+        if (status === 'cancelled' || status === 'persistence-failed' || limitReached || entryLimitReached) break;
+        const reachedEntryCeiling = scanned >= maxVisitedEntries;
         if (entry.kind === 'file') {
           if (getMediaType(entry.name)) {
             found++;
@@ -5190,6 +5305,7 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
               }
               if (opts.stopAtMediaLimit && found >= maxMediaFiles) {
                 limitReached = true;
+                if (reachedEntryCeiling) entryLimitReached = true;
                 break;
               }
             } else {
@@ -5198,7 +5314,9 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
           }
         } else if (entry.kind === 'directory') {
           if (depth < maxDepth) {
-            await visitDirectory(entry, depth + 1, path ? `${path}/${entry.name}` : entry.name);
+            if (!reachedEntryCeiling) {
+              await visitDirectory(entry, depth + 1, path ? `${path}/${entry.name}` : entry.name);
+            }
           } else {
             skippedDepthBranches = Math.min(Number.MAX_SAFE_INTEGER, skippedDepthBranches + 1);
           }
@@ -5211,7 +5329,11 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
           });
           if (!continued || opts.signal?.aborted) status = 'cancelled';
         }
-        if (status === 'cancelled' || status === 'persistence-failed' || limitReached) break;
+        if (reachedEntryCeiling && !limitReached && status !== 'persistence-failed') {
+          entryLimitReached = true;
+          break;
+        }
+        if (status === 'cancelled' || status === 'persistence-failed' || limitReached || entryLimitReached) break;
       }
     } catch (e) {
       const errorName = ['NotAllowedError', 'NotReadableError', 'NotFoundError', 'SecurityError', 'AbortError', 'TypeError'].includes(e?.name)
@@ -5233,6 +5355,7 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
   await visitDirectory(dirHandle, 0, dirHandle.name || '');
   if (opts.signal?.aborted && status !== 'persistence-failed') status = 'cancelled';
   opts.onProgress?.({ found, pending, retained: handles.length, scanned });
+  if (entryLimitReached && status === 'complete') status = 'partial';
   if (limitReached && status === 'complete') status = 'partial';
   if (pending && status === 'complete') status = 'partial';
   if (skippedDepthBranches && status === 'complete') status = 'partial';
@@ -5249,9 +5372,11 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
       status,
       skippedBranches,
       skippedDepthBranches,
+      scanned,
       found,
       pending,
-      limitReached
+      limitReached,
+      entryLimitReached
     }
   };
 }
@@ -5290,6 +5415,7 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, o
     const result = await walkDirectoryForMedia(dirHandle, {
       operation: forMissingPaths ? 'missing_media_relink' : 'directory_scan',
       maxMediaFiles: MAX_FOLDER_MEDIA_FILES,
+      maxVisitedEntries: LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES,
       stopAtMediaLimit: forMissingPaths,
       signal: controller?.signal,
       onMediaBatch: forMissingPaths ? undefined : onMediaBatch,
@@ -5329,6 +5455,12 @@ function folderImportCountSummary(found, pending, result) {
 
 function folderImportLimitMessage(found, pending, result) {
   return `Folder scan paused after the supported import limit. The files already added are safe; choose a smaller folder or continue with another folder. ${folderImportCountSummary(found, pending, result)}`;
+}
+
+function folderScanEntryLimitMessage(summary, result) {
+  const skipped = result.existing + result.skipped;
+  const foundNoun = summary.found === 1 ? 'file' : 'files';
+  return `Folder scan stopped after visiting ${summary.scanned} entries. Later entries were not visited. Choose a smaller folder to scan another section. ${summary.found} supported media ${foundNoun} found within the visited entries; ${result.added} added, ${skipped} skipped (${result.existing} already present), ${summary.pending} pending within the visited entries.`;
 }
 
 function showDirectoryScanToast(message, options = {}) {
@@ -5379,7 +5511,9 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
       messages.push(`Folder scan was partial: ${folderCount} folder${folderCount === 1 ? '' : 's'} could not be read.`);
     }
     if (summary.skippedDepthBranches) messages.push(folderDepthLimitNotice(summary.skippedDepthBranches));
-    if (summary.pending) {
+    if (summary.entryLimitReached) {
+      messages.push(folderScanEntryLimitMessage(summary, result));
+    } else if (summary.pending) {
       messages.push(folderImportLimitMessage(summary.found, summary.pending, result));
     } else {
       messages.push(`${summary.found} media file${summary.found === 1 ? '' : 's'} found; ${result.added} added, ${result.existing} already present.`);
@@ -5396,11 +5530,11 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
     if (summary.skippedDepthBranches) {
       actions.push({ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } });
     }
-    if (summary.pending) {
+    if (summary.pending || summary.entryLimitReached) {
       actions.push({ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } });
     }
     showDirectoryScanToast(messages.join(' '), {
-      timeout: summary.pending ? 30000 : 12000,
+      timeout: summary.pending || summary.entryLimitReached ? 30000 : 12000,
       actions
     });
   } else if (summary.status === 'cancelled') {
@@ -5411,16 +5545,19 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
     const depthNotice = summary.skippedDepthBranches
       ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
       : '';
+    const entryLimitNotice = summary.entryLimitReached
+      ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; later entries were not visited.`
+      : '';
     const message = summary.pending
-      ? `Folder scan canceled.${skipped}${depthNotice} ${folderImportCountSummary(summary.found, summary.pending, result)}`
+      ? `Folder scan canceled.${skipped}${depthNotice}${entryLimitNotice} ${folderImportCountSummary(summary.found, summary.pending, result)}`
       : retained
-        ? `Folder scan canceled.${skipped}${depthNotice} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
-        : `Folder scan canceled.${skipped}${depthNotice} No media files were added.`;
+        ? `Folder scan canceled.${skipped}${depthNotice}${entryLimitNotice} ${retained} media file${retained === 1 ? ' found so far was' : 's found so far were'} kept.`
+        : `Folder scan canceled.${skipped}${depthNotice}${entryLimitNotice} No media files were added.`;
     const actions = [];
     if (summary.skippedDepthBranches) {
       actions.push({ label: 'Choose deeper folder', run: () => { void addFolderFromPicker(); } });
     }
-    if (summary.pending) {
+    if (summary.pending || summary.entryLimitReached) {
       actions.push({ label: 'Choose smaller folder', run: () => { void addFolderFromPicker(); } });
     }
     showDirectoryScanToast(message, { timeout: 6000, actions });
@@ -12310,6 +12447,9 @@ async function resolveMissingImports(missing, which) {
     const resolvedMessage = `Resolved ${resolved}/${missing.length} missing path${missing.length === 1 ? '' : 's'}${incompatible ? ` (${incompatible} incompatible)` : ''}`;
     if (summary.status === 'partial') {
       const messages = [];
+      if (summary.entryLimitReached) {
+        messages.push(`Missing-media scan stopped after visiting ${summary.scanned} entries. Later entries were not inspected. No saved entries were removed; choose a smaller folder or narrow the search.`);
+      }
       if (summary.limitReached) {
         messages.push('This folder contains more media than Blend can scan in one relink pass. No saved entries were removed. Choose a smaller folder or narrow the search.');
       }
@@ -12322,7 +12462,7 @@ async function resolveMissingImports(missing, which) {
       if (summary.skippedBranches) messages.push('No saved entries were removed. Check folder permissions and retry.');
 
       const actions = [];
-      if (summary.limitReached) {
+      if (summary.limitReached || summary.entryLimitReached) {
         actions.push({ label: 'Choose smaller folder', run: () => { void resolveMissingImports(missing, which); } });
       }
       if (summary.skippedBranches) {
@@ -12342,8 +12482,14 @@ async function resolveMissingImports(missing, which) {
       const depthNotice = summary.skippedDepthBranches
         ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
         : '';
-      const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice} No saved entries were removed. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
+      const entryLimitNotice = summary.entryLimitReached
+        ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; later entries were not inspected.`
+        : '';
+      const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice}${entryLimitNotice} No saved entries were removed. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
       const actions = [{ label: 'Retry scan', run: () => { void resolveMissingImports(missing, which); } }];
+      if (summary.entryLimitReached) {
+        actions.push({ label: 'Choose smaller folder', run: () => { void resolveMissingImports(missing, which); } });
+      }
       if (summary.skippedDepthBranches) actions.push({ label: 'Choose deeper folder', run: () => { void resolveMissingImports(missing, which); } });
       showDirectoryScanToast(message, { timeout: 12000, actions });
     } else if (summary.status === 'empty') {
