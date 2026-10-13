@@ -388,6 +388,62 @@ Use a GitHub fine-grained personal access token limited to the intended reposito
 
 Credentials stay in memory by default. **Remember on this device** explicitly saves a provider-tagged token in separate LocalStorage on Blend's origin, which scripts on that origin can read; LocalStorage is not a secure vault. Blend's consented analytics loader and remembered Git credentials use one cross-tab browser lock and cannot be active together. If analytics already holds the lock in this or another Blend tab, a requested Git connection stays available in memory and the token is not saved. To switch from analytics to remembered credentials, turn analytics off, close the other Blend tabs, reload, and connect again with **Remember on this device** selected. If the browser cannot provide the shared lock, analytics and requested credential persistence fail closed while session-only Git use remains available. Forget credential removes a remembered browser copy and clears the current Git connection; it does not revoke the provider token or change analytics consent. Disconnect clears only the in-memory token. Use the provider links in Configuration to revoke a token. Published files and Git history may be visible to repository readers. GitHub updates use the reviewed file SHA and surface conflicts. Bitbucket publishing is paused until its API documents an atomic condition for branch updates.
 
+### Optional live-provider smoke verification
+
+The opt-in browser smoke tests live provider CORS and responses. The normal regression and E2E suites remain network-free unless you explicitly provide the smoke configuration. Use a separate private repository for each provider. Each repository slug must start with `blend-smoke-` and contain a valid fixture playlist at `blend-smoke/playlist.json`; the smoke never creates or deletes repositories and refuses to publish if GitHub does not report the repository as private.
+
+Create a harmless fixture with one public HTTPS media URL, for example:
+
+```json
+{
+  "schema": "player.blend.list.v1",
+  "type": "playlist",
+  "name": "Disposable smoke fixture",
+  "description": "",
+  "order": ["fixture-a"],
+  "items": [{
+    "id": "fixture-a",
+    "path": "https://example.com/fixture.mp3",
+    "sourceUrl": "https://example.com/fixture.mp3",
+    "pathKind": "remote",
+    "name": "fixture.mp3",
+    "type": "audio",
+    "order": 0
+  }]
+}
+```
+
+Use a GitHub fine-grained token restricted to the disposable repository with Contents read and write. Use a Bitbucket repository token with Repository Read only. Enter tokens at a hidden secure prompt in a private PowerShell session; the smoke runner reads them from process environment and does not print them. Set the repository coordinates and exact confirmation for the private repository. GitHub writes require confirmation before any publish; Bitbucket's smoke is read-only.
+
+```powershell
+function Set-BlendSmokeToken($Name) {
+  $secure = Read-Host "Synthetic token for $Name" -AsSecureString
+  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+  try { Set-Item -Path "Env:$Name" -Value ([Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)) }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer); $secure.Dispose() }
+}
+
+$env:BLEND_GITHUB_SMOKE_OWNER = 'YOUR_GITHUB_OWNER'
+$env:BLEND_GITHUB_SMOKE_REPOSITORY = 'blend-smoke-github-unique'
+$env:BLEND_GITHUB_SMOKE_BRANCH = 'main'
+$env:BLEND_GITHUB_SMOKE_CONFIRM = "I_CONFIRM_DISPOSABLE_PRIVATE_REPOSITORY:$($env:BLEND_GITHUB_SMOKE_OWNER)/$($env:BLEND_GITHUB_SMOKE_REPOSITORY)"
+Set-BlendSmokeToken BLEND_GITHUB_SMOKE_TOKEN
+
+$env:BLEND_BITBUCKET_SMOKE_WORKSPACE = 'YOUR_BITBUCKET_WORKSPACE'
+$env:BLEND_BITBUCKET_SMOKE_REPOSITORY = 'blend-smoke-bitbucket-unique'
+$env:BLEND_BITBUCKET_SMOKE_BRANCH = 'main'
+$env:BLEND_BITBUCKET_SMOKE_CONFIRM = "I_CONFIRM_DISPOSABLE_PRIVATE_REPOSITORY:$($env:BLEND_BITBUCKET_SMOKE_WORKSPACE)/$($env:BLEND_BITBUCKET_SMOKE_REPOSITORY)"
+Set-BlendSmokeToken BLEND_BITBUCKET_SMOKE_TOKEN
+
+npm run test:git-provider-smoke
+```
+
+The GitHub check connects and reads the fixture, publishes a harmless synthetic list, reads it back, checks that a stale review is rejected, then restores and verifies the original validated fixture. Cleanup restores file content but cannot erase commits from Git history. If a publish response is uncertain, the smoke reads the repository before any restoration attempt; it stops if the remote content is not one of the known smoke states. Inspect the disposable repository before retrying if cleanup cannot be verified. The Bitbucket check verifies only repository, branch, and playlist reads; it sends no write request.
+
+Output contains only provider, operation label, method, HTTP status, and a stable sanitized outcome. It omits headers, URLs, repository names or paths, response bodies, and token values. The fixture web server does not inherit smoke environment variables. No account or token is configured by default, so both provider checks are reported as skipped. To clear the current PowerShell session after a run, remove the `BLEND_GITHUB_SMOKE_*` and `BLEND_BITBUCKET_SMOKE_*` environment variables. After verification, delete only the disposable repositories and revoke only the synthetic tokens.
+
+To exercise a read-only GitHub token manually, scope a separate synthetic token to Contents read for only its disposable repository, connect with it in Blend, review a harmless playlist, and confirm that publish returns a sanitized permission error without changing the repository. Review the token's scope in the provider settings; this smoke does not inspect or certify account-wide permissions. Do not run a least-privilege experiment against a production playlist.
+
 ### Playback Controls
 
 - Open the configuration panel with the gear or `C` to access the playback toolbar for both layers.
@@ -841,7 +897,7 @@ Verified in current implementation:
 - Folder scanning depth is capped (`MAX_FOLDER_DEPTH = 6`). A scan that reaches this limit reports how many child folders it skipped as a partial result; choose **Choose deeper folder** in the status notice (or select the deeper folder directly) to include that media.
 - Each folder selection imports at most 250 supported media files (`MAX_FOLDER_MEDIA_FILES` in `app.js`). If more accessible files are found, the saved items stay in the library and the status notice reports added, skipped, and pending counts; choose **Choose smaller folder** to continue with a narrower folder or another folder. This limit applies to both directory-picking and directory-input fallback imports.
 - Remote URL parsing generally requires media-like filenames/extensions for text list imports.
-- GitHub and Bitbucket Cloud direct BYOT reads are supported. GitHub playlist writes use the reviewed file SHA; Bitbucket playlist writes are paused because its documented Source API does not promise an atomic branch condition. No live provider account was used for verification. Synthetic tests cover provider request behavior and recovery; they do not establish live provider behavior. See [GIT_PLAYLIST_STORAGE_DESIGN.md](GIT_PLAYLIST_STORAGE_DESIGN.md).
+- GitHub and Bitbucket Cloud direct BYOT reads are supported. GitHub playlist writes use the reviewed file SHA; Bitbucket playlist writes are paused because its documented Source API does not promise an atomic branch condition. The existing recorded verification used synthetic provider mocks, not a live provider account. The opt-in smoke above can verify disposable repositories in a real browser; neither mock nor disposable-repository evidence certifies production permissions or deployment behavior. See [GIT_PLAYLIST_STORAGE_DESIGN.md](GIT_PLAYLIST_STORAGE_DESIGN.md).
 - Service worker intentionally does not cache media/range responses.
 - File System Access capabilities vary significantly by browser.
 

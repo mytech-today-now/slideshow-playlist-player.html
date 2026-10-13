@@ -80,6 +80,16 @@ Authenticated Git requests are direct cross-origin requests. The app's service w
 
 Remote read, denial, malformed content, conflict, failed write, and uncertain write outcomes do not replace or remove the local playlist or alter playback. A successful publish also leaves local state unchanged.
 
+## Opt-in live-provider verification
+
+`tests/e2e/git-playlist-provider-smoke.e2e.spec.mjs` is an explicit browser-only smoke, invoked with `npm run test:git-provider-smoke`. It uses the real browser `fetch` path so CORS and preflight behavior are observed. The test skips without all required per-provider environment variables and an exact repository-specific confirmation; default CI receives no smoke credentials and makes no provider requests. `playwright.config.mjs` removes smoke variables from the local fixture server's environment.
+
+Each provider requires a separate private repository whose slug starts with `blend-smoke-`, with a valid fixture at the fixed `blend-smoke/playlist.json` path. GitHub additionally requires confirmation equal to `I_CONFIRM_DISPOSABLE_PRIVATE_REPOSITORY:<owner>/<repository>` before the write flow runs. The smoke checks private visibility before mutation, publishes only synthetic public media URLs, exercises a stale reviewed snapshot, and restores the original validated playlist. Restoration creates Git history; it does not erase commits or delete the repository. Bitbucket verification is read-only and makes no write request.
+
+Diagnostics are an allowlist of provider, operation, method, observed HTTP status, and stable outcome. The test helper rejects non-fixed provider origins and credentials outside the Authorization header. It does not inspect or serialize response headers, URL, response body, repository coordinates, or raw fetch errors. Regression coverage uses synthetic sentinels and deterministic mocks for success, denial, rate limit, stale revision, and ambiguous write outcomes. These results establish code behavior under the tested fixtures. A live disposable result establishes only what the selected provider account and disposable repository returned at that time; it does not establish production permissions or deployed-app behavior.
+
+If an outcome is uncertain, no repeat publish is made before a successful remote read. Cleanup restores only when the current remote playlist matches the original validated fixture or a known synthetic smoke candidate. If reads fail or state differs, stop and inspect the confirmed disposable repository before retrying. The user-facing not-run state is: “Provider verification was not run. Local playlist edits remain saved; inspect the disposable repository before retrying a publish.”
+
 ## Verified provider documentation
 
 Reviewed on 2026-10-12:

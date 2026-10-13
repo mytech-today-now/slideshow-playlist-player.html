@@ -12,10 +12,15 @@ import {
   saveGitPlaylistSettings,
   serializeRemotePlaylist
 } from '../../git-playlist-storage.js';
+import {
+  createSanitizedProviderFetch,
+  formatSanitizedProviderDiagnostic
+} from '../integration/git-playlist-provider-diagnostics.js';
 
 const TOKEN = 'sentinel-git-token-not-a-real-credential';
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+const SHA_C = 'c'.repeat(40);
 
 const settings = (provider = 'github', extra = {}) => ({
   provider,
@@ -233,6 +238,78 @@ test('connect distinguishes denied access and never exposes provider response bo
   }
 });
 
+test('sanitized provider diagnostics observe status without exposing the secret sentinel or request details', async () => {
+  const observed = [];
+  const requests = [];
+  let nextStatus = 200;
+  const fetchImpl = async (url, options) => {
+    requests.push({ url: new URL(url), options });
+    return new Response('provider body sentinel', { status: nextStatus, headers: { 'x-private-header': TOKEN } });
+  };
+  const fetchObserved = createSanitizedProviderFetch({
+    provider: 'github',
+    token: TOKEN,
+    fetchImpl,
+    onDiagnostic: event => observed.push(event)
+  });
+  const response = await fetchObserved('https://api.github.com/repos/blend-team/playlists/contents/playlists/ambient.json?ref=main', {
+    method: 'GET',
+    mode: 'cors',
+    credentials: 'omit',
+    cache: 'no-store',
+    redirect: 'error',
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(requests[0].url.origin, 'https://api.github.com');
+  assert.equal(requests[0].options.headers.Authorization, `Bearer ${TOKEN}`);
+  assert.deepEqual(observed, [{
+    provider: 'github', operation: 'playlist_read', method: 'GET', status: 200, outcome: 'success'
+  }]);
+  const diagnosticText = formatSanitizedProviderDiagnostic(observed[0]);
+  assert.equal(diagnosticText.includes(TOKEN), false);
+  assert.equal(diagnosticText.includes('/repos/'), false);
+  assert.equal(diagnosticText.includes('headers'), false);
+  assert.equal(JSON.stringify(observed).includes(TOKEN), false);
+  assert.equal(JSON.stringify(observed).includes('provider body sentinel'), false);
+  assert.equal(requests[0].url.href.includes(TOKEN), false);
+
+  for (const [status, outcome] of [
+    [403, 'permission_denied'],
+    [409, 'remote_conflict'],
+    [429, 'rate_limited']
+  ]) {
+    nextStatus = status;
+    await fetchObserved('https://api.github.com/repos/blend-team/playlists', {
+      method: 'GET', headers: { Authorization: `Bearer ${TOKEN}` }
+    });
+    assert.equal(observed.at(-1).status, status);
+    assert.equal(observed.at(-1).outcome, outcome);
+  }
+
+  const settingsJson = JSON.stringify(normalizeGitPlaylistSettings(settings()));
+  const catalogJson = JSON.stringify({ schema: 'player.blend.catalog.v1', playlists: [{ id: 'ambient', title: 'Ambient' }] });
+  const playlistJson = serializeRemotePlaylist([
+    { sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Café music', type: 'audio' }
+  ]);
+  assert.equal(settingsJson.includes(TOKEN), false);
+  assert.equal(catalogJson.includes(TOKEN), false);
+  assert.equal(playlistJson.includes(TOKEN), false);
+
+  const callsBeforeWrongOrigin = requests.length;
+  await assert.rejects(fetchObserved('https://example.invalid/private?token=bad', {
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  }), error => error.code === 'provider_origin_rejected');
+  await assert.rejects(fetchObserved(`https://api.github.com/repos/blend-team/playlists?token=${encodeURIComponent(TOKEN)}`, {
+    headers: { Authorization: `Bearer ${TOKEN}` }
+  }), error => error.code === 'provider_origin_rejected');
+  await assert.rejects(fetchObserved('https://api.github.com/repos/blend-team/playlists', {
+    headers: { Authorization: `Bearer ${TOKEN}`, 'X-Synthetic-Diagnostic': TOKEN }
+  }), error => error.code === 'credential_scope_violation');
+  assert.equal(requests.length, callsBeforeWrongOrigin);
+});
+
 test('session credentials default to memory, explicit remembering is separate, disconnect clears memory, and forget removes storage', async () => {
   const storage = memoryStorage();
   const firstFetch = githubFetch();
@@ -374,7 +451,7 @@ test('GitHub detects remote changes before publish and does not overwrite or ret
   assert.equal(putCalls, 0);
 });
 
-test('GitHub maps stale SHA conflicts and uncertain write transport without retries', async () => {
+test('GitHub maps stale SHA conflicts and blocks retries after a timeout before response headers', async () => {
   let putCalls = 0;
   const { fetchImpl } = githubFetch({ onPut: () => {
     putCalls += 1;
@@ -386,7 +463,12 @@ test('GitHub maps stale SHA conflicts and uncertain write transport without retr
   await assert.rejects(client.publish(review), error => error.code === 'remote_conflict' && !error.message.includes('private provider conflict body'));
   assert.equal(putCalls, 1);
 
-  const uncertain = githubFetch({ onPut: async () => { putCalls += 1; throw new TypeError('transport detail'); } });
+  const uncertain = githubFetch({ onPut: async () => {
+    putCalls += 1;
+    const error = new Error('synthetic timeout detail');
+    error.name = 'AbortError';
+    throw error;
+  } });
   const client2 = createGitPlaylistClient({ fetchImpl: uncertain.fetchImpl });
   await connectGithub(client2);
   const review2 = await client2.preparePublish(settings(), serializeRemotePlaylist([{ sourceUrl: 'https://media.example.org/cafe.mp3', name: 'Café', type: 'audio' }]));
@@ -397,6 +479,55 @@ test('GitHub maps stale SHA conflicts and uncertain write transport without retr
   await client2.readPlaylist(settings());
   await assert.rejects(client2.publish(review2), error => error.code === 'write_outcome_uncertain');
   assert.equal(putCalls, 3, 'a second attempt is possible only after the explicit remote read');
+});
+
+test('accepted GitHub write with a lost response is reconciled before cleanup and never resubmitted blindly', async () => {
+  let remoteText = playlistDocument();
+  let remoteSha = SHA_A;
+  let putCalls = 0;
+  const fallback = githubFetch();
+  const fetchImpl = async (urlValue, options) => {
+    const url = new URL(urlValue);
+    if (url.pathname === '/repos/blend-team/playlists/contents/playlists/ambient.json' && options.method === 'GET') {
+      return githubContents(remoteText, remoteSha);
+    }
+    if (url.pathname === '/repos/blend-team/playlists/contents/playlists/ambient.json' && options.method === 'PUT') {
+      putCalls += 1;
+      remoteText = Buffer.from(JSON.parse(options.body).content, 'base64').toString('utf8');
+      remoteSha = putCalls === 1 ? SHA_B : SHA_C;
+      if (putCalls === 1) {
+        const error = new Error('response lost after provider accepted the write');
+        error.name = 'AbortError';
+        throw error;
+      }
+      return new Response(JSON.stringify({ content: { sha: SHA_C }, commit: { sha: SHA_C } }), { status: 200 });
+    }
+    return fallback.fetchImpl(urlValue, options);
+  };
+
+  const client = createGitPlaylistClient({ fetchImpl });
+  await connectGithub(client);
+  const original = await client.readPlaylist(settings());
+  const outgoingText = serializeRemotePlaylist([
+    { sourceUrl: 'https://media.example.org/smoke.mp3', name: 'Disposable smoke', type: 'audio' }
+  ]);
+  const review = await client.preparePublish(settings(), outgoingText);
+  await assert.rejects(client.publish(review), error => error.code === 'write_outcome_uncertain');
+  assert.equal(putCalls, 1);
+  await assert.rejects(client.publish(review), error => error.code === 'remote_reconciliation_required');
+  assert.equal(putCalls, 1, 'an uncertain submission must not be blindly retried');
+
+  const observed = await client.readPlaylist(settings());
+  assert.equal(observed.playlist.name, JSON.parse(outgoingText).name);
+  assert.equal(observed.playlist.items[0].sourceUrl, JSON.parse(outgoingText).items[0].sourceUrl);
+  const cleanupReview = await client.preparePublish(settings(), original.text);
+  assert.equal(cleanupReview.snapshot.sha, SHA_B);
+  const cleanupResult = await client.publish(cleanupReview);
+  assert.equal(cleanupResult.commit, SHA_C);
+  assert.equal(putCalls, 2, 'a restoration may publish only after the remote state was read and reviewed');
+  const restored = await client.readPlaylist(settings());
+  assert.equal(restored.playlist.name, original.playlist.name);
+  assert.equal(restored.playlist.items[0].sourceUrl, original.playlist.items[0].sourceUrl);
 });
 
 test('GitHub creates a missing playlist without a stale SHA', async () => {

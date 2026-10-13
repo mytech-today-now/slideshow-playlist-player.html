@@ -7,6 +7,7 @@
     "test:regression": "node --test --test-isolation=none tests/regression/*.test.mjs",
     "test:regression:isolated": "node --test tests/regression/*.test.mjs",
     "test:e2e": "playwright test --config=playwright.config.mjs",
+    "test:git-provider-smoke": "playwright test --config=playwright.config.mjs --project=chromium tests/e2e/git-playlist-provider-smoke.e2e.spec.mjs",
     "test:storage-policy-staging": "node tests/integration/storage-policy-staging.mjs",
     "sanity": "npm run check && npm run test:regression",
     "test": "npm run sanity"

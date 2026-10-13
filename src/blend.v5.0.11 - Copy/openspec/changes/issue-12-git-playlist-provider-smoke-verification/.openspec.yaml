@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-10-12
+goal: Verify disposable private repository reads and safe GitHub publish
+  recovery in a real browser while keeping default checks network-free.
+skip_specs: true

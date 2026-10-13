@@ -3,6 +3,10 @@ import { defineConfig } from '@playwright/test';
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 4191);
 const OUTPUT_DIR = process.env.PLAYWRIGHT_TEST_OUTPUT_DIR || 'test-results';
 const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_OUTPUT_DIR || 'playwright-report';
+const FIXTURE_SERVER_ENV = { ...process.env };
+for (const name of Object.keys(FIXTURE_SERVER_ENV)) {
+  if (/^BLEND_(?:GITHUB|BITBUCKET)_SMOKE_/.test(name)) delete FIXTURE_SERVER_ENV[name];
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -45,7 +49,7 @@ export default defineConfig({
     timeout: 120000,
     reuseExistingServer: false,
     env: {
-      ...process.env,
+      ...FIXTURE_SERVER_ENV,
       PORT: String(PORT)
     }
   }
