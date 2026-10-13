@@ -20,6 +20,20 @@ async function bootApp(page) {
   await app.openConfig();
 }
 
+async function installFakeVisibility(page, initialState = 'visible') {
+  await page.evaluate(state => {
+    let currentState = state;
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => currentState
+    });
+    window.__setScanVisibilityState = nextState => {
+      currentState = nextState;
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+  }, initialState);
+}
+
 async function installDirectoryPicker(page, mode) {
   await page.evaluate(async scanMode => {
     const makeFile = (name, contents) => {
@@ -46,7 +60,51 @@ async function installDirectoryPicker(page, mode) {
       makeFile(`Synthetic-${String(offset + index).padStart(5, '0')}.mp4`, 'synthetic'));
 
     let root;
-    if (scanMode === 'limit-recovery') {
+    if (scanMode === 'visibility-resume') {
+      const files = makeSyntheticFiles(300);
+      let enumerationCount = 0;
+      let pickerCalls = 0;
+      root = makeDirectory('Visibility', async function* () {
+        enumerationCount += 1;
+        for (let index = 0; index < files.length; index += 1) {
+          if (index === 250) window.__setScanVisibilityState('hidden');
+          yield files[index];
+        }
+      });
+      window.__directoryEnumerationCount = () => enumerationCount;
+      window.__directoryPickerCalls = () => pickerCalls;
+      window.showDirectoryPicker = async () => { pickerCalls += 1; return root; };
+      return;
+    } else if (scanMode === 'visibility-cancel') {
+      const files = makeSyntheticFiles(100);
+      let enumerationCount = 0;
+      let pickerCalls = 0;
+      root = makeDirectory('CancelWhilePaused', async function* () {
+        enumerationCount += 1;
+        yield* files;
+      });
+      window.__directoryEnumerationCount = () => enumerationCount;
+      window.__directoryPickerCalls = () => pickerCalls;
+      window.showDirectoryPicker = async () => { pickerCalls += 1; return root; };
+      return;
+    } else if (scanMode === 'visibility-permission-loss') {
+      const files = makeSyntheticFiles(50);
+      let enumerationCount = 0;
+      let pickerCalls = 0;
+      window.__revokeDirectoryPermission = false;
+      root = makeDirectory('PermissionRevoked', async function* () {
+        enumerationCount += 1;
+        for (let index = 0; index < 24; index += 1) yield files[index];
+        if (window.__revokeDirectoryPermission) {
+          throw new DOMException('simulated permission loss', 'NotAllowedError');
+        }
+        yield* files.slice(24);
+      });
+      window.__directoryEnumerationCount = () => enumerationCount;
+      window.__directoryPickerCalls = () => pickerCalls;
+      window.showDirectoryPicker = async () => { pickerCalls += 1; return root; };
+      return;
+    } else if (scanMode === 'limit-recovery') {
       const importedBranch = makeSixLevelBranch('Imported', makeSyntheticFiles(250));
       const pendingBranch = makeSixLevelBranch('Pending', [makeFile('Synthetic-00250.mp4', 'synthetic')]);
       root = makeDirectory('SyntheticRoot', async function* () {
@@ -403,7 +461,18 @@ test('a limited scan reports pending files and recovers from a smaller folder wi
 
   const chooseSmaller = status.getByRole('button', { name: 'Choose smaller folder' });
   await page.locator('#close-config').focus();
-  await page.keyboard.press('Tab');
+  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ).length);
+  let reachedChooseSmaller = false;
+  for (let index = 0; index < focusableCount; index += 1) {
+    await page.keyboard.press('Tab');
+    if (await chooseSmaller.evaluate(node => node === document.activeElement)) {
+      reachedChooseSmaller = true;
+      break;
+    }
+  }
+  expect(reachedChooseSmaller).toBe(true);
   await expect(chooseSmaller).toBeFocused();
   const focus = await chooseSmaller.evaluate(node => ({
     focusVisible: node.matches(':focus-visible'),
@@ -630,4 +699,93 @@ test('canceled folder scans retain discovered files without showing a success me
   await page.waitForFunction(() => window.Blend?.state?.library?.size === 1);
   await expect(page.locator('.toast-directory-scan')).toHaveText('Folder scan canceled. 1 media file found so far was kept.');
   await expect(page.locator('.toast').filter({ hasText: 'Added 1 item from "Canceled"' })).toHaveCount(0);
+});
+
+test('a hidden folder scan pauses and resumes after the saved batch without duplicate enumeration', async ({ page }) => {
+  test.setTimeout(60000);
+  await bootApp(page);
+  await installFakeVisibility(page);
+  await installDirectoryPicker(page, 'visibility-resume');
+
+  await page.locator('#add-folder').click();
+  const progress = page.locator('.toast-directory-scan-progress');
+  await expect(progress).toHaveAttribute('role', 'status');
+  await expect(progress).toContainText('Folder scanning is paused while this tab is in the background. Return to Blend to resume or cancel. Saved batches remain available.');
+  const paused = await page.evaluate(() => ({
+    librarySize: window.Blend.state.library.size,
+    enumerationCount: window.__directoryEnumerationCount(),
+    pickerCalls: window.__directoryPickerCalls()
+  }));
+  expect(paused).toEqual({ librarySize: 250, enumerationCount: 1, pickerCalls: 1 });
+
+  await page.evaluate(() => window.__setScanVisibilityState('visible'));
+  const status = page.locator('.toast-directory-scan');
+  await expect(status).toContainText('300 supported media files found; 250 added, 0 skipped (0 already present), 50 pending.');
+  const resumed = await page.evaluate(() => {
+    const media = Array.from(window.Blend.state.library.values())
+      .filter(item => item.name.startsWith('Synthetic-'));
+    return {
+      librarySize: media.length,
+      uniqueIds: new Set(media.map(item => item.id)).size,
+      uniqueNames: new Set(media.map(item => item.name)).size,
+      enumerationCount: window.__directoryEnumerationCount(),
+      pickerCalls: window.__directoryPickerCalls()
+    };
+  });
+  expect(resumed).toEqual({ librarySize: 250, uniqueIds: 250, uniqueNames: 250, enumerationCount: 1, pickerCalls: 1 });
+  const persisted = await readPersistedFolderImport(page);
+  expect(persisted.library).toHaveLength(250);
+  expect(new Set(persisted.library.map(item => item.id)).size).toBe(250);
+});
+
+test('keyboard cancellation while paused keeps discovered files and never reports success', async ({ page }) => {
+  await bootApp(page);
+  await installFakeVisibility(page, 'hidden');
+  await installDirectoryPicker(page, 'visibility-cancel');
+
+  await page.locator('#add-folder').click();
+  const progress = page.locator('.toast-directory-scan-progress');
+  await expect(progress).toHaveAttribute('role', 'status');
+  await expect(progress).toContainText('Folder scanning is paused while this tab is in the background. Return to Blend to resume or cancel. Saved batches remain available.');
+  const cancel = progress.getByRole('button', { name: 'Cancel scan' });
+  await cancel.focus();
+  await expect(cancel).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const status = page.locator('.toast-directory-scan');
+  await expect(status).toContainText('Folder scan canceled. 24 media files found so far were kept.');
+  await expect(page.locator('.toast').filter({ hasText: 'Added 24 items from "CancelWhilePaused"' })).toHaveCount(0);
+  const canceled = await page.evaluate(() => ({
+    librarySize: window.Blend.state.library.size,
+    uniqueIds: new Set(window.Blend.state.library.keys()).size,
+    enumerationCount: window.__directoryEnumerationCount(),
+    pickerCalls: window.__directoryPickerCalls()
+  }));
+  expect(canceled).toEqual({ librarySize: 24, uniqueIds: 24, enumerationCount: 1, pickerCalls: 1 });
+});
+
+test('permission loss after a hidden pause returns the partial scan without repeating entries', async ({ page }) => {
+  await bootApp(page);
+  await installFakeVisibility(page, 'hidden');
+  await installDirectoryPicker(page, 'visibility-permission-loss');
+
+  await page.locator('#add-folder').click();
+  const progress = page.locator('.toast-directory-scan-progress');
+  await expect(progress).toContainText('Folder scanning is paused while this tab is in the background. Return to Blend to resume or cancel. Saved batches remain available.');
+  expect(await page.evaluate(() => window.Blend.state.library.size)).toBe(0);
+
+  await page.evaluate(() => {
+    window.__revokeDirectoryPermission = true;
+    window.__setScanVisibilityState('visible');
+  });
+  const status = page.locator('.toast-directory-scan');
+  await expect(status).toContainText('Folder scan was partial: 1 folder could not be read.');
+  await expect(status).toContainText('24 media files found; 24 added, 0 already present.');
+  const partial = await page.evaluate(() => ({
+    librarySize: window.Blend.state.library.size,
+    uniqueIds: new Set(window.Blend.state.library.keys()).size,
+    enumerationCount: window.__directoryEnumerationCount(),
+    pickerCalls: window.__directoryPickerCalls()
+  }));
+  expect(partial).toEqual({ librarySize: 24, uniqueIds: 24, enumerationCount: 1, pickerCalls: 1 });
 });

@@ -29,12 +29,12 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures)\.e2e\.spec\.mjs$/,
+      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility)\.e2e\.spec\.mjs$/,
       use: { browserName: 'firefox' }
     },
     {
       name: 'webkit',
-      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures)\.e2e\.spec\.mjs$/,
+      testMatch: /(?:browser-compatibility|add-files-selection-limit|thumbnail-failures|directory-scan-visibility)\.e2e\.spec\.mjs$/,
       use: { browserName: 'webkit' }
     }
   ],

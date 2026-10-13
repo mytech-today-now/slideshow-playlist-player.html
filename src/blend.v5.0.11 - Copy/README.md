@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261012-v5.0.11-bounded-url-share-decompression`
+- **Cache/app shell version key:** `20261013-v5.0.11-directory-scan-visibility-pause`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -861,7 +861,7 @@ Dev/test (`package.json` in this project root):
 
 | Browser | Support statement | Automated evidence | Limits |
 |---|---|---|---|
-| Chrome (desktop) | Primary desktop target | Full E2E suite is configured for Playwright Chromium | The Chromium project is not a run of Google's branded Chrome build; the last 189-test full run, before the added auth-failure smoke case, had 171 passes and 18 failures outside the compatibility smoke spec. |
+| Chrome (desktop) | Primary desktop target | Full E2E suite is configured for Playwright Chromium | Chromium is not Google's branded Chrome build. A historical 189-test full run recorded 171 passes and 18 failures before the auth-failure smoke case; this is not a current result. |
 | Edge (desktop) | Chromium-family behavior is expected | No branded Edge run | Edge-specific behavior is not independently verified. |
 | Firefox (desktop) | Partial | Focused Playwright Firefox compatibility smoke | File-input fallback is covered; this does not certify every Firefox release or platform. |
 | Safari (desktop) | Partial | Focused Playwright WebKit compatibility smoke | WebKit engine coverage is not a run of the Safari application; fallback import save failures are announced as session-only. |
@@ -870,8 +870,9 @@ Dev/test (`package.json` in this project root):
 
 Compatibility notes:
 
-- CI runs the full suite in Chromium and focused fallback, accessibility, viewport, and service-worker shell smoke checks in Playwright Firefox and WebKit. Each compatibility result records the Playwright project and runtime engine version in the HTML report.
-- The last full-suite report, before the added auth-failure smoke case, recorded 24 compatibility passes (8 per project) and 18 failures elsewhere in Chromium (171 passed of 189). The latest focused compatibility run passed 30/30 cases (10 per project) with Chromium 153.0.8010.12, Firefox 155.0, and WebKit 26.6. The latest Chromium PWA offline-shell run passed 5/5 cases, including offline shell reload. These are local browser-engine results.
+- CI runs `npm run test:e2e` in Chromium and focused fallback, accessibility, viewport, and service-worker shell smoke checks in Playwright Firefox and WebKit. It verifies the HTML report before uploading `playwright-report/`, including when the Playwright test step fails. Each compatibility result records the Playwright project and runtime engine version in the HTML report.
+- On 2026-10-13, `npm run test:e2e -- --list` selected 281 tests in 46 files across the Chromium, Firefox, and WebKit projects. This is an inventory, not an assertion result. The same-day full `npm run test:e2e` attempt stopped before test execution with `Error: spawn EPERM`; Playwright reported “No tests.” No passed, failed, or skipped assertion counts are available. The generated report at `playwright-report/issue-20-20261013-01/` passed `node tests/e2e/verify-playwright-report.mjs` with `PLAYWRIGHT_HTML_OUTPUT_DIR` set to that folder. The current browser E2E status is unknown until the full suite runs in a supported environment.
+- Historical local records have no verified run date: one full suite recorded 24 compatibility passes (8 per project) and 18 other Chromium failures (171 passed of 189); a focused compatibility run recorded 30/30 cases (10 per project) with Chromium 153.0.8010.12, Firefox 155.0, and WebKit 26.6; a Chromium PWA offline-shell run recorded 5/5 cases. These are historical browser-engine results, not a current baseline.
 - These results describe Playwright browser-engine builds. They do not establish branded Chrome, Edge, Firefox, or Safari application coverage, or mobile-device coverage.
 - No named iOS or Android device run is recorded. On both iOS Safari and Android Chrome, local import/save and playback; folder selection and its individual-file fallback; fullscreen; rotation; PWA install and offline reload with saved media; quota/permission recovery; and keyboard, touch, assistive-technology, and 200 percent text-zoom access remain **unverified**. Desktop engines and viewport sizes do not establish those device results.
 - Record the device model, operating-system version, browser version, network state, workflow, and exact outcome before marking any mobile path verified.
@@ -1041,7 +1042,7 @@ npm run test:e2e
 npm run test
 ```
 
-`npm run test:regression` runs all Node tests serially in the current process and requires Node 22.8 or later. This avoids Node's default per-file child processes in restricted Windows runners. `npm run test:regression:isolated` keeps the default process isolation for environments that allow child processes and is used by CI. Playwright Test always requires a worker process and also launches a browser process. If `npm run test:e2e` reports `spawn EPERM` inside a restricted coding-agent sandbox, run it from a normal Windows PowerShell session or another environment where child-process creation is allowed. Limiting Playwright to one worker reduces concurrency but does not remove its worker process requirement.
+`npm run test:regression` runs all Node tests serially in the current process and requires Node 22.8 or later. This avoids Node's default per-file child processes in restricted Windows runners. `npm run test:regression:isolated` keeps the default process isolation for environments that allow child processes and is used by CI. Playwright Test requires a worker process and launches browser processes. If `npm run test:e2e` reports `spawn EPERM`, classify it as a runner launch failure: tests were not executed, and it is neither an assertion failure nor a pass. Use a supported runner for the full suite. If assertions fail there, rerun the affected spec with `--trace on`, preserve that run's separate output folders, and record the assertion counts and report artifact. CI uploads the HTML report only after its safety check succeeds; a missing or rejected report is not uploaded. Limiting Playwright to one worker does not remove its worker process requirement.
 
 ## Future Development and Recommended Improvements
 

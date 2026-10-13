@@ -1,18 +1,18 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './experience-persistence.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { getBlendRuntimeConfig } from './supabase-config.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { getBlendRuntimeConfig } from './supabase-config.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -22,32 +22,32 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './storage-url-resolver.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup
-} from './signed-url-cleanup.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './signed-url-cleanup.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './transition-manager.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './playback-clock.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { fetchReadme } from './readme-fetcher.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+import { renderMarkdown } from './markdown.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { fetchReadme } from './readme-fetcher.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -62,28 +62,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './url-share.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './url-share-diagnostics.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './timeline-analysis.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261012-v5.0.11-bounded-url-share-decompression';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './shared-experience-download.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -94,7 +94,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './git-playlist-catalog.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -105,7 +105,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './git-playlist-storage.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -117,13 +117,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './local-import-limits.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
+import {
+  createDirectoryScanYield,
+  DIRECTORY_SCAN_PAUSED_MESSAGE
+} from './directory-scan-yield.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261012-v5.0.11-bounded-url-share-decompression';
+} from './resume-on-load.js?v=20261013-v5.0.11-directory-scan-visibility-pause';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -131,6 +135,7 @@ const log = createLogger('Blend', {
   persist: true,
   maxEntries: 500
 });
+const yieldDirectoryScan = createDirectoryScanYield();
 
 let bootstrapPromise = null;
 let bootstrapCompleted = false;
@@ -217,7 +222,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261012-v5.0.11-bounded-url-share-decompression';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261013-v5.0.11-directory-scan-visibility-pause';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -5200,8 +5205,11 @@ async function walkDirectoryForMedia(dirHandle, opts = {}) {
         }
         if (scanned % 24 === 0) {
           opts.onProgress?.({ found, pending, retained: handles.length, scanned });
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          if (opts.signal?.aborted) status = 'cancelled';
+          const continued = await yieldDirectoryScan({
+            signal: opts.signal,
+            onVisibilityChange: opts.onVisibilityChange
+          });
+          if (!continued || opts.signal?.aborted) status = 'cancelled';
         }
         if (status === 'cancelled' || status === 'persistence-failed' || limitReached) break;
       }
@@ -5252,26 +5260,25 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, o
   const subject = forMissingPaths ? 'media files' : 'files';
   const opening = forMissingPaths ? ' for missing paths' : '';
   const limitNotice = forMissingPaths ? `; relink limit ${MAX_FOLDER_MEDIA_FILES} media files` : '';
-  const controller = forMissingPaths ? new AbortController() : null;
+  const controller = new AbortController();
   const progress = showToast(`Scanning "${dirHandle.name}"${opening}... 0 ${subject} found${limitNotice}`, {
     timeout: 0,
     role: 'status',
     className: 'toast-directory-scan-progress'
   });
-  if (controller) {
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'btn';
-    cancel.textContent = 'Cancel scan';
-    cancel.addEventListener('click', () => {
-      controller.abort();
-      cancel.disabled = true;
-      progress.label.textContent = 'Canceling missing-media scan...';
-    });
-    progress.toast.appendChild(cancel);
-  }
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'btn';
+  cancel.textContent = 'Cancel scan';
+  cancel.addEventListener('click', () => {
+    controller.abort();
+    cancel.disabled = true;
+    progress.label.textContent = forMissingPaths ? 'Canceling missing-media scan...' : 'Canceling folder scan...';
+  });
+  progress.toast.appendChild(cancel);
   let lastAnnouncedAt = performance.now();
   let lastAnnouncedCount = 0;
+  let latestFoundCount = 0;
   const announceProgress = (count, force = false) => {
     if (count === lastAnnouncedCount) return;
     if (!force && performance.now() - lastAnnouncedAt < 1000) return;
@@ -5286,11 +5293,25 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, o
       stopAtMediaLimit: forMissingPaths,
       signal: controller?.signal,
       onMediaBatch: forMissingPaths ? undefined : onMediaBatch,
-      onProgress: ({ found }) => announceProgress(found)
+      onProgress: ({ found }) => {
+        latestFoundCount = found;
+        announceProgress(found);
+      },
+      onVisibilityChange: visibility => {
+        if (visibility === 'hidden') {
+          progress.label.textContent = DIRECTORY_SCAN_PAUSED_MESSAGE;
+        } else {
+          progress.label.textContent = `Scanning "${dirHandle.name}"${opening}... ${latestFoundCount} ${subject} found${limitNotice}`;
+          lastAnnouncedAt = performance.now();
+          lastAnnouncedCount = latestFoundCount;
+        }
+      }
     });
     announceProgress(result.summary.found, true);
     return result;
   } finally {
+    cancel.disabled = true;
+    cancel.remove();
     progress.close();
   }
 }

@@ -9,13 +9,13 @@
   "theme_color": "#0a0a0a",
   "icons": [
     {
-      "src": "./icon.svg?v=20261012-v5.0.11-bounded-url-share-decompression",
+      "src": "./icon.svg?v=20261013-v5.0.11-directory-scan-visibility-pause",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./icon-maskable.svg?v=20261012-v5.0.11-bounded-url-share-decompression",
+      "src": "./icon-maskable.svg?v=20261013-v5.0.11-directory-scan-visibility-pause",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

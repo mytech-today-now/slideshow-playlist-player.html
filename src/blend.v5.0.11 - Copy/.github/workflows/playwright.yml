@@ -28,10 +28,11 @@ jobs:
       id: playwright
       run: npm run test:e2e
     - name: Verify Playwright report artifact
+      id: verify_report
       if: ${{ !cancelled() && steps.playwright.outcome != 'skipped' }}
       run: node tests/e2e/verify-playwright-report.mjs
     - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() && steps.playwright.outcome != 'skipped' }}
+      if: ${{ !cancelled() && steps.playwright.outcome != 'skipped' && steps.verify_report.outcome == 'success' }}
       with:
         name: playwright-report
         path: playwright-report/

@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261012-v5.0.11-bounded-url-share-decompression';
-  const CACHE_VERSION = '20261012-v5.0.11-bounded-url-share-decompression';
+  const ASSET_VERSION = '20261013-v5.0.11-directory-scan-visibility-pause';
+  const CACHE_VERSION = '20261013-v5.0.11-directory-scan-visibility-pause';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -41,6 +41,7 @@
     './resume-on-load.js?v=20260927-v5.0.11-resume',
     asset('./experience-persistence.js'),
     asset('./local-import-limits.js'),
+    asset('./directory-scan-yield.js'),
     asset('./save-state.js'),
     asset('./logger.js'),
     asset('./drag-sort.js'),

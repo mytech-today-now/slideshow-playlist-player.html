@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-13
+goal: Pause directory scans accessibly while the tab is hidden, resume or cancel
+  safely, and preserve committed batches and import limits.

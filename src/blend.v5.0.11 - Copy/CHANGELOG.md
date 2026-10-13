@@ -15,6 +15,7 @@ These changes are present in the current review checkout. The app version remain
 
 ### Changed
 
+- Folder scans now announce a pause while the tab is hidden, resume the existing enumeration when visible, and offer cancellation while preserving saved batches.
 - The configuration shell opens before storage initialization. Database recovery no longer covers the whole screen, and settings stay read-only until saved data is ready.
 - Startup can open a higher IndexedDB version when all stores and key paths required by this release match; incompatible schemas fail closed without changing saved data.
 - PWA manifests and required icon precache entries use the versioned app-root paths; the worker no longer requests legacy `/assets/icon.svg` files.
