@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-10-13
+goal: Document and run a small synthetic-media workflow in installed branded
+  desktop browsers; retain partial status for unavailable targets and change app
+  code only for reproduced differences.
+skip_specs: true

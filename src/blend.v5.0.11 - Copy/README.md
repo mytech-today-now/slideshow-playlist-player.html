@@ -880,6 +880,20 @@ Compatibility notes:
 - Actual media decode depends on browser codec support.
 - HEIC/HEIF and some MKV/AVI/FLAC/AAC combinations may vary by browser/platform.
 
+### Bounded branded desktop smoke
+
+This manual smoke is one short run per installed desktop browser, using the same disposable synthetic local video and a fresh browser profile. Start the local fixture server with `node tests/e2e/fixture-server.mjs` and open `http://127.0.0.1:4191/index.html`. If FFmpeg with `libx264` is available, generate a two-second fixture outside the checkout. Windows PowerShell example: `ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 -t 2 -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart -y "$env:TEMP\issue12-synthetic.mp4"`; on macOS, use the same FFmpeg inputs/options with an output in the OS temporary directory. If that fixture cannot be made, mark video codec playback **Not run**; do not substitute personal media. Import the fixture with **Add Files**, add it to a list, play it, enter and exit fullscreen, wait for the service worker to control the page and the save status to settle, then use the browser's Network panel to go offline and reload. Record whether the shell loads and the imported item/list survive. If fullscreen is unavailable or rejected, check that the app announces the limitation and playback controls remain available; do not record fullscreen as passed. Restore network access and discard the temporary profile after the run.
+
+Record the browser brand and exact version, operating-system version, date, network state, and the outcome of import/save, video decode/playback, fullscreen, offline reload, and local-state recovery. If a browser or step is unavailable, record **Not run** with the reason and keep that browser **Partial / unverified**; the checklist above is the fallback for completing the run later in that branded app. A Playwright engine result never fills a branded-app result. Use only synthetic media; do not use provider credentials, private media, or unrelated-origin data. Add product code and tests only after a specific branded-browser difference is reproduced.
+
+Review-runner inventory (2026-10-13, Windows; executable product versions are installation metadata, not workflow results):
+
+| Branded browser | Installed version | Manual workflow result |
+|---|---|---|
+| Google Chrome (desktop) | 155.0.8059.40 | Not run: Windows app-control approval timed out before the browser workflow; partial / unverified. |
+| Microsoft Edge (desktop) | 155.0.4283.45 | Not run: no branded workflow was completed in this review; partial / unverified. |
+| Safari (desktop) | Not installed on this Windows runner | Not run; partial / unverified. |
+
 ## What Works
 
 Verified in current implementation:

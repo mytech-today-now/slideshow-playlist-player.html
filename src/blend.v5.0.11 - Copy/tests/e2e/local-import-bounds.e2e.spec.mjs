@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
+import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.mjs';
 import {
   LOCAL_IMPORT_MAX_BYTES,
   LOCAL_IMPORT_SIZE_LIMIT_MESSAGE,
@@ -66,8 +67,12 @@ async function captureImportState(page) {
 
 async function chooseFileByKeyboard(page, selector, file) {
   const button = page.locator(selector);
-  await button.focus();
   const chooserPromise = page.waitForEvent('filechooser');
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await button.focus();
+  await expect(button).toBeFocused();
   await page.keyboard.press('Enter');
   const chooser = await chooserPromise;
   const before = await captureImportState(page);
@@ -91,7 +96,7 @@ async function expectLimitAlert(page, viewportWidth) {
   return alert;
 }
 
-test('file picker enforces below, exact, and above 10 MiB boundaries for list and experience imports', async ({ page }) => {
+test('file picker enforces below, exact, and above 10 MiB boundaries for list imports', async ({ page }) => {
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
   await blendPage.switchListTab('playlist');
@@ -128,6 +133,15 @@ test('file picker enforces below, exact, and above 10 MiB boundaries for list an
   expect(await captureImportState(page)).toEqual(listBeforeOversize);
   expect(await page.evaluate(() => window.__localImportReads.length)).toBe(2);
   expect(await page.evaluate(() => window.__localImportJsonParses)).toBe(2);
+});
+
+test('experience import picker enforces below, exact, and above 10 MiB boundaries', async ({ page, browser }, testInfo) => {
+  await attachBrowserEngineEvidence(browser, testInfo);
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  await blendPage.openConfig();
+  await installImportInstrumentation(page);
+
   const experienceButton = page.getByRole('button', { name: 'Import', exact: true });
   await expect(experienceButton).toHaveAccessibleName('Import');
 
@@ -138,7 +152,7 @@ test('file picker enforces below, exact, and above 10 MiB boundaries for list an
   });
   await expect(page.locator('#toast-container')).toContainText('Imported experience "Below Limit"');
   await expect(page.locator('#experience-import')).toBeFocused();
-  await page.waitForFunction(() => window.__localImportReads.length === 3);
+  await page.waitForFunction(() => window.__localImportReads.length === 1);
 
   await chooseFileByKeyboard(page, '#experience-import', {
     name: 'exact-limit-experience.json',
@@ -147,7 +161,7 @@ test('file picker enforces below, exact, and above 10 MiB boundaries for list an
   });
   await expect(page.locator('#toast-container')).toContainText('Imported experience "Exact Limit"');
   await expect(page.locator('#experience-import')).toBeFocused();
-  await page.waitForFunction(() => window.__localImportReads.length === 4);
+  await page.waitForFunction(() => window.__localImportReads.length === 2);
   expect(await page.evaluate(() => window.__localImportReads.map(file => file.size).slice(-2)))
     .toEqual([fileBytes({ ...EXPERIENCE_EMPTY, name: 'Below Limit' }).length, LOCAL_IMPORT_MAX_BYTES]);
 
@@ -160,7 +174,7 @@ test('file picker enforces below, exact, and above 10 MiB boundaries for list an
   await expectLimitAlert(page, 1366);
   await expect(page.locator('#experience-import')).toBeFocused();
   expect(await captureImportState(page)).toEqual(experienceBeforeOversize);
-  expect(await page.evaluate(() => window.__localImportReads.length)).toBe(4);
+  expect(await page.evaluate(() => window.__localImportReads.length)).toBe(2);
   expect(await page.evaluate(() => window.__localImportJsonParses)).toBe(experienceParsesBeforeOversize);
   const logs = await page.evaluate(() => window.Blend.log.exportJson());
   expect(logs).not.toContain('above-limit-experience.json');

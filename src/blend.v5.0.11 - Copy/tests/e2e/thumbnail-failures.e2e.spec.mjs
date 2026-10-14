@@ -51,8 +51,8 @@ async function bootThumbnailApp(page) {
   await page.waitForSelector('#playlist-layer video');
 }
 
-async function runImageScenario(page, { mode, timeoutMs = 250 }) {
-  return page.evaluate(async ({ mode, timeoutMs, imageUrl }) => {
+async function runImageScenario(page, { mode, timeoutMs = 250, sourceWidth = 640, sourceHeight = 360 }) {
+  return page.evaluate(async ({ mode, timeoutMs, imageUrl, sourceWidth, sourceHeight }) => {
     const helper = window.__BLEND_TEST_HOOKS__?.thumbnails?.imageToThumbBlob;
     if (typeof helper !== 'function') throw new Error('Thumbnail image helper hook is missing');
 
@@ -61,13 +61,25 @@ async function runImageScenario(page, { mode, timeoutMs = 250 }) {
     const canvasPrototype = HTMLCanvasElement.prototype;
     const originalGetContext = canvasPrototype.getContext;
     const originalToBlob = canvasPrototype.toBlob;
-    const imageStats = { clearCount: 0, removeCount: 0, callbackCount: 0, drawCallCount: 0, handlersCleared: false };
+    const imageStats = {
+      clearCount: 0,
+      removeCount: 0,
+      callbackCount: 0,
+      drawCallCount: 0,
+      handlersCleared: false,
+      sourceWidth,
+      sourceHeight,
+      canvasWidth: null,
+      canvasHeight: null
+    };
     let image = null;
     let imageSource = '';
 
     window.Image = function TrackedImage() {
       image = new originalImage();
       const nativeRemove = image.remove.bind(image);
+      Object.defineProperty(image, 'width', { configurable: true, value: sourceWidth });
+      Object.defineProperty(image, 'height', { configurable: true, value: sourceHeight });
       Object.defineProperty(image, 'src', {
         configurable: true,
         get() { return imageSource; },
@@ -94,7 +106,20 @@ async function runImageScenario(page, { mode, timeoutMs = 250 }) {
     };
 
     try {
+      document.createElement = function (tagName, ...args) {
+        if (String(tagName).toLowerCase() === 'canvas') {
+          const canvas = Object.create(canvasPrototype);
+          Object.defineProperties(canvas, {
+            width: { configurable: true, value: 0, writable: true },
+            height: { configurable: true, value: 0, writable: true }
+          });
+          return canvas;
+        }
+        return nativeCreateElement.call(this, tagName, ...args);
+      };
       canvasPrototype.getContext = function (...args) {
+        imageStats.canvasWidth = this.width;
+        imageStats.canvasHeight = this.height;
         if (mode === 'get-context-null') return null;
         return {
           drawImage() {
@@ -126,6 +151,7 @@ async function runImageScenario(page, { mode, timeoutMs = 250 }) {
       imageStats.blobType = blob?.type || '';
       imageStats.handlersCleared = image?.onload === null && image?.onerror === null;
       imageStats.srcValue = imageSource;
+      imageStats.canvasRgbaBytes = imageStats.canvasWidth * imageStats.canvasHeight * 4;
       return imageStats;
     } finally {
       window.Image = originalImage;
@@ -133,11 +159,11 @@ async function runImageScenario(page, { mode, timeoutMs = 250 }) {
       canvasPrototype.getContext = originalGetContext;
       canvasPrototype.toBlob = originalToBlob;
     }
-  }, { mode, timeoutMs, imageUrl: `${FIXTURE_ORIGIN}/samples/IL.jpeg` });
+  }, { mode, timeoutMs, sourceWidth, sourceHeight, imageUrl: `${FIXTURE_ORIGIN}/samples/IL.jpeg` });
 }
 
-async function runVideoScenario(page, { mode, timeoutMs = 250 }) {
-  return page.evaluate(async ({ mode, timeoutMs }) => {
+async function runVideoScenario(page, { mode, timeoutMs = 250, sourceWidth = 16, sourceHeight = 9 }) {
+  return page.evaluate(async ({ mode, timeoutMs, sourceWidth, sourceHeight }) => {
     const helper = window.__BLEND_TEST_HOOKS__?.thumbnails?.videoFrameToBlob;
     if (typeof helper !== 'function') throw new Error('Thumbnail video helper hook is missing');
 
@@ -152,11 +178,23 @@ async function runVideoScenario(page, { mode, timeoutMs = 250 }) {
       removeCount: 0,
       callbackCount: 0,
       drawCallCount: 0,
-      handlersCleared: false
+      handlersCleared: false,
+      sourceWidth,
+      sourceHeight,
+      canvasWidth: null,
+      canvasHeight: null
     };
     let video = null;
 
     document.createElement = function (tagName, ...args) {
+      if (String(tagName).toLowerCase() === 'canvas') {
+        const canvas = Object.create(canvasPrototype);
+        Object.defineProperties(canvas, {
+          width: { configurable: true, value: 0, writable: true },
+          height: { configurable: true, value: 0, writable: true }
+        });
+        return canvas;
+      }
       const element = nativeCreateElement.call(this, tagName, ...args);
       if (String(tagName).toLowerCase() !== 'video') return element;
 
@@ -176,7 +214,7 @@ async function runVideoScenario(page, { mode, timeoutMs = 250 }) {
           setTimeout(() => video.onloadedmetadata?.(), 0);
         }
       });
-      for (const [name, value] of Object.entries({ duration: 10, videoWidth: 16, videoHeight: 9 })) {
+      for (const [name, value] of Object.entries({ duration: 10, videoWidth: sourceWidth, videoHeight: sourceHeight })) {
         Object.defineProperty(video, name, { configurable: true, value });
       }
       Object.defineProperty(video, 'currentTime', {
@@ -212,6 +250,8 @@ async function runVideoScenario(page, { mode, timeoutMs = 250 }) {
 
     try {
       canvasPrototype.getContext = function () {
+        videoStats.canvasWidth = this.width;
+        videoStats.canvasHeight = this.height;
         if (mode === 'get-context-null') return null;
         return {
           drawImage() {
@@ -238,13 +278,14 @@ async function runVideoScenario(page, { mode, timeoutMs = 250 }) {
       videoStats.hasBlob = blob instanceof Blob;
       videoStats.blobType = blob?.type || '';
       videoStats.handlersCleared = video?.onloadedmetadata === null && video?.onseeked === null && video?.onerror === null;
+      videoStats.canvasRgbaBytes = videoStats.canvasWidth * videoStats.canvasHeight * 4;
       return videoStats;
     } finally {
       document.createElement = nativeCreateElement;
       canvasPrototype.getContext = originalGetContext;
       canvasPrototype.toBlob = originalToBlob;
     }
-  }, { mode, timeoutMs });
+  }, { mode, timeoutMs, sourceWidth, sourceHeight });
 }
 
 async function addImages(page, files) {
@@ -350,6 +391,69 @@ test('video thumbnails settle on success, canvas faults, media error, and missin
   expect(logs).not.toContain('synthetic-source-detail');
   expect(logs).toContain('SecurityError');
   expect(logs).toContain('TypeError');
+});
+
+test('image and video thumbnail canvases stay bounded for ordinary and extreme synthetic dimensions', async ({ page, browser, browserName }, testInfo) => {
+  await bootThumbnailApp(page);
+  const scenarios = [
+    { name: '12-megapixel-image-landscape', run: () => runImageScenario(page, { mode: 'success-duplicate-callback', sourceWidth: 4032, sourceHeight: 3024 }) },
+    { name: 'extreme-image-portrait', run: () => runImageScenario(page, { mode: 'success-duplicate-callback', sourceWidth: 160, sourceHeight: 16000 }) },
+    { name: '4k-video-landscape', run: () => runVideoScenario(page, { mode: 'success-duplicate-callback', sourceWidth: 3840, sourceHeight: 2160 }) },
+    { name: 'extreme-video-portrait', run: () => runVideoScenario(page, { mode: 'success-duplicate-callback', sourceWidth: 160, sourceHeight: 16000 }) }
+  ];
+  const measurements = [];
+  for (const scenario of scenarios) {
+    const result = await scenario.run();
+    expect(result.hasBlob, scenario.name).toBe(true);
+    expect(result.canvasWidth, scenario.name).toBeGreaterThan(0);
+    expect(result.canvasHeight, scenario.name).toBeGreaterThan(0);
+    expect(result.canvasWidth, scenario.name).toBeLessThanOrEqual(320);
+    expect(result.canvasHeight, scenario.name).toBeLessThanOrEqual(320);
+    const sourceAspectRatio = result.sourceWidth / result.sourceHeight;
+    const canvasAspectRatio = result.canvasWidth / result.canvasHeight;
+    const roundingTolerance = 0.5 * (result.sourceWidth + result.sourceHeight)
+      / (result.sourceHeight * result.canvasHeight);
+    expect(Math.abs(canvasAspectRatio - sourceAspectRatio), scenario.name).toBeLessThanOrEqual(roundingTolerance);
+    measurements.push({
+      name: scenario.name,
+      sourceDimensions: `${result.sourceWidth}x${result.sourceHeight}`,
+      canvasDimensions: `${result.canvasWidth}x${result.canvasHeight}`,
+      canvasRgbaBytes: result.canvasRgbaBytes
+    });
+  }
+
+  const invalidImage = await runImageScenario(page, {
+    mode: 'success-duplicate-callback',
+    sourceWidth: 0,
+    sourceHeight: 0
+  });
+  const invalidVideo = await runVideoScenario(page, {
+    mode: 'success-duplicate-callback',
+    sourceWidth: 0,
+    sourceHeight: 0
+  });
+  for (const [name, result] of [['invalid-image-dimensions', invalidImage], ['invalid-video-dimensions', invalidVideo]]) {
+    expect(result.hasBlob, name).toBe(false);
+    expect(result.canvasWidth, name).toBeNull();
+    expect(result.canvasHeight, name).toBeNull();
+    expect(result.handlersCleared, name).toBe(true);
+  }
+
+  const profile = {
+    engine: browserName,
+    version: browser.version(),
+    project: testInfo.project.name,
+    memoryLimitConfigured: null,
+    sourceDecodePerformed: false,
+    measurements,
+    invalidDimensionsUseFallback: true
+  };
+  console.log(`issue15-thumbnail-canvas-measurement=${JSON.stringify(profile)}`);
+  testInfo.annotations.push({ type: 'issue15-thumbnail-canvas-measurement', description: JSON.stringify(profile) });
+  await testInfo.attach('issue15-thumbnail-canvas-measurement.json', {
+    body: Buffer.from(JSON.stringify(profile, null, 2)),
+    contentType: 'application/json'
+  });
 });
 
 test('a canvas failure releases queue capacity and preserves imported rows and playback', async ({ page, browserName }) => {

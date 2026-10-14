@@ -3626,6 +3626,7 @@ const thumbQueue = [];
 let thumbRunning = 0;
 const THUMB_CONCURRENCY = 2;
 const THUMB_MEDIA_TIMEOUT_MS = 10000;
+const THUMB_MAX_DIMENSION = 320;
 
 function thumbKey(name, size, lastMod = 0) {
   return `${name}:${size}:${lastMod}`;
@@ -3841,6 +3842,18 @@ function normalizedThumbnailTimeout(timeoutMs) {
     : THUMB_MEDIA_TIMEOUT_MS;
 }
 
+function boundedThumbnailDimensions(sourceWidth, sourceHeight) {
+  const width = Number(sourceWidth);
+  const height = Number(sourceHeight);
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
+
+  const scale = Math.min(1, THUMB_MAX_DIMENSION / width, THUMB_MAX_DIMENSION / height);
+  return {
+    width: Math.max(1, Math.min(THUMB_MAX_DIMENSION, Math.round(width * scale))),
+    height: Math.max(1, Math.min(THUMB_MAX_DIMENSION, Math.round(height * scale)))
+  };
+}
+
 function videoFrameToBlob(src, pos = 0.1, timeoutMs = THUMB_MEDIA_TIMEOUT_MS) {
   return new Promise((resolve) => {
     let v = null;
@@ -3886,17 +3899,20 @@ function videoFrameToBlob(src, pos = 0.1, timeoutMs = THUMB_MEDIA_TIMEOUT_MS) {
       };
       v.onseeked = () => {
         try {
+          const dimensions = boundedThumbnailDimensions(v.videoWidth, v.videoHeight);
+          if (!dimensions) {
+            settle(null);
+            return;
+          }
           const c = document.createElement('canvas');
-          const w = 320;
-          const h = Math.round(w * (v.videoHeight / v.videoWidth || 9 / 16));
-          c.width = w;
-          c.height = h;
+          c.width = dimensions.width;
+          c.height = dimensions.height;
           const ctx = c.getContext('2d', { alpha: false });
           if (!ctx) {
             settle(null);
             return;
           }
-          ctx.drawImage(v, 0, 0, w, h);
+          ctx.drawImage(v, 0, 0, dimensions.width, dimensions.height);
           c.toBlob(blob => settle(blob), 'image/jpeg', 0.82);
         } catch (error) {
           reportThumbnailCleanupError(error);
@@ -3944,17 +3960,20 @@ function imageToThumbBlob(src, timeoutMs = THUMB_MEDIA_TIMEOUT_MS) {
       img = new Image();
       img.onload = () => {
         try {
+          const dimensions = boundedThumbnailDimensions(img.width, img.height);
+          if (!dimensions) {
+            settle(null);
+            return;
+          }
           const c = document.createElement('canvas');
-          const w = 320;
-          const h = Math.round(w * (img.height / img.width || 9 / 16));
-          c.width = w;
-          c.height = h;
+          c.width = dimensions.width;
+          c.height = dimensions.height;
           const ctx = c.getContext('2d', { alpha: false });
           if (!ctx) {
             settle(null);
             return;
           }
-          ctx.drawImage(img, 0, 0, w, h);
+          ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
           c.toBlob(blob => settle(blob), 'image/jpeg', 0.85);
         } catch (error) {
           reportThumbnailCleanupError(error);
