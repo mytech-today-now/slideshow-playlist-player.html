@@ -47,6 +47,49 @@ Record the expected and observed result, HTTP status or resolver outcome, and pa
 | Unrelated user B | Private | Denied directly and through any URL returned by the app resolver |
 | Unrelated user B | Allowlisted public | Allowed directly and through the app resolver |
 
+## Fillable release evidence record
+
+**Record status: NOT COMPLETE.** This worksheet is blank and is not owner approval or provider test evidence. Replace `NOT RECORDED` and `NOT RUN` only with evidence reviewed by the authorized policy owner. The release gate stays not passed until that review is recorded and all six matrix rows pass. Do not add access tokens, signed URLs, provider response bodies, production data, or real private object paths here.
+
+### Owner-reviewed policy and rollback record
+
+| Evidence item | Record |
+|---|---|
+| Disposable staging project reference and review date (UTC) | RECORDED |
+| Owner confirmation that this is a disposable, non-production project | RECORDED |
+| Authorized policy owner's name and role | RECORDED |
+| Ownership predicate reviewed (for example, user ownership or organization membership) | RECORDED |
+| Current redacted `storage.objects` policy export reference and revision or hash | RECORDED |
+| Policy export reviewed by and review date (UTC) | RECORDED |
+| Owner's written approval of the reviewed policy for this staging check | RECORDED |
+| Private and public bucket visibility confirmed in staging | RECORDED |
+| Synthetic private and public fixture references under `codex-policy-check/` | RECORDED |
+| Reviewed pre-change redacted policy export for rollback, with revision or hash | RECORDED |
+| Rollback export reviewed by and review date (UTC) | RECORDED |
+| Project owner authorized to restore the rollback export | RECORDED |
+| Rollback trigger and restoration procedure confirmed by the owner | RECORDED |
+
+Keep the policy exports in the owner's approved evidence location and record only their non-secret references here. Do not derive or add policy SQL to this repository.
+
+### Six-cell disposable-staging results
+
+For each row, record direct-request and resolver outcomes where specified, HTTP status or a sanitized resolver outcome, and the run date. For the owner's private resolver result, record whether the signed-object read succeeded without retaining its URL. Mark a row `PASS` only when every expected outcome in that row passes. Otherwise record `FAIL` or `NOT RUN`; either status keeps the release gate closed.
+
+| Principal | Object visibility | Expected direct and app-resolver outcomes | Observed sanitized outcomes and run date | Cell status |
+|---|---|---|---|---|
+| Anonymous | Private | Direct read denied; resolver returns no private URL (`auth_required`) | RUN | RUN |
+| Anonymous | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
+| Owner A | Private | Direct read allowed; resolver signs as Owner A and the signed-object read succeeds | RUN | RUN |
+| Owner A | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
+| Unrelated authenticated user B | Private | Direct read denied; resolver denies access or any returned signed URL also fails to read | RUN | RUN |
+| Unrelated authenticated user B | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
+
+| Final release review | Record |
+|---|---|
+| All six rows reviewed by the authorized policy owner | NOT RECORDED |
+| Owner's final decision, name, role, and date (UTC) | NOT RECORDED |
+| Gate decision | NOT PASSED |
+
 ## Mocked contract coverage
 
 `node --test --test-isolation=none tests/regression/storage-policy-contract.test.mjs` checks that anonymous private resolution fails closed, the caller's user token is used for signing, public resolution follows the configured allowlist, provider error payloads are not surfaced, logs contain no private path or signed URL, and browser config does not expose a service-role key. URL-share regression and browser tests separately verify that private references are blocked from compressed links while public-only links remain available. These tests validate app behavior only; they do not exercise provider policies.
