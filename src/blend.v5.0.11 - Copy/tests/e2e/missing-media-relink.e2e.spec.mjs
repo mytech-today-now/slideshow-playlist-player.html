@@ -544,36 +544,133 @@ test('a relink scan reaching 250 media files stops partially and keeps matches',
   expect((await missingRefSnapshot(page, 'playlist', 0)).available).toBe(true);
 });
 
-test('a relink scan stops at the entry ceiling before a later match and preserves the missing reference', async ({ page }) => {
+test('a relink scan stops at 2,000 mixed entries, preserves saved rows, and offers keyboard recovery', async ({ page }) => {
+  const entryLimit = LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES;
   await bootRelinkPage(page, 'playlist');
-  await importMissingList(page, 'playlist', [
-    { id: 'bounded-missing-track', name: 'track.mp4', path: 'Assets/track.mp4', type: 'video' }
+  await seedExistingItems(page, [
+    { id: 'committed-before-relink', name: 'committed.mp4', type: 'video' }
   ]);
-  const before = await missingRefSnapshot(page, 'playlist', 0);
+  await importMissingList(page, 'playlist', [
+    { id: 'committed-before-relink', name: 'committed.mp4', path: 'committed.mp4', type: 'video' },
+    { id: 'before-cutoff', name: 'track-before.mp4', path: 'Assets/track-before.mp4', type: 'video' },
+    { id: 'after-cutoff', name: 'track-after.mp4', path: 'Assets/track-after.mp4', type: 'video' }
+  ]);
+  const committedId = await page.evaluate(() => window.Blend.state.playlist[0].id);
+  const revisionBeforeResolve = await page.evaluate(() => window.Blend.saveStatus.savedRevision);
   await page.evaluate(entryLimit => {
     let yieldedEntries = 0;
+    let laterMatchYielded = false;
+    const track = entry => {
+      yieldedEntries += 1;
+      return entry;
+    };
+    const makeFile = (name, contents) => Object.assign(Object.create({
+      async getFile() { return new File([contents], name, { type: 'video/mp4' }); }
+    }), { kind: 'file', name, contents, transient: true });
+    const nestedUnsupported = Object.assign(Object.create({
+      async *values() {
+        yield track(makeFile('nested-unsupported-one.txt', 'ignored'));
+        yield track(makeFile('nested-unsupported-two.txt', 'ignored'));
+      }
+    }), { kind: 'directory', name: 'UnsupportedFolder' });
     const root = Object.create({
       async *values() {
-        for (let index = 0; index < entryLimit; index += 1) {
-          yieldedEntries += 1;
-          yield { kind: 'file', name: `unsupported-${String(index).padStart(5, '0')}.txt` };
+        yield track(makeFile('track-before.mp4', 'relinked-before-cutoff'));
+        for (let index = 0; index < entryLimit - 4; index += 1) {
+          yield track(makeFile(`unsupported-${String(index).padStart(5, '0')}.txt`, 'ignored'));
         }
-        yieldedEntries += 1;
-        yield { kind: 'file', name: 'track.mp4' };
+        yield track(nestedUnsupported);
+        laterMatchYielded = true;
+        yield track(makeFile('track-after.mp4', 'must-not-be-seen-in-first-pass'));
       }
     });
     Object.assign(root, { kind: 'directory', name: 'Assets' });
+    const smaller = Object.assign(Object.create({
+      async *values() {
+        yield makeFile('track-after.mp4', 'relinked-after-smaller-folder-recovery');
+      }
+    }), { kind: 'directory', name: 'Later' });
+    let pickerCalls = 0;
     window.__relinkEntriesYielded = () => yieldedEntries;
-    window.showDirectoryPicker = async () => root;
-  }, LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES);
+    window.__relinkLaterMatchYielded = () => laterMatchYielded;
+    window.__relinkPickerCalls = () => pickerCalls;
+    window.showDirectoryPicker = async () => {
+      pickerCalls += 1;
+      return pickerCalls === 1 ? root : smaller;
+    };
+  }, entryLimit);
 
   await clickResolve(page, 'playlist');
   const notice = page.locator('.toast-directory-scan');
-  await expect(notice).toContainText(`Missing-media scan stopped after visiting ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES} entries. Later entries were not inspected.`);
-  await expect(notice).toContainText('Resolved 0/1 missing path from 0 found media files.');
-  await expect(notice.getByRole('button', { name: 'Choose smaller folder' })).toBeVisible();
-  expect(await page.evaluate(() => window.__relinkEntriesYielded())).toBe(LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES);
-  expect(await missingRefSnapshot(page, 'playlist', 0)).toEqual(before);
+  await expect(notice).toContainText(`Missing-media scan stopped after visiting ${entryLimit} entries. Later entries were not inspected.`);
+  await expect(notice).toContainText('Resolved 1/2 missing paths from 1 found media file.');
+  await expect(notice).toContainText('No saved entries were removed; choose a smaller folder or narrow the search.');
+  const chooseSmaller = notice.getByRole('button', { name: 'Choose smaller folder' });
+  await expect(chooseSmaller).toBeVisible();
+  expect(await page.evaluate(() => ({
+    yielded: window.__relinkEntriesYielded(),
+    laterMatchYielded: window.__relinkLaterMatchYielded()
+  }))).toEqual({ yielded: entryLimit, laterMatchYielded: false });
+
+  await waitForSaveAfter(page, revisionBeforeResolve);
+  const firstPass = await page.evaluate(() => {
+    const state = window.Blend.state;
+    return {
+      rows: state.playlist.map(ref => ({ id: ref.id, name: ref.name, path: ref.path, available: ref.available, reason: ref.reason })),
+      libraryIds: Array.from(state.library.keys()),
+      libraryNames: Array.from(state.library.values(), item => item.name)
+    };
+  });
+  expect(firstPass.rows.map(row => row.name)).toEqual(['committed.mp4', 'track-before.mp4', 'track-after.mp4']);
+  expect(firstPass.rows[0]).toMatchObject({ id: committedId, available: true });
+  expect(firstPass.rows[1]).toMatchObject({ name: 'track-before.mp4', available: true });
+  expect(firstPass.rows[2]).toMatchObject({
+    name: 'track-after.mp4',
+    path: 'Assets/track-after.mp4',
+    available: false,
+    reason: 'missing'
+  });
+  expect(new Set(firstPass.rows.map(row => row.id)).size).toBe(firstPass.rows.length);
+  expect(new Set(firstPass.libraryIds).size).toBe(firstPass.libraryIds.length);
+  expect(firstPass.libraryNames).toContain('track-before.mp4');
+  expect(firstPass.libraryNames).not.toContain('track-after.mp4');
+  expect((await readHandleContents(page, 'playlist', 1)).text).toBe('relinked-before-cutoff');
+
+  await page.locator('#close-config').focus();
+  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ).length);
+  let reachedChooseSmaller = false;
+  for (let index = 0; index < focusableCount; index += 1) {
+    await page.keyboard.press('Tab');
+    if (await chooseSmaller.evaluate(node => node === document.activeElement)) {
+      reachedChooseSmaller = true;
+      break;
+    }
+  }
+  expect(reachedChooseSmaller).toBe(true);
+  await expect(chooseSmaller).toBeFocused();
+
+  const revisionBeforeRecovery = await page.evaluate(() => window.Blend.saveStatus.savedRevision);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__relinkPickerCalls() === 2);
+  await page.waitForFunction(() => window.Blend?.state?.playlist?.[2]?.available === true);
+  await waitForSaveAfter(page, revisionBeforeRecovery);
+  expect(await readHandleContents(page, 'playlist', 2)).toMatchObject({
+    text: 'relinked-after-smaller-folder-recovery',
+    pathHint: 'Later/track-after.mp4'
+  });
+  const recovered = await page.evaluate(() => ({
+    rows: window.Blend.state.playlist.map(ref => ({ id: ref.id, name: ref.name, available: ref.available })),
+    libraryIds: Array.from(window.Blend.state.library.keys()),
+    pickerCalls: window.__relinkPickerCalls()
+  }));
+  expect(recovered.rows.map(row => row.name)).toEqual(['committed.mp4', 'track-before.mp4', 'track-after.mp4']);
+  expect(recovered.rows.every(row => row.available)).toBe(true);
+  expect(recovered.rows[0].id).toBe(committedId);
+  expect(new Set(recovered.rows.map(row => row.id)).size).toBe(recovered.rows.length);
+  expect(new Set(recovered.libraryIds).size).toBe(recovered.libraryIds.length);
+  expect(recovered.pickerCalls).toBe(2);
 });
 
 test('a relink scan above 250 media files stops at the bound and retains unresolved entries', async ({ page }) => {

@@ -535,7 +535,7 @@ Implemented accessibility-oriented behavior includes:
 - Visible focus states and assistive announcement regions (`aria-live`).
 - Reduced-motion awareness in transition manager via `prefers-reduced-motion`.
 
-Manual screen-reader review of the current-playback row state is still outstanding. Browser automation checks the DOM semantics but does not replace a human review with a screen reader.
+The Playwright DOM checks in `tests/e2e/list-playback-accessibility.e2e.spec.mjs` run in Chromium and cover the current-row marker on play and through next/previous navigation, independent selection, pause/stop, Playlist/Slideshow switching, unavailable-item descriptions, virtualization, and experience switching. These assertions do not capture speech output. Manual screen-reader review of the current-playback row state is still outstanding.
 
 ## Mobile Usage
 
@@ -880,6 +880,24 @@ Compatibility notes:
 - Actual media decode depends on browser codec support.
 - HEIC/HEIF and some MKV/AVI/FLAC/AAC combinations may vary by browser/platform.
 
+### Physical mobile-device review attempt (2026-10-16)
+
+No iOS Safari or Android Chrome device session was available to this Windows runner; `adb` was unavailable for Android device enumeration. Device model, OS/browser versions, network state, and installation state were **Not run / not observed**. All mobile workflow outcomes below are **Not run**. No personal media or device app data was accessed or cleared.
+
+| Workflow | iOS Safari | Android Chrome |
+|---|---|---|
+| Add Files / local import and save | Not run | Not run |
+| Folder selection or individual-file fallback | Not run | Not run |
+| Reload persistence | Not run | Not run |
+| Synthetic media playback | Not run | Not run |
+| Fullscreen | Not run | Not run |
+| Rotation | Not run | Not run |
+| PWA installation and offline reload with saved media | Not run | Not run |
+| Quota and permission recovery | Not run | Not run |
+| Keyboard and touch controls | Not run | Not run |
+| Assistive technology | Not run | Not run |
+| 200 percent text zoom | Not run | Not run |
+
 ### Bounded branded desktop smoke
 
 This manual smoke is one short run per installed desktop browser, using the same disposable synthetic local video and a fresh browser profile. Start the local fixture server with `node tests/e2e/fixture-server.mjs` and open `http://127.0.0.1:4191/index.html`. If FFmpeg with `libx264` is available, generate a two-second fixture outside the checkout. Windows PowerShell example: `ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x180:rate=24 -t 2 -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart -y "$env:TEMP\issue12-synthetic.mp4"`; on macOS, use the same FFmpeg inputs/options with an output in the OS temporary directory. If that fixture cannot be made, mark video codec playback **Not run**; do not substitute personal media. Import the fixture with **Add Files**, add it to a list, play it, enter and exit fullscreen, wait for the service worker to control the page and the save status to settle, then use the browser's Network panel to go offline and reload. Record whether the shell loads and the imported item/list survive. If fullscreen is unavailable or rejected, check that the app announces the limitation and playback controls remain available; do not record fullscreen as passed. Restore network access and discard the temporary profile after the run.
@@ -893,6 +911,19 @@ Review-runner inventory (2026-10-13, Windows; executable product versions are in
 | Google Chrome (desktop) | 155.0.8059.40 | Not run: Windows app-control approval timed out before the browser workflow; partial / unverified. |
 | Microsoft Edge (desktop) | 155.0.4283.45 | Not run: no branded workflow was completed in this review; partial / unverified. |
 | Safari (desktop) | Not installed on this Windows runner | Not run; partial / unverified. |
+
+Review-runner attempt (2026-10-16): the host reported OS version `10.0.26300.9711`, DisplayVersion `26H2`, EditionID `Core`, and registry ProductName `Windows 10 Home`. Installed executable metadata reported Chrome `155.0.8059.82` and Edge `155.0.4283.45`; these are installation versions, not completed workflow results. A two-second synthetic H.264 High-profile, 320×180, `yuv420p` fixture was generated successfully and removed after the attempt. The CUA browser provider returned unavailable for both `chrome` and `edge`; Playwright channel launches for Chrome and Edge failed with `spawn EPERM` before page navigation. No branded browser session completed. Safari is not installed.
+
+| Workflow | Google Chrome 155.0.8059.82 | Microsoft Edge 155.0.4283.45 | Safari (not installed) |
+|---|---|---|---|
+| Import and save | Not run; browser launch blocked | Not run; browser launch blocked | Not run; unavailable |
+| H.264 decode and playback | Not run; browser launch blocked | Not run; browser launch blocked | Not run; unavailable |
+| Fullscreen enter and exit | Not run; browser launch blocked | Not run; browser launch blocked | Not run; unavailable |
+| Service-worker control and offline reload | Not run; browser launch blocked | Not run; browser launch blocked | Not run; unavailable |
+| Item and list persistence | Not run; browser launch blocked | Not run; browser launch blocked | Not run; unavailable |
+| Network restoration | Not run; network state was not changed | Not run; network state was not changed | Not run; unavailable |
+
+The focused Playwright engine baseline rechecks with `npm run test:e2e -- --project=chromium --project=firefox --project=webkit tests/e2e/browser-compatibility.e2e.spec.mjs` and direct `npx playwright test --config=playwright.config.mjs tests/e2e/browser-compatibility.e2e.spec.mjs --project=chromium --project=firefox --project=webkit` both stopped before test execution with `Error: spawn EPERM`. The first failed-run artifact is in `playwright-report/issue-12-branded-smoke-20261016-f1dd4a9cb0444a8e8757c9bd6ba39fe2/`. A separate same-day run recorded in `openspec/changes/issue-14-mobile-safari-android-device-workflows/README.md` passed 30/30 Playwright engine compatibility cases and 5/5 Chromium PWA offline cases; those remain engine-only results. No engine result is used to infer branded-browser behavior. Chrome, Edge, and Safari desktop support therefore remains **Partial / unverified**; no browser-specific difference was reproduced.
 
 ## What Works
 

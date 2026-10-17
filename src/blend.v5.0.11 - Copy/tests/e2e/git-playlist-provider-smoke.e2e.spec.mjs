@@ -237,10 +237,19 @@ test.describe('opt-in GitHub live smoke', () => {
 test.describe('opt-in Bitbucket live smoke', () => {
   test.skip(!bitbucket.ready, NOT_RUN_MESSAGE);
 
-  test('verifies a disposable private repository read only', async ({ page }) => {
+  test('verifies a disposable private repository read only', async ({ page, browser }) => {
     test.setTimeout(300000);
     const report = await runSmoke(page, bitbucket, false);
     printDiagnostics(report);
+    process.stdout.write(`Bitbucket read-only smoke result: ${JSON.stringify({
+      provider: report.provider,
+      browser: browser.browserType().name(),
+      browserVersion: browser.version(),
+      outcome: report.outcome,
+      visibility: report.visibility,
+      readVerified: report.readVerified,
+      errorCode: report.errorCode
+    })}\n`);
     expect(report.provider).toBe('bitbucket');
     expect(report.visibility).toBe('private');
     expect(report.readVerified).toBe(true);
@@ -248,7 +257,8 @@ test.describe('opt-in Bitbucket live smoke', () => {
     expect(report.errorCode).toBeNull();
     expect(report.cleanupVerified).toBe(true);
     expect(report.secretLeakDetected).toBe(false);
-    expect(report.diagnostics.some(event => event.method === 'POST' || event.method === 'PUT')).toBe(false);
+    expect(report.diagnostics.length).toBeGreaterThan(0);
+    expect(report.diagnostics.every(event => event.method === 'GET')).toBe(true);
   });
 });
 

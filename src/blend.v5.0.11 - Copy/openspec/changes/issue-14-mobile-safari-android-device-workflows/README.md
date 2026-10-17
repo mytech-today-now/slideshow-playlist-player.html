@@ -15,3 +15,13 @@ The current report `ai-prompts/pre-mortem-2026-10-13-14-11-28.html` tracks the s
 - `openspec validate issue-14-mobile-safari-android-device-workflows --strict` — exit 0.
 - Physical-device acceptance — not run; no named iOS Safari or Android Chrome device session was available. Keep task 2.2 open and the README support claims partial/unverified.
 - Beads — `bd.exe` was unavailable in this environment, so the current record status could not be re-verified. The earlier task 3.1 entry records `blend-amv` as in progress.
+
+## Verification refresh for issue-11 (2026-10-16)
+
+- `npm run check`: passed.
+- `npm run test:regression`: passed; 360 passed, 0 failed, 0 skipped.
+- `npx playwright test --config=playwright.config.mjs tests/e2e/browser-compatibility.e2e.spec.mjs --project=chromium --project=firefox --project=webkit`: passed 30/30 on desktop Playwright Chromium, Firefox, and WebKit.
+- `npx playwright test --config=playwright.config.mjs tests/e2e/pwa-offline.e2e.spec.mjs --project=chromium`: passed 5/5 on desktop Playwright Chromium.
+- `openspec validate issue-14-mobile-safari-android-device-workflows --strict`: valid; the change remains 4/5 tasks complete, with physical-device task 2.2 open.
+- Beads: existing record `blend-amv` was verified and remains `in_progress`; no duplicate was created.
+- Physical-device acceptance: **Not run**. No iOS Safari or Android Chrome device session was available; `adb` was unavailable for Android device enumeration. The README records each mobile path as Not run for this attempt. No device data was accessed or cleared.

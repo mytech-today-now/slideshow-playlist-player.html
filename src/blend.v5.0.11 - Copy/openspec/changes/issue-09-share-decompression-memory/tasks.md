@@ -40,3 +40,10 @@
 - A fresh full boot is currently responsive. ADB reports `emulator-5554 unauthorized`, so guest inspection and browser measurement cannot proceed until the on-screen USB debugging authorization is accepted.
 - Windows System log Application Popup event 26 identifies `crashpad_handler.exe` as the process that raised `0x80000003` on 2026-10-13. No matching QEMU/emulator Application Error event or emulator crash dump was found. A later full boot using `-gpu software -no-audio` selected SwiftShader/Lavapipe and remains responsive; no repeat breakpoint event appeared during the check. This isolates the observed dialog to the crash-report handler process, but its cause remains undetermined.
 - No Android memory trials have been run. Task 3.4 remains open.
+
+## Recheck (2026-10-15)
+
+- The task-local AVD points to the installed `android-33/google_apis_playstore/x86_64` image (package revision 9); its configuration records API 33, x86_64, 2048 MiB RAM, and 720 by 1600. `PlayStore.enabled` was corrected from `no` to `yes` before boot. ADB still reports `emulator-5554 unauthorized`, so guest-side Play Store presence and the installed Chrome build could not be verified.
+- USB debugging authorization requires user action. Computer Use rules prohibit acting on system security permission requests, so the prompt was left unapproved. Android measurements are Not run (0/9); renderer RSS, Perfetto, duration, responsiveness, and device-side URL/state recovery remain unmeasured.
+- `npm run check` passed; `npm run test:regression` passed 360/360; the focused `url-share-output-limit.e2e.spec.mjs` passed 1/1 in Chromium after a sandbox `spawn EPERM` and permitted rerun. The browser heap observation remained 10,000,000 bytes and is informational only.
+- The 8 MiB cap is unchanged. Task 3.4 remains open.

@@ -53,21 +53,21 @@ Record the expected and observed result, HTTP status or resolver outcome, and pa
 
 ### Owner-reviewed policy and rollback record
 
-| Evidence item | Record |
-|---|---|
-| Disposable staging project reference and review date (UTC) | RECORDED |
-| Owner confirmation that this is a disposable, non-production project | RECORDED |
-| Authorized policy owner's name and role | RECORDED |
-| Ownership predicate reviewed (for example, user ownership or organization membership) | RECORDED |
-| Current redacted `storage.objects` policy export reference and revision or hash | RECORDED |
-| Policy export reviewed by and review date (UTC) | RECORDED |
-| Owner's written approval of the reviewed policy for this staging check | RECORDED |
-| Private and public bucket visibility confirmed in staging | RECORDED |
-| Synthetic private and public fixture references under `codex-policy-check/` | RECORDED |
-| Reviewed pre-change redacted policy export for rollback, with revision or hash | RECORDED |
-| Rollback export reviewed by and review date (UTC) | RECORDED |
-| Project owner authorized to restore the rollback export | RECORDED |
-| Rollback trigger and restoration procedure confirmed by the owner | RECORDED |
+| Evidence item | Record status | Information required to complete the record |
+|---|---|---|
+| Disposable staging project reference and review date (UTC) | NOT RECORDED | Non-secret project reference and date the project was confirmed disposable. |
+| Owner confirmation that this is a disposable, non-production project | NOT RECORDED | Written confirmation from the authorized project owner. |
+| Authorized policy owner's name and role | NOT RECORDED | Owner's name, role, and authority to approve the Storage policy and release gate. |
+| Ownership predicate reviewed (for example, user ownership or organization membership) | NOT RECORDED | The exact ownership rule used by this project, confirmed by its policy owner. Do not infer it here. |
+| Current redacted `storage.objects` policy export reference and revision or hash | NOT RECORDED | Non-secret reference to the redacted export and its revision, timestamp, or hash. Keep the export in the owner's approved evidence location. |
+| Policy export reviewed by and review date (UTC) | NOT RECORDED | Reviewer's name and role, plus review date in UTC. |
+| Owner's written approval of the reviewed policy for this staging check | NOT RECORDED | Reference to the owner's approval and its date. |
+| Private and public bucket visibility confirmed in staging | NOT RECORDED | Owner-reviewed confirmation of each fixture bucket's configured visibility. |
+| Synthetic private and public fixture references under `codex-policy-check/` | NOT RECORDED | Synthetic fixture references for both buckets under the required prefix. |
+| Reviewed pre-change redacted policy export for rollback, with revision or hash | NOT RECORDED | Non-secret reference to the exact pre-change rollback export and its revision, timestamp, or hash. |
+| Rollback export reviewed by and review date (UTC) | NOT RECORDED | Reviewer's name and role, plus review date in UTC. |
+| Project owner authorized to restore the rollback export | NOT RECORDED | Name and role of the owner authorized to restore the retained export. |
+| Rollback trigger and restoration procedure confirmed by the owner | NOT RECORDED | Owner-confirmed rollback trigger and the procedure for restoring the exact retained export. |
 
 Keep the policy exports in the owner's approved evidence location and record only their non-secret references here. Do not derive or add policy SQL to this repository.
 
@@ -77,12 +77,12 @@ For each row, record direct-request and resolver outcomes where specified, HTTP 
 
 | Principal | Object visibility | Expected direct and app-resolver outcomes | Observed sanitized outcomes and run date | Cell status |
 |---|---|---|---|---|
-| Anonymous | Private | Direct read denied; resolver returns no private URL (`auth_required`) | RUN | RUN |
-| Anonymous | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
-| Owner A | Private | Direct read allowed; resolver signs as Owner A and the signed-object read succeeds | RUN | RUN |
-| Owner A | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
-| Unrelated authenticated user B | Private | Direct read denied; resolver denies access or any returned signed URL also fails to read | RUN | RUN |
-| Unrelated authenticated user B | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | RUN | RUN |
+| Anonymous | Private | Direct read denied; resolver returns no private URL (`auth_required`) | NOT RUN; no outcome or run date recorded | NOT RUN |
+| Anonymous | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | NOT RUN; no outcome or run date recorded | NOT RUN |
+| Owner A | Private | Direct read allowed; resolver signs as Owner A and the signed-object read succeeds | NOT RUN; no outcome or run date recorded | NOT RUN |
+| Owner A | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | NOT RUN; no outcome or run date recorded | NOT RUN |
+| Unrelated authenticated user B | Private | Direct read denied; resolver denies access or any returned signed URL also fails to read | NOT RUN; no outcome or run date recorded | NOT RUN |
+| Unrelated authenticated user B | Allowlisted public | Direct read allowed; resolver returns an unsigned public URL and the read succeeds | NOT RUN; no outcome or run date recorded | NOT RUN |
 
 | Final release review | Record |
 |---|---|
@@ -93,6 +93,8 @@ For each row, record direct-request and resolver outcomes where specified, HTTP 
 ## Mocked contract coverage
 
 `node --test --test-isolation=none tests/regression/storage-policy-contract.test.mjs` checks that anonymous private resolution fails closed, the caller's user token is used for signing, public resolution follows the configured allowlist, provider error payloads are not surfaced, logs contain no private path or signed URL, and browser config does not expose a service-role key. URL-share regression and browser tests separately verify that private references are blocked from compressed links while public-only links remain available. These tests validate app behavior only; they do not exercise provider policies.
+
+Local validation record for 2026-10-15: the focused Storage policy contract passed 7/7, `npm run check` passed, and `npm run test:regression` passed 360/360. No staging command or provider request was run because owner approval, policy evidence, and disposable-project confirmation were not supplied for this review. These local checks do not change the provider release-gate status.
 
 ## Opt-in staging smoke test
 

@@ -12,6 +12,7 @@ These changes are present in the current review checkout. The app version remain
 - Added deterministic save-performance fixtures and Node/browser benchmarks for large experiences, plus regression and browser coverage for changed-row writes and save recovery.
 - Added focused Firefox and WebKit compatibility coverage and CI reporting that records engine versions without implying branded-browser or mobile-device certification.
 - Added sign-out coverage for active and in-flight private media, copied signed URLs, public/local playback, retry after sign-in, and peer tabs.
+- Added Chromium E2E coverage for partial missing-media relink at the 2,000-entry cutoff, including preservation of earlier saved rows and keyboard recovery through a smaller-folder scan.
 
 ### Changed
 
@@ -27,6 +28,7 @@ These changes are present in the current review checkout. The app version remain
 - URL-share imports now cap decompressed output at 8 MiB, avoid the retained-chunks-plus-full-copy allocation, and keep the source link and current experience intact after rejection or failed persistence. Oversized links offer smaller-link or JSON-backup recovery.
 - The Storage policy release checklist records the authorized owner, policy revision, rollback artifact, and expected outcomes for all six principal/object cases. Its staging matrix checks direct and resolver results without retaining signed URLs or credentials.
 - Clarified local-copy instructions, browser compatibility claims, reset behavior, and offline documentation behavior.
+- Clarified browser, mobile, and screen-reader verification records; unavailable branded-browser, physical-device, and human speech checks remain explicitly Not run.
 
 ## 5.0.11 — 2026-10-06
 

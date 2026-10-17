@@ -332,7 +332,8 @@ async function readFolderBenchmark(page) {
   return page.evaluate(() => {
     clearInterval(window.__folderImportBenchmarkSampler);
     const benchmark = window.__folderImportBenchmark;
-    const progressCount = benchmark.lastProgressText.match(/(\d+) files? found/);
+    const finalStatusText = document.querySelector('.toast-directory-scan')?.textContent || benchmark.lastProgressText;
+    const progressCount = finalStatusText.match(/(\d+) (?:(?:supported )?media )?files? found/);
     return {
       elapsedMs: Math.round(performance.now() - benchmark.startedAt),
       firstWriteMs: benchmark.firstWriteMs == null ? null : Math.round(benchmark.firstWriteMs),
@@ -550,6 +551,8 @@ for (const count of [1_000, 10_000]) {
     if (reachedEntryLimit) {
       await expect(status).toContainText(`Folder scan stopped after visiting ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES} entries.`, { timeout: 30000 });
       await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
+    } else {
+      await expect(status).toContainText(`${count} supported media files found; 250 added, 0 skipped (0 already present), ${count - 250} pending.`, { timeout: 30000 });
     }
     const metrics = await readFolderBenchmark(page);
     if (reachedEntryLimit) {
@@ -557,7 +560,6 @@ for (const count of [1_000, 10_000]) {
       expect(metrics.finalProgressCount).toBeLessThan(count);
       await expect(status).toContainText(`${metrics.finalProgressCount} supported media files found within the visited entries; 250 added, 0 skipped (0 already present), ${metrics.finalProgressCount - 250} pending within the visited entries.`);
     } else {
-      await expect(status).toContainText(`${count} supported media files found; 250 added, 0 skipped (0 already present), ${count - 250} pending.`, { timeout: 30000 });
       expect(metrics.finalProgressCount).toBe(count);
     }
     expect(metrics.peakRetained).toBe(250);
