@@ -9,13 +9,13 @@ The app version is **5.0.11** in `package.json` and `pwa-config.js`. The UI and 
 | Version field | Verified value | Source |
 |---|---|---|
 | App version | `5.0.11` | `package.json`, `pwa-config.js` |
-| Asset version | `20261013-v5.0.11-signed-media-url-lifetime` | `pwa-config.js` |
-| Cache version | `20261013-v5.0.11-signed-media-url-lifetime` | `pwa-config.js` |
+| Asset version | `20261019-v5.0.11-session-and-recovery` | `pwa-config.js` |
+| Cache version | `20261019-v5.0.11-session-and-recovery` | `pwa-config.js` |
 | IndexedDB database | `player-blend-v1`, schema version `5` | `pwa-config.js` |
 
 Asset and cache versions identify a static-app cache generation. They are not separate product releases. The parent repository's top-level `VERSION` describes that repository and is not the Blend app version.
 
-The current unreleased checkout still identifies as app version **5.0.11**. Its `20261013-v5.0.11-signed-media-url-lifetime` asset and cache generation refresh the shell for signed-media lifetime and persistence changes, alongside the earlier hidden-directory scan pause and resume behavior; see the [Unreleased changelog](CHANGELOG.md#unreleased).
+The current unreleased checkout still identifies as app version **5.0.11**. Its `20261019-v5.0.11-session-and-recovery` asset and cache generation refresh the shell for Supabase session persistence, sign-out status, save recovery, and shared-link recovery changes; see the [Unreleased changelog](CHANGELOG.md#unreleased).
 
 Schema versions above `5` are opened only when this release's required object stores and key paths remain compatible; otherwise startup fails without changing the database.
 

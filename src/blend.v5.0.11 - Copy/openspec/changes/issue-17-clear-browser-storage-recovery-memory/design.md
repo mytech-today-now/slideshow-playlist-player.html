@@ -34,6 +34,21 @@ See [proposal.md](proposal.md). `snapshotIndexedDBConnection` reads `getAllKeys(
 
 4. **Abort recovery reads at each protected store.** The E2E fixture aborts the readonly transaction when each store's value request succeeds. For each injected failure, assert the exact incomplete-reset copy, zero database-delete calls, preserved IndexedDB authored state, and preserved local auth session; then restore the fixture and retry successfully. Existing tests continue to exercise post-snapshot session, deletion, timeout, and cleanup failures.
 
+5. **Verify rollback with synthetic authored profiles.** On 2026-10-19, the focused Chromium E2E prepared empty, small, typical, and large user-authored library profiles, forced a delete timeout, then verified that all records present before reset remained readable in each of the eight non-thumbnail stores. Every large-profile row also checked the unknown `syntheticUserMetadata` field against its expected value. Snapshot duration is measured from the first protected-store read through readonly transaction completion; CDP heap sampling runs every 10 ms from before reset through the incomplete-reset status.
+
+   | Profile | Records / payload | Snapshot time | Sampled peak heap growth |
+   | --- | ---: | ---: | ---: |
+   | Empty, run 1 | 0 / 0 B | 153.1 ms | 2,534,628 B |
+   | Empty, run 2 | 0 / 0 B | 79.4 ms | 2,842,288 B |
+   | Small, run 1 | 10 / 10 KiB | 153.3 ms | 2,530,008 B |
+   | Small, run 2 | 10 / 10 KiB | 66.8 ms | 2,801,316 B |
+   | Typical, run 1 | 512 / 4 MiB | 255.2 ms | 9,511,644 B |
+   | Typical, run 2 | 512 / 4 MiB | 201.0 ms | 9,623,444 B |
+   | Large, run 1 | 4,096 / 64 MiB | 796.5 ms | 84,442,084 B |
+   | Large, run 2 | 4,096 / 64 MiB | 737.7 ms | 85,199,476 B |
+
+   Both runs used the failed-delete path and are not directly comparable to the earlier successful-reset samples. CDP sampling stopped at the incomplete-reset status; the subsequent record-preservation polling is outside the heap sample. These are observed Chromium profiles, not a universal cap or a claim about larger real libraries. The large-profile rollback scenario is retained as an acceptance boundary until its observed heap and duration are accepted for the supported dataset.
+
 ## Risks / Trade-offs
 
 - [The memory sample is approximate and can miss short peaks between polls] → Sample every 10 ms and report the measurement as observed heap, not an exact allocation ceiling.

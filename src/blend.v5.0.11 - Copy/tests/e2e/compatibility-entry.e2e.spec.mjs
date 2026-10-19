@@ -229,7 +229,7 @@ test('compatibility entry without a deep link redirects once and direct index en
 
 test('keyboard-only focus is visible after compatibility and direct index entry', async ({ page }) => {
   await prepareAppPage(page);
-  const skipLink = page.getByRole('link', { name: 'Skip to controls' });
+  const skipLink = page.getByRole('link', { name: 'Go to configuration controls' });
 
   await page.goto('/slideshow-playlist-player.html');
   await waitForApp(page);

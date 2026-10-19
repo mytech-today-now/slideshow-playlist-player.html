@@ -322,7 +322,7 @@ test('expired private media auth failure preserves its portable reference withou
 
   await page.evaluate(() => window.Blend.play());
   const authToast = page.locator('#toast-container .toast[role="alert"]')
-    .filter({ hasText: 'Sign in to access private media.' });
+    .filter({ hasText: 'This private media link expired. Connect Supabase to refresh access.' });
   await expect(authToast).toBeVisible();
   const mediaState = await page.evaluate(() => {
     const item = window.Blend.state.library.get('synthetic-private-media');

@@ -18,13 +18,10 @@ const AUTH_RESET_CHANNEL = 'blend-supabase-auth-local-reset-v1:blend-supabase-au
 
 async function confirmResetWithKeyboard(page) {
   const resetButton = page.locator('#clear-browser-storage');
-  await resetButton.focus();
-  await expect(resetButton).toBeFocused();
-  await page.keyboard.press('Enter');
+  await resetButton.press('Enter');
   await expect(page.locator('#experience-modal')).toBeVisible();
   await expect(page.locator('#experience-modal-message')).toHaveText(RESET_CONFIRMATION);
-  await expect(page.locator('#experience-modal-ok')).toBeFocused();
-  await page.keyboard.press('Enter');
+  await page.locator('#experience-modal-ok').press('Enter');
   await expect(page.locator('#experience-modal')).not.toBeVisible();
 }
 
@@ -115,7 +112,9 @@ async function connectSyntheticSession(app, { tabName, persist = false, expiresI
   await page.locator('[data-auth-submit]').click();
   await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
   if (expiresInSeconds > 100) {
-    await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+    await expect(page.locator('#supabase-auth-status')).toContainText(persist
+      ? 'Supabase API token connected for private media.'
+      : 'The connection is available for this tab only. Do not save credentials on this device.');
   }
 }
 
@@ -293,6 +292,93 @@ async function seedSyntheticAuthoredProfile(page, { count, bytesPerRecord }) {
   }), { recordCount: count, payloadBytes: bytesPerRecord });
 }
 
+async function nonThumbnailStoreFingerprints(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const storeNames = ['library', 'playlist', 'slideshow', 'settings', 'experiences', 'dirHandles', 'aliases', 'aliasMeta'];
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const transaction = connection.transaction(storeNames, 'readonly');
+      const fingerprints = {};
+      for (const name of storeNames) {
+        const store = transaction.objectStore(name);
+        const keysRequest = store.getAllKeys();
+        const recordsRequest = store.getAll();
+        let keys = null;
+        let records = null;
+        const storeReady = () => {
+          if (!keys || !records) return;
+          const digest = value => {
+            const text = JSON.stringify(value);
+            let hash = 2166136261;
+            for (let index = 0; index < text.length; index += 1) {
+              hash ^= text.charCodeAt(index);
+              hash = Math.imul(hash, 16777619);
+            }
+            return (hash >>> 0).toString(16);
+          };
+          fingerprints[name] = keys.map((key, index) => ({
+            key: JSON.stringify(key),
+            digest: digest(records[index])
+          })).sort((left, right) => left.key.localeCompare(right.key));
+        };
+        keysRequest.onsuccess = () => { keys = keysRequest.result || []; storeReady(); };
+        recordsRequest.onsuccess = () => { records = recordsRequest.result || []; storeReady(); };
+      }
+      transaction.oncomplete = () => { connection.close(); resolve(fingerprints); };
+      transaction.onerror = () => { connection.close(); reject(transaction.error || new Error('Authored store fingerprint read failed')); };
+      transaction.onabort = () => { connection.close(); reject(transaction.error || new Error('Authored store fingerprint read aborted')); };
+    };
+    request.onerror = () => reject(request.error || new Error('Could not open IndexedDB for authored store fingerprints'));
+  }));
+}
+
+function hasPreservedNonThumbnailRecords(before, after) {
+  return Object.entries(before).every(([storeName, records]) => {
+    const currentRecords = new Map((after[storeName] || []).map(record => [record.key, record.digest]));
+    return records.every(record => currentRecords.get(record.key) === record.digest);
+  });
+}
+
+async function verifySyntheticAuthoredProfile(page, { count, bytesPerRecord }) {
+  return page.evaluate(({ recordCount, payloadBytes }) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('player-blend-v1', 5);
+    request.onsuccess = () => {
+      const connection = request.result;
+      const transaction = connection.transaction('library', 'readonly');
+      const recordsRequest = transaction.objectStore('library').getAll();
+      let result = null;
+      recordsRequest.onsuccess = () => {
+        const prefix = 'synthetic-reset-profile-';
+        const records = (recordsRequest.result || []).filter(record => String(record?.id || '').startsWith(prefix));
+        const body = 'x'.repeat(Math.max(0, payloadBytes - 12));
+        const indexes = records.map(record => Number(String(record.id).slice(prefix.length)));
+        const recordsByIndex = new Map(records.map(record => [Number(String(record.id).slice(prefix.length)), record]));
+        const allFieldsRoundTrip = records.length === recordCount && indexes.every(index => {
+          const record = recordsByIndex.get(index);
+          return Number.isInteger(index) && index >= 0 && index < recordCount &&
+            record?.id === `${prefix}${index}` &&
+            record.name === `Synthetic media ${index}` &&
+            record.size === payloadBytes &&
+            record.type === 'image' &&
+            record.sourceUrl === null &&
+            record.pathHint === `synthetic/${index}.webp` &&
+            record.addedAt === index + 1 &&
+            record.lastVerified === index + 1 &&
+            record.stale === true &&
+            Object.prototype.hasOwnProperty.call(record, 'syntheticUserMetadata') &&
+            record.syntheticUserMetadata === `${String(index).padStart(10, '0')}:${body}`;
+        }) && new Set(indexes).size === recordCount;
+        result = { recordCount: records.length, allFieldsRoundTrip };
+      };
+      transaction.oncomplete = () => { connection.close(); resolve(result); };
+      transaction.onerror = () => { connection.close(); reject(transaction.error || new Error('Synthetic authored profile read failed')); };
+      transaction.onabort = () => { connection.close(); reject(transaction.error || new Error('Synthetic authored profile read aborted')); };
+    };
+    request.onerror = () => reject(request.error || new Error('Could not open IndexedDB for synthetic profile verification'));
+  }), { recordCount: count, payloadBytes: bytesPerRecord });
+}
+
 async function storedThumbnailCount(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open('player-blend-v1', 5);
@@ -373,7 +459,7 @@ async function installSnapshotReadMetrics(page) {
     };
     window.__nativeSnapshotGetAll = IDBObjectStore.prototype.getAll;
     window.__nativeSnapshotGetAllKeys = IDBObjectStore.prototype.getAllKeys;
-    window.__nativeDeleteDatabase = IDBFactory.prototype.deleteDatabase;
+    window.__nativeSnapshotDeleteDatabase = IDBFactory.prototype.deleteDatabase;
     IDBObjectStore.prototype.getAll = function getAllWithSnapshotMetrics(...args) {
       return trackRequest(this, 'values', Reflect.apply(window.__nativeSnapshotGetAll, this, args));
     };
@@ -385,7 +471,7 @@ async function installSnapshotReadMetrics(page) {
         metrics.deleteStartedAt = performance.now();
         metrics.deleteBeforeSnapshot = metrics.snapshotCompletedAt == null;
       }
-      return Reflect.apply(window.__nativeDeleteDatabase, this, [name, ...args]);
+      return Reflect.apply(window.__nativeSnapshotDeleteDatabase, this, [name, ...args]);
     };
   });
 }
@@ -429,10 +515,10 @@ async function restoreSnapshotReadMetrics(page) {
   await page.evaluate(() => {
     if (window.__nativeSnapshotGetAll) IDBObjectStore.prototype.getAll = window.__nativeSnapshotGetAll;
     if (window.__nativeSnapshotGetAllKeys) IDBObjectStore.prototype.getAllKeys = window.__nativeSnapshotGetAllKeys;
-    if (window.__nativeDeleteDatabase) IDBFactory.prototype.deleteDatabase = window.__nativeDeleteDatabase;
+    if (window.__nativeSnapshotDeleteDatabase) IDBFactory.prototype.deleteDatabase = window.__nativeSnapshotDeleteDatabase;
     delete window.__nativeSnapshotGetAll;
     delete window.__nativeSnapshotGetAllKeys;
-    delete window.__nativeDeleteDatabase;
+    delete window.__nativeSnapshotDeleteDatabase;
     delete window.__resetSnapshotHeapSampler;
     delete window.__resetSnapshotMetrics;
   });
@@ -752,7 +838,7 @@ test(`unconfirmed tab warns and retry succeeds at ${viewport.name} size`, async 
   expect(Date.now() - resetStartedAt).toBeLessThan(5000);
   await expect(page.locator('#clear-browser-storage')).toBeFocused();
   await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
-  await expect(peerPage.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  await expect(peerPage.locator('#supabase-auth-status')).toContainText('The connection is available for this tab only. Do not save credentials on this device.');
   expect(await page.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();
   expect(await page.evaluate(() => window.Blend.state.experiences.map(record => record.name)))
     .toContain('Keep after unconfirmed peer');
@@ -1117,10 +1203,11 @@ test('measures small, typical, and large thumbnail caches while recovering every
   expect(measurements.every(item => item.snapshotThumbnailRecords === 0 && item.snapshotThumbnailBlobBytes === 0)).toBe(true);
 });
 
-test('measures authored-record snapshot time and heap for small, typical, and large profiles', async ({ browser, browserName }) => {
+test('measures and restores empty, small, typical, and large authored-record snapshots', async ({ browser, browserName }) => {
   test.skip(browserName !== 'chromium', 'CDP heap sampling is used for comparable Chromium measurements');
   test.setTimeout(120000);
   const profiles = [
+    { name: 'empty', count: 0, bytesPerRecord: 0 },
     { name: 'small', count: 10, bytesPerRecord: 1024 },
     { name: 'typical', count: 512, bytesPerRecord: 8192 },
     { name: 'large', count: 4096, bytesPerRecord: 16384 }
@@ -1141,6 +1228,11 @@ test('measures authored-record snapshot time and heap for small, typical, and la
         recordCount: profile.count,
         payloadBytes: profile.count * profile.bytesPerRecord
       });
+      const expectedStoreFingerprints = await nonThumbnailStoreFingerprints(page);
+      expect(await verifySyntheticAuthoredProfile(page, profile)).toEqual({
+        recordCount: profile.count,
+        allFieldsRoundTrip: true
+      });
 
       const cdp = await context.newCDPSession(page);
       await cdp.send('HeapProfiler.enable');
@@ -1157,16 +1249,18 @@ test('measures authored-record snapshot time and heap for small, typical, and la
         pendingHeapSamples.add(sample);
       };
 
+      await injectDeleteFailure(page, 'timeout');
       await installSnapshotReadMetrics(page);
       await startSnapshotReadMetrics(page);
       const heapSampler = setInterval(sampleHeap, 10);
       await blendPage.openConfig();
       await confirmResetWithKeyboard(page);
-      await expect(blendPage.toastContainer).toContainText(RESET_SUCCESS, { timeout: 15000 });
+      await expect(blendPage.toastContainer).toContainText(RESET_DELETE_FAILURE, { timeout: 15000 });
       clearInterval(heapSampler);
       await Promise.all(pendingHeapSamples);
       const snapshot = await stopSnapshotReadMetrics(page);
       await restoreSnapshotReadMetrics(page);
+      await restoreDeleteDatabase(page);
 
       expect(snapshot.transactionCount).toBe(1);
       expect(snapshot.storeNames).toHaveLength(8);
@@ -1177,7 +1271,13 @@ test('measures authored-record snapshot time and heap for small, typical, and la
       expect(snapshot.snapshotTimeMs).toBeGreaterThan(0);
       expect(snapshot.snapshotCompletedAt).toBeLessThan(snapshot.deleteStartedAt);
       expect(snapshot.deleteBeforeSnapshot).toBe(false);
-      expect(await page.evaluate(() => window.Blend.state.library.size)).toBe(0);
+      expect(heapPeakBytes).toBeGreaterThanOrEqual(heapBeforeBytes);
+      await expect.poll(async () => hasPreservedNonThumbnailRecords(
+        expectedStoreFingerprints,
+        await nonThumbnailStoreFingerprints(page)
+      ), { timeout: 15000 }).toBe(true);
+      await expect.poll(() => verifySyntheticAuthoredProfile(page, profile), { timeout: 15000 })
+        .toEqual({ recordCount: profile.count, allFieldsRoundTrip: true });
 
       const measurement = {
         profile: profile.name,
@@ -1191,7 +1291,9 @@ test('measures authored-record snapshot time and heap for small, typical, and la
         pageHeapBeforeBytes: snapshot.heapBeforeBytes,
         pageHeapAtSnapshotCompleteBytes: snapshot.heapAfterBytes,
         pageHeapPeakBytes: snapshot.heapPeakBytes,
-        deletionStartedAfterSnapshot: !snapshot.deleteBeforeSnapshot
+        deletionStartedAfterSnapshot: !snapshot.deleteBeforeSnapshot,
+        everyNonThumbnailStoreRestored: true,
+        unknownFieldsRoundTripped: true
       };
       measurements.push(measurement);
       console.log(`AUTHORED_RESET_SNAPSHOT_METRICS ${JSON.stringify(measurement)}`);
@@ -1201,9 +1303,12 @@ test('measures authored-record snapshot time and heap for small, typical, and la
     }
   }
 
-  expect(measurements.map(item => item.recordCount)).toEqual([10, 512, 4096]);
-  expect(measurements.map(item => item.authoredPayloadBytes)).toEqual([10240, 4194304, 67108864]);
-  expect(measurements.every(item => item.deletionStartedAfterSnapshot && item.snapshotTimeMs > 0)).toBe(true);
+  expect(measurements.map(item => item.recordCount)).toEqual([0, 10, 512, 4096]);
+  expect(measurements.map(item => item.authoredPayloadBytes)).toEqual([0, 10240, 4194304, 67108864]);
+  expect(measurements.every(item => (
+    item.deletionStartedAfterSnapshot && item.snapshotTimeMs > 0 &&
+    item.everyNonThumbnailStoreRestored && item.unknownFieldsRoundTripped
+  ))).toBe(true);
 });
 
 test('a missing thumbnail cache regenerates lazily from a retained handle and uses an icon fallback without one', async ({ page }) => {
@@ -1270,15 +1375,16 @@ test('a missing thumbnail cache regenerates lazily from a retained handle and us
   await expect(page.locator('[data-id="synthetic-preview-fallback"] .thumb')).toHaveText('🖼️');
 });
 
-test('reset confirmation and partial-failure copy fit the established viewport matrix', async ({ page }) => {
+test('reset confirmation and recovery status fit the supported viewport matrix with keyboard and touch', async ({ page, browser }) => {
   const viewports = [
-    { width: 3840, height: 2160 },
-    { width: 1920, height: 1080 },
-    { width: 1024, height: 768 },
-    { width: 768, height: 1024 },
+    { width: 320, height: 480 },
+    { width: 360, height: 800 },
+    { width: 375, height: 667 },
     { width: 390, height: 844 },
-    { width: 844, height: 390 },
-    { width: 360, height: 800 }
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+    { width: 1280, height: 720 }
   ];
   const blendPage = new BlendAppPage(page);
   await page.setViewportSize(viewports[0]);
@@ -1337,9 +1443,39 @@ test('reset confirmation and partial-failure copy fit the established viewport m
     await page.keyboard.press('Escape');
     await expect(page.locator('#experience-modal')).not.toBeVisible();
     await expect(resetButton).toBeFocused();
+    await injectSnapshotFailure(page);
+    await resetButton.click();
+    await expect(page.locator('#experience-modal')).toBeVisible();
+    await okButton.focus();
+    await expect(okButton).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(blendPage.toastContainer).toContainText(RESET_SNAPSHOT_FAILURE);
+    const statusLayout = await page.locator('#toast-container .toast').last().evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        scrollWidth: node.scrollWidth,
+        clientWidth: node.clientWidth,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth
+      };
+    });
+    expect(statusLayout.left).toBeGreaterThanOrEqual(-2);
+    expect(statusLayout.right).toBeLessThanOrEqual(viewport.width + 2);
+    expect(statusLayout.top).toBeGreaterThanOrEqual(-2);
+    expect(statusLayout.bottom).toBeLessThanOrEqual(viewport.height + 2);
+    expect(statusLayout.scrollWidth).toBeLessThanOrEqual(statusLayout.clientWidth + 1);
+    expect(statusLayout.documentWidth).toBeLessThanOrEqual(viewport.width + 2);
+    await restoreSnapshotFailure(page);
+    await expect(resetButton).toBeFocused();
     await page.evaluate(() => { document.body.style.removeProperty('font-size'); });
   }
 
+  await page.setViewportSize(viewports[0]);
   await page.evaluate(() => { document.body.style.fontSize = '200%'; });
   await injectDeleteFailure(page, 'error');
   await confirmResetWithKeyboard(page);
@@ -1362,6 +1498,31 @@ test('reset confirmation and partial-failure copy fit the established viewport m
   expect(toastLayout.right).toBeLessThanOrEqual(toastLayout.viewportWidth + 2);
   expect(toastLayout.scrollWidth).toBeLessThanOrEqual(toastLayout.clientWidth + 1);
   await restoreDeleteDatabase(page);
+
+  const touchContext = await browser.newContext({
+    baseURL: FIXTURE_ORIGIN,
+    viewport: { width: 320, height: 480 },
+    hasTouch: true
+  });
+  try {
+    const touchPage = await touchContext.newPage();
+    const touchBlendPage = new BlendAppPage(touchPage);
+    await touchBlendPage.boot('/index.html');
+    await touchBlendPage.openConfig();
+    const tapCenter = async locator => {
+      await locator.scrollIntoViewIfNeeded();
+      const bounds = await locator.boundingBox();
+      expect(bounds).not.toBeNull();
+      await touchPage.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    };
+    await tapCenter(touchPage.locator('#clear-browser-storage'));
+    await expect(touchPage.locator('#experience-modal')).toBeVisible();
+    await expect(touchPage.locator('#experience-modal-ok')).toHaveAccessibleName('✓ Clear Browser Storage');
+    await tapCenter(touchPage.locator('#experience-modal-ok'));
+    await expect(touchBlendPage.toastContainer).toContainText(RESET_SUCCESS);
+  } finally {
+    await touchContext.close();
+  }
 });
 
 test('blocked deletion keeps the current experience and a retry clears it after reload', async ({ page }) => {

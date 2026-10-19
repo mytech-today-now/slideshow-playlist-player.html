@@ -47,3 +47,11 @@
 - USB debugging authorization requires user action. Computer Use rules prohibit acting on system security permission requests, so the prompt was left unapproved. Android measurements are Not run (0/9); renderer RSS, Perfetto, duration, responsiveness, and device-side URL/state recovery remain unmeasured.
 - `npm run check` passed; `npm run test:regression` passed 360/360; the focused `url-share-output-limit.e2e.spec.mjs` passed 1/1 in Chromium after a sandbox `spawn EPERM` and permitted rerun. The browser heap observation remained 10,000,000 bytes and is informational only.
 - The 8 MiB cap is unchanged. Task 3.4 remains open.
+
+## Issue 07 verification (2026-10-19)
+
+- `npm run check` passed; `npm run test:regression` passed 365/365.
+- Traced Chromium `url-share-output-limit.e2e.spec.mjs` passed 2/2, including a real IndexedDB abort after a queued write, state/URL preservation and retry, and the eight-viewport recovery, keyboard-focus, and touch checks. Traced Chromium `experience-share-import-playback.e2e.spec.mjs` passed 2/2.
+- The browser `performance.memory` value (10,000,000 bytes before and after rejection) is informational only and is not Android renderer RSS.
+- Redirecting Android user and emulator paths to task temp removed the protected default-profile lock error. ADB now sees `emulator-5554` as `unauthorized`; user authorization is required before guest Chrome/version inspection or trials. Android measurements are Not run (0/9), and responsiveness, duration, and device-side URL/state recovery remain unmeasured.
+- The 8 MiB cap remains unchanged. Task 3.4 remains open pending all nine RSS trials and acceptance.

@@ -1,4 +1,6 @@
 import { createStorageUrlResolver } from '../../storage-url-resolver.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const CONFIRMATION = 'I_CONFIRM_DISPOSABLE_STAGING_ONLY';
 const PATH_PREFIX = 'codex-policy-check/';
@@ -9,8 +11,8 @@ function fail(message) {
   throw new MatrixFailure(message);
 }
 
-function required(name) {
-  const value = String(process.env[name] || '').trim();
+function required(name, env = process.env) {
+  const value = String(env[name] || '').trim();
   if (!value) fail(`Required staging setting is missing: ${name}.`);
   return value;
 }
@@ -52,7 +54,7 @@ function objectUrl(baseUrl, bucket, path, visibility = '') {
   return `${baseUrl}/storage/v1/object${route}/${encodeURIComponent(bucket)}/${encodeObjectPath(path)}`;
 }
 
-async function responseStatus(url, { anonKey, accessToken = '', signed = false, cell } = {}) {
+async function responseStatus(url, { anonKey, accessToken = '', signed = false, cell, fetchImpl = globalThis.fetch } = {}) {
   const headers = { Range: 'bytes=0-0' };
   if (!signed) {
     headers.apikey = anonKey;
@@ -60,7 +62,7 @@ async function responseStatus(url, { anonKey, accessToken = '', signed = false, 
   }
   let response;
   try {
-    response = await fetch(url, { method: 'GET', headers });
+    response = await fetchImpl(url, { method: 'GET', headers });
   } catch (_) {
     failCell(cell, 'A staging Storage request failed before returning an HTTP response.');
   }
@@ -69,7 +71,7 @@ async function responseStatus(url, { anonKey, accessToken = '', signed = false, 
   return result;
 }
 
-function resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken }) {
+function resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken, fetchImpl = globalThis.fetch }) {
   return createStorageUrlResolver({
     config: {
       supabaseUrl: baseUrl,
@@ -79,7 +81,7 @@ function resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToke
       signedUrlTtlSeconds: 60
     },
     authClient: { getAccessToken: () => accessToken },
-    fetchImpl: globalThis.fetch.bind(globalThis),
+    fetchImpl,
     requestTimeoutMs: 15_000
   });
 }
@@ -103,20 +105,20 @@ function isAuthenticatedReadDeniedStatus(status) {
   return [400, 403, 404].includes(status);
 }
 
-async function main() {
-  if (process.env.BLEND_STORAGE_STAGING_CONFIRM !== CONFIRMATION) {
-    console.log('SKIP: no requests sent. Set BLEND_STORAGE_STAGING_CONFIRM to opt into the disposable staging matrix.');
-    return;
+export async function runStoragePolicyStaging({ env = process.env, fetchImpl = globalThis.fetch, log = console.log } = {}) {
+  if (env.BLEND_STORAGE_STAGING_CONFIRM !== CONFIRMATION) {
+    log('SKIP: no requests sent. Set BLEND_STORAGE_STAGING_CONFIRM to opt into the disposable staging matrix.');
+    return 'SKIP';
   }
 
-  const baseUrl = required('BLEND_STORAGE_STAGING_SUPABASE_URL').replace(/\/+$/, '');
-  const anonKey = required('BLEND_STORAGE_STAGING_ANON_KEY');
-  const privateBucket = required('BLEND_STORAGE_STAGING_PRIVATE_BUCKET');
-  const privatePath = validateSyntheticPath(required('BLEND_STORAGE_STAGING_PRIVATE_PATH'), 'Private fixture');
-  const ownerToken = required('BLEND_STORAGE_STAGING_OWNER_ACCESS_TOKEN');
-  const otherToken = required('BLEND_STORAGE_STAGING_OTHER_ACCESS_TOKEN');
-  const publicBucket = required('BLEND_STORAGE_STAGING_PUBLIC_BUCKET');
-  const publicPath = validateSyntheticPath(required('BLEND_STORAGE_STAGING_PUBLIC_PATH'), 'Public fixture');
+  const baseUrl = required('BLEND_STORAGE_STAGING_SUPABASE_URL', env).replace(/\/+$/, '');
+  const anonKey = required('BLEND_STORAGE_STAGING_ANON_KEY', env);
+  const privateBucket = required('BLEND_STORAGE_STAGING_PRIVATE_BUCKET', env);
+  const privatePath = validateSyntheticPath(required('BLEND_STORAGE_STAGING_PRIVATE_PATH', env), 'Private fixture');
+  const ownerToken = required('BLEND_STORAGE_STAGING_OWNER_ACCESS_TOKEN', env);
+  const otherToken = required('BLEND_STORAGE_STAGING_OTHER_ACCESS_TOKEN', env);
+  const publicBucket = required('BLEND_STORAGE_STAGING_PUBLIC_BUCKET', env);
+  const publicPath = validateSyntheticPath(required('BLEND_STORAGE_STAGING_PUBLIC_PATH', env), 'Public fixture');
 
   let parsedBase;
   try { parsedBase = new URL(baseUrl); } catch (_) { fail('Staging Supabase URL must be an absolute URL.'); }
@@ -136,14 +138,14 @@ async function main() {
 
   const privateObject = objectUrl(baseUrl, privateBucket, privatePath);
   const anonymousPrivateDirectCell = 'anonymous / private object / direct request';
-  const anonymousPrivate = await responseStatus(privateObject, { anonKey, cell: anonymousPrivateDirectCell });
+  const anonymousPrivate = await responseStatus(privateObject, { anonKey, cell: anonymousPrivateDirectCell, fetchImpl });
   checkedCell(
     anonymousPrivateDirectCell,
     isPrivateReadDeniedStatus(anonymousPrivate.status),
     `expected denied HTTP 400, 401, 403, or 404; received HTTP ${anonymousPrivate.status}.`
   );
   const anonymousPrivateResolverCell = 'anonymous / private object / app resolver';
-  const anonymousResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: '' });
+  const anonymousResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: '', fetchImpl });
   let anonymousError = null;
   try {
     await anonymousResolver.resolve(`supabase://${privateBucket}/${privatePath}`);
@@ -153,13 +155,13 @@ async function main() {
     anonymousError = error;
   }
   checkedCell(anonymousPrivateResolverCell, anonymousError?.code === 'auth_required', 'expected the local auth gate and no URL.');
-  console.log(`PASS anonymous private read denied (HTTP ${anonymousPrivate.status}); resolver returned no URL`);
+  log(`PASS anonymous private read denied (HTTP ${anonymousPrivate.status}); resolver returned no URL`);
 
   const ownerPrivateDirectCell = 'owner A / private object / direct request';
-  const ownerDirect = await responseStatus(privateObject, { anonKey, accessToken: ownerToken, cell: ownerPrivateDirectCell });
+  const ownerDirect = await responseStatus(privateObject, { anonKey, accessToken: ownerToken, cell: ownerPrivateDirectCell, fetchImpl });
   checkedCell(ownerPrivateDirectCell, ownerDirect.ok, `expected allowed; received HTTP ${ownerDirect.status}.`);
   const ownerPrivateResolverCell = 'owner A / private object / app resolver signing request';
-  const ownerResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: ownerToken });
+  const ownerResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: ownerToken, fetchImpl });
   let ownerResult;
   try { ownerResult = await ownerResolver.resolve(`supabase://${privateBucket}/${privatePath}`); }
   catch (_) { failCell(ownerPrivateResolverCell, 'the resolver did not sign the private object for Owner A.'); }
@@ -168,19 +170,19 @@ async function main() {
   try { signedOrigin = new URL(ownerResult.url).origin; } catch (_) { failCell(ownerPrivateResolverCell, 'the resolver returned an invalid signed URL.'); }
   checkedCell(ownerPrivateResolverCell, signedOrigin === parsedBase.origin, 'the resolver returned a URL outside the staging project.');
   const ownerPrivateSignedCell = 'owner A / private object / resolver-signed request';
-  const ownerSigned = await responseStatus(ownerResult.url, { anonKey, signed: true, cell: ownerPrivateSignedCell });
+  const ownerSigned = await responseStatus(ownerResult.url, { anonKey, signed: true, cell: ownerPrivateSignedCell, fetchImpl });
   checkedCell(ownerPrivateSignedCell, ownerSigned.ok, `expected allowed; received HTTP ${ownerSigned.status}.`);
-  console.log(`PASS owner A private read allowed (direct HTTP ${ownerDirect.status}; signed HTTP ${ownerSigned.status})`);
+  log(`PASS owner A private read allowed (direct HTTP ${ownerDirect.status}; signed HTTP ${ownerSigned.status})`);
 
   const otherPrivateDirectCell = 'unrelated user B / private object / direct request';
-  const otherDirect = await responseStatus(privateObject, { anonKey, accessToken: otherToken, cell: otherPrivateDirectCell });
+  const otherDirect = await responseStatus(privateObject, { anonKey, accessToken: otherToken, cell: otherPrivateDirectCell, fetchImpl });
   checkedCell(
     otherPrivateDirectCell,
     isAuthenticatedReadDeniedStatus(otherDirect.status),
     `expected denied HTTP 400, 403, or 404; received HTTP ${otherDirect.status}.`
   );
   const otherPrivateResolverCell = 'unrelated user B / private object / app resolver';
-  const otherResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: otherToken });
+  const otherResolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken: otherToken, fetchImpl });
   let otherResult = null;
   let otherError = null;
   try { otherResult = await otherResolver.resolve(`supabase://${privateBucket}/${privatePath}`); }
@@ -199,7 +201,7 @@ async function main() {
     try { otherOrigin = new URL(otherResult.url).origin; } catch (_) { failCell(otherPrivateResolverCell, 'the resolver returned an invalid signed URL.'); }
     checkedCell(otherPrivateResolverCell, otherOrigin === parsedBase.origin, 'the resolver returned a URL outside the staging project.');
     const otherPrivateSignedCell = 'unrelated user B / private object / resolver-signed request';
-    otherSigned = await responseStatus(otherResult.url, { anonKey, signed: true, cell: otherPrivateSignedCell });
+    otherSigned = await responseStatus(otherResult.url, { anonKey, signed: true, cell: otherPrivateSignedCell, fetchImpl });
   }
   if (otherSigned) {
     checkedCell(
@@ -208,16 +210,16 @@ async function main() {
       `expected denied HTTP 400, 403, or 404; received HTTP ${otherSigned.status}.`
     );
   }
-  console.log(`PASS unrelated user B private read denied (direct HTTP ${otherDirect.status}${otherSigned ? `; resolved HTTP ${otherSigned.status}` : '; resolver returned no URL'})`);
+  log(`PASS unrelated user B private read denied (direct HTTP ${otherDirect.status}${otherSigned ? `; resolved HTTP ${otherSigned.status}` : '; resolver returned no URL'})`);
 
   const publicObject = objectUrl(baseUrl, publicBucket, publicPath, 'public');
   async function checkPublicObject(principal, accessToken) {
     const directCell = `${principal} / allowlisted public object / direct request`;
-    const direct = await responseStatus(publicObject, { anonKey, accessToken, cell: directCell });
+    const direct = await responseStatus(publicObject, { anonKey, accessToken, cell: directCell, fetchImpl });
     checkedCell(directCell, direct.ok, `expected allowed; received HTTP ${direct.status}.`);
 
     const resolverCell = `${principal} / allowlisted public object / app resolver`;
-    const resolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken });
+    const resolver = resolverFor({ baseUrl, anonKey, privateBucket, publicBucket, accessToken, fetchImpl });
     let resolved;
     try { resolved = await resolver.resolve(`supabase://${publicBucket}/${publicPath}`); }
     catch (_) { failCell(resolverCell, 'the resolver could not resolve the allowlisted public object.'); }
@@ -228,17 +230,22 @@ async function main() {
 
     // Public resolution must remain readable without attaching a user token.
     const resolvedReadCell = `${principal} / allowlisted public object / resolver URL request`;
-    const throughResolver = await responseStatus(resolved.url, { anonKey, cell: resolvedReadCell });
+    const throughResolver = await responseStatus(resolved.url, { anonKey, cell: resolvedReadCell, fetchImpl });
     checkedCell(resolvedReadCell, throughResolver.ok, `expected allowed; received HTTP ${throughResolver.status}.`);
-    console.log(`PASS ${principal} public read allowed (direct HTTP ${direct.status}; resolver HTTP ${throughResolver.status})`);
+    log(`PASS ${principal} public read allowed (direct HTTP ${direct.status}; resolver HTTP ${throughResolver.status})`);
   }
 
   await checkPublicObject('anonymous', '');
   await checkPublicObject('owner A', ownerToken);
   await checkPublicObject('unrelated user B', otherToken);
+  return 'PASS';
 }
 
-main().catch(error => {
-  console.error(`FAIL: ${error instanceof MatrixFailure ? error.message : 'Unexpected staging matrix error; request details were suppressed.'}`);
-  process.exitCode = 1;
-});
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+const modulePath = fileURLToPath(import.meta.url);
+if (invokedPath && invokedPath.toLowerCase() === modulePath.toLowerCase()) {
+  runStoragePolicyStaging().catch(error => {
+    console.error(`FAIL: ${error instanceof MatrixFailure ? error.message : 'Unexpected staging matrix error; request details were suppressed.'}`);
+    process.exitCode = 1;
+  });
+}

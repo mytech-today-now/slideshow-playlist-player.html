@@ -25,9 +25,11 @@ async function preparePage(page, {
   globalPrivacyControl = false,
   consent = true,
   rememberedCredential = '',
-  unreadableCredential = false
+  unreadableCredential = false,
+  savedSupabaseSession = '',
+  unreadableSupabaseSession = false
 } = {}) {
-  await page.addInitScript(({ fixtureOrigin, dntValue, gpcValue, consentValue, credentialValue, unreadableCredentialValue }) => {
+  await page.addInitScript(({ fixtureOrigin, dntValue, gpcValue, consentValue, credentialValue, unreadableCredentialValue, supabaseSessionValue, unreadableSupabaseSessionValue }) => {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     if (consentValue) localStorage.setItem('blend-analytics-consent-v1', '1');
@@ -38,6 +40,7 @@ async function preparePage(page, {
         token: credentialValue
       }));
     }
+    if (supabaseSessionValue) localStorage.setItem('blend-supabase-auth-session-v2', supabaseSessionValue);
     window.__credentialWrites = 0;
     const nativeSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
@@ -46,10 +49,14 @@ async function preparePage(page, {
       }
       return nativeSetItem.call(this, key, value);
     };
-    if (unreadableCredentialValue) {
+    if (unreadableCredentialValue || unreadableSupabaseSessionValue) {
       const nativeGetItem = Storage.prototype.getItem;
       Storage.prototype.getItem = function (key) {
-        if (this === localStorage && key === 'blend-git-playlist-credential-v1') {
+        if (this === localStorage && unreadableCredentialValue && key === 'blend-git-playlist-credential-v1') {
+          throw new Error('synthetic storage read failure');
+        }
+        if (this === localStorage && unreadableSupabaseSessionValue
+          && (key === 'blend-supabase-auth-session-v2' || key === 'blend-supabase-auth-session-v1')) {
           throw new Error('synthetic storage read failure');
         }
         return nativeGetItem.call(this, key);
@@ -95,7 +102,9 @@ async function preparePage(page, {
     gpcValue: globalPrivacyControl,
     consentValue: consent,
     credentialValue: rememberedCredential,
-    unreadableCredentialValue: unreadableCredential
+    unreadableCredentialValue: unreadableCredential,
+    supabaseSessionValue: savedSupabaseSession,
+    unreadableSupabaseSessionValue: unreadableSupabaseSession
   });
 }
 
@@ -323,6 +332,145 @@ test('unreadable credential storage fails closed without a gtag request', async 
   expect(pageErrors).toEqual([]);
   expect(loaderRequests).toHaveLength(0);
   expect(events).toHaveLength(0);
+});
+
+test('an opted-in Supabase session blocks analytics without exposing its sentinels', async ({ page }) => {
+  const accessSentinel = 'SYNTHETIC-SUPABASE-ACCESS-SENTINEL-ANALYTICS';
+  const refreshSentinel = 'SYNTHETIC-SUPABASE-REFRESH-SENTINEL-ANALYTICS';
+  const session = JSON.stringify({
+    access_token: accessSentinel,
+    refresh_token: refreshSentinel,
+    expires_at: Math.floor(Date.now() / 1000) + 3600
+  });
+  const { events, loaderRequests } = await installAnalyticsInterceptors(page);
+  const networkCapture = [];
+  const consoleCapture = [];
+  const pageErrors = [];
+  page.on('request', request => networkCapture.push(`${request.url()} ${request.postData() || ''}`));
+  page.on('console', message => consoleCapture.push(message.text()));
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await preparePage(page, {
+    consent: true,
+    doNotTrack: '1',
+    globalPrivacyControl: true,
+    savedSupabaseSession: session
+  });
+  await page.goto('/index.html');
+  await waitForApp(page);
+  await page.locator('#config-gear').click();
+  await expect(page.locator('#analytics-consent-status')).toHaveText(
+    'Analytics is off while a Supabase session is saved in this browser. Clear the saved session or continue without analytics.'
+  );
+  await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  expect(loaderRequests).toHaveLength(0);
+  expect(events).toHaveLength(0);
+  expect(await page.evaluate(() => window.__gtagInsertions)).toBe(0);
+
+  const exposed = await page.evaluate(([access, refresh]) => ({
+    body: document.body.innerText.includes(access) || document.body.innerText.includes(refresh),
+    html: document.documentElement.innerHTML.includes(access) || document.documentElement.innerHTML.includes(refresh),
+    log: window.Blend.log.exportJson().includes(access) || window.Blend.log.exportJson().includes(refresh),
+    inputs: Array.from(document.querySelectorAll('input, textarea')).some(input => input.value.includes(access) || input.value.includes(refresh)),
+    url: location.href.includes(access) || location.href.includes(refresh)
+  }), [accessSentinel, refreshSentinel]);
+  expect(Object.values(exposed).some(Boolean)).toBe(false);
+  expect(JSON.stringify({ networkCapture, consoleCapture, pageErrors, events }).includes(accessSentinel)).toBe(false);
+  expect(JSON.stringify({ networkCapture, consoleCapture, pageErrors, events }).includes(refreshSentinel)).toBe(false);
+  expect(pageErrors).toEqual([]);
+});
+
+test('unreadable Supabase session storage fails closed for analytics', async ({ page }) => {
+  const accessSentinel = 'SYNTHETIC-SUPABASE-ACCESS-SENTINEL-UNREADABLE';
+  const refreshSentinel = 'SYNTHETIC-SUPABASE-REFRESH-SENTINEL-UNREADABLE';
+  const session = JSON.stringify({
+    access_token: accessSentinel,
+    refresh_token: refreshSentinel,
+    expires_at: Math.floor(Date.now() / 1000) + 3600
+  });
+  const { events, loaderRequests } = await installAnalyticsInterceptors(page);
+  const consoleCapture = [];
+  const pageErrors = [];
+  page.on('console', message => consoleCapture.push(message.text()));
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await preparePage(page, {
+    consent: true,
+    savedSupabaseSession: session,
+    unreadableSupabaseSession: true
+  });
+  await page.goto('/index.html');
+  await waitForApp(page);
+  await page.locator('#config-gear').click();
+  await expect(page.locator('#analytics-consent-status')).toHaveText(
+    'Analytics is off because saved session storage could not be checked. Clear or reconnect the Supabase session before enabling analytics.'
+  );
+  expect(loaderRequests).toHaveLength(0);
+  expect(events).toHaveLength(0);
+  expect(await page.evaluate(() => window.__gtagInsertions)).toBe(0);
+  expect(await page.evaluate(() => typeof window.gtag)).toBe('undefined');
+  const exposed = await page.evaluate(([access, refresh]) => ({
+    body: document.body.innerText.includes(access) || document.body.innerText.includes(refresh),
+    html: document.documentElement.innerHTML.includes(access) || document.documentElement.innerHTML.includes(refresh),
+    log: window.Blend.log.exportJson().includes(access) || window.Blend.log.exportJson().includes(refresh)
+  }), [accessSentinel, refreshSentinel]);
+  expect(Object.values(exposed).some(Boolean)).toBe(false);
+  expect(JSON.stringify({ consoleCapture, pageErrors, events }).includes(accessSentinel)).toBe(false);
+  expect(JSON.stringify({ consoleCapture, pageErrors, events }).includes(refreshSentinel)).toBe(false);
+  expect(pageErrors).toEqual([]);
+});
+
+test('the analytics lock keeps an opted-in Supabase session tab-only and token-free in output', async ({ page }) => {
+  const accessSentinel = 'SYNTHETIC-SUPABASE-ACCESS-SENTINEL-LOCKED';
+  const refreshSentinel = 'SYNTHETIC-SUPABASE-REFRESH-SENTINEL-LOCKED';
+  const { events, loaderRequests } = await installAnalyticsInterceptors(page);
+  const networkCapture = [];
+  const consoleCapture = [];
+  const pageErrors = [];
+  page.on('request', request => networkCapture.push(`${request.url()} ${request.postData() || ''}`));
+  page.on('console', message => consoleCapture.push(message.text()));
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await preparePage(page, { consent: true });
+  await page.goto('/index.html');
+  await waitForApp(page);
+  await page.locator('#config-gear').click();
+  await expect.poll(() => loaderRequests.length).toBe(1);
+  await expect(page.locator('#analytics-consent-status')).toHaveText('Analytics is enabled.');
+
+  await page.locator('#supabase-sign-in').click();
+  await expect(page.locator('#supabase-auth-modal')).toBeVisible();
+  await page.locator('#supabase-auth-persist-session').check();
+  await page.locator('#supabase-auth-token').fill(accessSentinel);
+  await page.locator('#supabase-auth-refresh-token').fill(refreshSentinel);
+  await page.locator('[data-auth-submit]').click();
+  await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
+  await expect(page.locator('#supabase-auth-status')).toHaveText(
+    'The connection is available for this tab only. Do not save credentials on this device.'
+  );
+  await expect(page.locator('#toast-container')).toContainText(
+    'The connection is available for this tab only. Do not save credentials on this device.'
+  );
+
+  const savedState = await page.evaluate(() => ({
+    current: localStorage.getItem('blend-supabase-auth-session-v2'),
+    legacy: localStorage.getItem('blend-supabase-auth-session-v1'),
+    authenticated: document.querySelector('#btn-share')?.dataset.ipfsState === 'ready'
+  }));
+  expect(savedState.current).toBeNull();
+  expect(savedState.legacy).toBeNull();
+  expect(savedState.authenticated).toBe(true);
+  const exposed = await page.evaluate(([access, refresh]) => ({
+    body: document.body.innerText.includes(access) || document.body.innerText.includes(refresh),
+    html: document.documentElement.innerHTML.includes(access) || document.documentElement.innerHTML.includes(refresh),
+    log: window.Blend.log.exportJson().includes(access) || window.Blend.log.exportJson().includes(refresh),
+    inputs: Array.from(document.querySelectorAll('input, textarea')).some(input => input.value.includes(access) || input.value.includes(refresh)),
+    url: location.href.includes(access) || location.href.includes(refresh)
+  }), [accessSentinel, refreshSentinel]);
+  expect(Object.values(exposed).some(Boolean)).toBe(false);
+  expect(JSON.stringify({ networkCapture, consoleCapture, pageErrors, events }).includes(accessSentinel)).toBe(false);
+  expect(JSON.stringify({ networkCapture, consoleCapture, pageErrors, events }).includes(refreshSentinel)).toBe(false);
+  expect(events.every(event => !JSON.stringify(event).includes(accessSentinel)
+    && !JSON.stringify(event).includes(refreshSentinel))).toBe(true);
+  expect(pageErrors).toEqual([]);
+  expect(loaderRequests).toHaveLength(1);
 });
 
 test('a credential remembered in another tab blocks consent without changing it', async ({ context }) => {

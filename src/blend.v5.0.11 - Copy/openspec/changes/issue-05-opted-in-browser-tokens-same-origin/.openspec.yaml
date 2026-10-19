@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-19
+goal: Keep remembered Git and Supabase credentials out of LocalStorage whenever
+  analytics executes, while maintaining explicit opt-in and accurate disclosure.

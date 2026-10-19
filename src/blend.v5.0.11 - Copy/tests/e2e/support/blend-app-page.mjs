@@ -1,7 +1,21 @@
 import { expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
 const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
+
+async function uploadPayloadFromPath(filePath) {
+  if (filePath && typeof filePath === 'object' && typeof filePath.name === 'string' && filePath.buffer != null) {
+    return filePath;
+  }
+  if (typeof filePath !== 'string') throw new TypeError('Expected a file path or an in-memory upload payload.');
+  const extension = path.extname(filePath).toLowerCase();
+  const mimeType = extension === '.json' || extension === '.jsonl'
+    ? 'application/json'
+    : (extension === '.md' ? 'text/markdown' : 'text/plain');
+  return { name: path.basename(filePath), mimeType, buffer: await readFile(filePath) };
+}
 
 export class BlendAppPage {
   constructor(page) {
@@ -68,6 +82,20 @@ export class BlendAppPage {
     await this.page.locator('#experience-modal-ok').click();
     await this.expectExperienceOption(name, true);
     await expect(this.experienceSelect).toHaveValue(await this.activeExperienceIdByName(name));
+    await this.flushSaveState();
+  }
+
+  async flushSaveState() {
+    const saved = await this.page.evaluate(() => window.Blend?.flushSaveState?.());
+    if (saved !== true) {
+      const diagnostics = await this.page.evaluate(() => ({
+        status: window.Blend?.saveStatus || null,
+        saveErrors: (window.Blend?.log?.entries?.() || [])
+          .filter(entry => entry.message === 'save failed')
+          .slice(-3)
+      }));
+      throw new Error(`Blend did not finish saving the current experience state: ${JSON.stringify(diagnostics)}`);
+    }
   }
 
   async renameCurrentExperience(name) {
@@ -77,6 +105,7 @@ export class BlendAppPage {
     await this.experienceInput.fill(name);
     await this.page.locator('#experience-modal-ok').click();
     await this.expectExperienceOption(name, true);
+    await this.flushSaveState();
   }
 
   async deleteCurrentExperience() {
@@ -92,6 +121,7 @@ export class BlendAppPage {
     const targetId = await this.activeExperienceIdByName(name);
     await this.experienceSelect.selectOption(targetId);
     await this.page.waitForFunction(expectedName => window.Blend?.state?.projectName === expectedName, name);
+    await this.flushSaveState();
   }
 
   async expectExperienceOption(name, present) {
@@ -122,7 +152,7 @@ export class BlendAppPage {
     const chooserPromise = this.page.waitForEvent('filechooser');
     await this.page.locator('#list-import').click();
     const chooser = await chooserPromise;
-    await chooser.setFiles(filePath);
+    await chooser.setFiles(await uploadPayloadFromPath(filePath));
     await this.page.waitForFunction(
       key => key === 'playlist'
         ? window.Blend?.state?.playlist?.length > 0
@@ -130,6 +160,7 @@ export class BlendAppPage {
       which
     );
     await this.dismissImportSummaryIfPresent();
+    await this.flushSaveState();
   }
 
   async switchListTab(which) {
@@ -222,7 +253,7 @@ export class BlendAppPage {
     const chooserPromise = this.page.waitForEvent('filechooser');
     await this.page.locator('#experience-import').click();
     const chooser = await chooserPromise;
-    await chooser.setFiles(filePath);
+    await chooser.setFiles(await uploadPayloadFromPath(filePath));
     const importResultHandle = await this.page.waitForFunction(
       expectedCount => {
         if ((window.Blend?.state?.experiences?.length || 0) >= expectedCount) {

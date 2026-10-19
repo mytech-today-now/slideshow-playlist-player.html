@@ -481,10 +481,11 @@ test('missing auth warning stays keyboard accessible and keeps list entries at 3
       const before = await snapshotUserState(page);
       await page.evaluate(() => window.Blend.play());
 
-      const toast = page.locator('#toast-container .toast').filter({ hasText: 'Sign in to access private media.' }).first();
+      const toast = page.locator('#toast-container .toast')
+        .filter({ hasText: 'This private media link expired. Connect Supabase to refresh access.' }).first();
       await expect(toast).toBeVisible({ timeout: 10_000 });
       await expect(toast).toHaveAttribute('role', 'alert');
-      const action = toast.getByRole('button', { name: 'Sign in' });
+      const action = toast.getByRole('button', { name: 'Connect' });
       await expect(action).toBeVisible();
       expect(await action.evaluate(node => node.tabIndex)).toBeGreaterThanOrEqual(0);
       const box = await toast.boundingBox();

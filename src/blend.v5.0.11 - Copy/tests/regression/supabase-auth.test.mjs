@@ -813,6 +813,8 @@ test('ordinary signOut clears local state after a network failure', async () => 
     assert.equal(await client.signOut(), true);
     assert.equal(client.getSession(), null);
     assert.equal(storage.getItem(storageKey), null);
+    assert.deepEqual(client.getLastSignOutOutcome(), { remote: 'unknown', local: 'cleared' });
+    assert.equal(client.getStatus().code, 'auth_sign_out_unknown');
   } finally {
     client.shutdown();
   }
@@ -838,6 +840,8 @@ test('ordinary signOut retains its session when Supabase reports a server failur
     );
     assert.equal(client.getAccessToken(), 'synthetic-access-token');
     assert.equal(storage.getItem(storageKey), savedSession);
+    assert.deepEqual(client.getLastSignOutOutcome(), { remote: 'unknown', local: 'not-requested' });
+    assert.equal(client.getStatus().code, 'auth_sign_out_remote_unknown_session_kept');
   } finally {
     client.shutdown();
   }
@@ -957,6 +961,7 @@ test('explicit persistence stores only the documented fields, refreshes, and sig
     assert.equal(await client.signOut(), true);
     assert.equal(storage.getItem(storageKey), null);
     assert.deepEqual(storage.keys(), []);
+    assert.deepEqual(client.getLastSignOutOutcome(), { remote: 'confirmed', local: 'cleared' });
     const logs = JSON.stringify(loggerEntries);
     for (const secret of [accessToken, refreshToken, refreshedAccessToken, refreshedToken]) {
       assert.equal(logs.includes(secret), false);
@@ -1001,25 +1006,126 @@ test('bootstrap fails closed when session storage cannot be read', async () => {
   }
 });
 
-test('opt-in storage write failure signs out in memory and keeps private access gated', async () => {
+test('opt-in storage write failure keeps a valid session in memory without saving it', async () => {
   const storage = createMemoryStorage();
   storage.setItem = () => { throw new Error('storage unavailable'); };
   const client = createSupabaseAuthClient({ storage, fetchImpl: async () => new Response('{}', { status: 200 }) });
 
   try {
-    await assert.rejects(
-      () => client.signInWithApiToken({
-        accessToken: 'synthetic-storage-failure-access-token',
-        refreshToken: 'synthetic-storage-failure-refresh-token',
-        expiresIn: 3600,
-        persist: true
-      }),
-      error => error instanceof SupabaseAuthError && error.code === 'auth_session_storage_failed'
-    );
-    assert.equal(client.getSession(), null);
-    assert.equal(client.getAccessToken(), '');
-    assert.equal(client.isAuthenticated(), false);
+    await client.signInWithApiToken({
+      accessToken: 'synthetic-storage-failure-access-token',
+      refreshToken: 'synthetic-storage-failure-refresh-token',
+      expiresIn: 3600,
+      persist: true
+    });
+    assert.equal(client.isAuthenticated(), true);
+    assert.equal(client.getAccessToken() !== '', true);
+    assert.equal(client.isSessionPersistenceEnabled(), false);
+    assert.equal(client.getStatus().code, 'auth_session_storage_failed');
     assert.deepEqual(storage.keys(), []);
+  } finally {
+    client.shutdown();
+  }
+});
+
+test('saved-session inspection reports only clear, present, or unavailable and checks legacy storage', async () => {
+  const storageKey = 'blend-supabase-auth-session-v2';
+  const storage = createMemoryStorage();
+  const client = createSupabaseAuthClient({ storage, storageKey });
+  try {
+    assert.equal(client.inspectSavedSessionState(), 'clear');
+    storage.setItem(storageKey, 'synthetic-session-sentinel');
+    assert.equal(client.inspectSavedSessionState(), 'present');
+    storage.removeItem(storageKey);
+    storage.setItem('blend-supabase-auth-session-v1', 'synthetic-legacy-session-sentinel');
+    assert.equal(client.inspectSavedSessionState(), 'present');
+    assert.equal(client.isSessionStorageKey(storageKey), true);
+    assert.equal(client.isSessionStorageKey('blend-supabase-auth-session-v1'), true);
+    assert.equal(client.isSessionStorageKey('unrelated-key'), false);
+    storage.getItem = () => { throw new Error('synthetic storage failure'); };
+    assert.equal(client.inspectSavedSessionState(), 'unavailable');
+  } finally {
+    client.shutdown();
+  }
+});
+
+test('a denied persistence boundary keeps sign-in usable in memory without writing sentinel tokens', async () => {
+  const accessToken = 'synthetic-boundary-access-sentinel';
+  const refreshToken = 'synthetic-boundary-refresh-sentinel';
+  const storage = createMemoryStorage();
+  const client = createSupabaseAuthClient({
+    storage,
+    persistenceBoundary: async () => ({ acquired: false, reason: 'busy' })
+  });
+  try {
+    await client.signInWithApiToken({ accessToken, refreshToken, expiresIn: 3600, persist: true });
+    assert.equal(client.isAuthenticated(), true);
+    assert.equal(client.getAccessToken() !== '', true);
+    assert.equal(client.isSessionPersistenceEnabled(), false);
+    assert.equal(client.getStatus().code, 'auth_session_memory_only');
+    assert.equal(storage.keys().some(key => storage.getItem(key)?.includes(accessToken) || storage.getItem(key)?.includes(refreshToken)), false);
+  } finally {
+    client.shutdown();
+  }
+});
+
+test('a denied refresh persistence boundary keeps the refreshed session in memory', async () => {
+  const storageKey = 'blend-supabase-auth-session-v2';
+  const storage = createMemoryStorage();
+  const refreshedAccessToken = 'synthetic-boundary-refreshed-access-sentinel';
+  const refreshedToken = 'synthetic-boundary-refreshed-refresh-sentinel';
+  let denyWrites = false;
+  const client = createSupabaseAuthClient({
+    storage,
+    storageKey,
+    persistenceBoundary: async write => {
+      if (denyWrites) return { acquired: false, reason: 'busy' };
+      return { acquired: true, value: await write() };
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      access_token: refreshedAccessToken,
+      refresh_token: refreshedToken,
+      expires_in: 3600
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+  });
+  try {
+    await client.signInWithApiToken({ accessToken: 'synthetic-original-access-sentinel', refreshToken: 'synthetic-original-refresh-sentinel', expiresIn: 3600, persist: true });
+    assert.equal(client.inspectSavedSessionState(), 'present');
+    denyWrites = true;
+    const refreshed = await client.refreshSession();
+    assert.equal(refreshed.access_token, refreshedAccessToken);
+    assert.equal(refreshed.refresh_token, refreshedToken);
+    assert.equal(client.isAuthenticated(), true);
+    assert.equal(client.isSessionPersistenceEnabled(), false);
+    assert.equal(client.getStatus().code, 'auth_session_memory_only');
+    assert.equal(client.inspectSavedSessionState(), 'clear');
+    assert.equal(storage.keys().some(key => storage.getItem(key)?.includes(refreshedAccessToken) || storage.getItem(key)?.includes(refreshedToken)), false);
+  } finally {
+    client.shutdown();
+  }
+});
+
+test('signOut records skipped provider logout and incomplete local removal without exposing credentials', async () => {
+  const accessToken = 'synthetic-signout-access-sentinel';
+  const refreshToken = 'synthetic-signout-refresh-sentinel';
+  const storage = createMemoryStorage();
+  const client = createSupabaseAuthClient({
+    storage,
+    fetchImpl: async () => new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+  });
+  try {
+    assert.equal(await client.signOut(), true);
+    assert.deepEqual(client.getLastSignOutOutcome(), { remote: 'skipped', local: 'cleared' });
+    await client.signInWithApiToken({ accessToken, refreshToken, expiresIn: 3600, persist: true });
+    storage.removeItem = () => { throw new Error('synthetic storage failure'); };
+    assert.equal(await client.signOut(), true);
+    assert.deepEqual(client.getLastSignOutOutcome(), { remote: 'confirmed', local: 'unconfirmed' });
+    assert.equal(client.getSession(), null);
+    assert.equal(client.getStatus().code, 'auth_sign_out_local_clear_failed');
+    assert.equal(client.inspectSavedSessionState(), 'present');
+    const safeOutcome = JSON.stringify(client.getLastSignOutOutcome());
+    assert.equal(safeOutcome.includes(accessToken), false);
+    assert.equal(safeOutcome.includes(refreshToken), false);
   } finally {
     client.shutdown();
   }

@@ -36,4 +36,4 @@ Affected code includes `app.js`, `supabase-config.js`, the signed URL cleanup he
 ## Tracking
 
 - Beads: `blend-ag8`
-- Source report: `ai-prompts/pre-mortem-2026-10-13-14-11-28.html#issue-02`
+- Source report: `ai-prompts/pre-mortem-2026-10-17-21-05-36.html#issue-02`

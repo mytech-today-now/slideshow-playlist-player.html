@@ -132,7 +132,9 @@ async function installOneShotWriteFailure(page) {
     window.__issue07FailNextSnapshot = true;
     window.__issue05SnapshotPersistCalls = 0;
     window.__BLEND_TEST_HOOKS__ ||= {};
-    window.__BLEND_TEST_HOOKS__.beforeSnapshotPersist = () => {
+    // Fail from inside the atomic snapshot transaction after the first put is
+    // queued so the helper aborts and IndexedDB rolls the complete snapshot back.
+    window.__BLEND_TEST_HOOKS__.afterSnapshotWriteQueued = () => {
       window.__issue05SnapshotPersistCalls += 1;
       if (!window.__issue07FailNextSnapshot) return;
       window.__issue07FailNextSnapshot = false;
@@ -157,6 +159,24 @@ async function reloadAndCompareSnapshot(page, sourceId, expectedPlaylist = null)
   expect(reopenedPlaylist).toEqual(persistedPlaylist);
   if (expectedPlaylist) expect(reopenedPlaylist).toEqual(expectedPlaylist);
   return reopenedPlaylist;
+}
+
+async function expectWithinViewport(locator) {
+  const bounds = await locator.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(0);
+  expect(bounds.right).toBeLessThanOrEqual(bounds.width + 1);
+  expect(bounds.top).toBeGreaterThanOrEqual(0);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.height + 1);
 }
 
 test('closing inside the debounce window attempts a best-effort flush and keeps the prior snapshot intact', async ({ page }) => {
@@ -246,6 +266,7 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
 
   const saved = await page.evaluate(() => window.Blend.saveStateNow());
   expect(saved).toBe(false);
+  expect(await page.evaluate(() => window.__issue05SnapshotPersistCalls)).toBe(1);
   const status = page.locator('#save-status');
   await expect(status).toHaveText(FAILURE_COPY);
   await expect(status).toHaveAttribute('role', 'status');
@@ -276,21 +297,31 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
     const box = await status.boundingBox();
     expect(box?.width, viewport.label).toBeGreaterThan(0);
     expect((box?.x || 0) + (box?.width || 0), viewport.label).toBeLessThanOrEqual(viewport.width + 1);
+    const statusOverflows = await status.evaluate(element => element.scrollWidth > element.clientWidth + 1);
+    expect(statusOverflows, viewport.label).toBe(false);
+    await expectWithinViewport(status);
   }
   const statusWrapping = await status.evaluate(element => getComputedStyle(element).whiteSpace);
   expect(statusWrapping).not.toBe('nowrap');
 
-  await page.evaluate(() => { document.documentElement.style.zoom = '200%'; });
+  // A 384x512 CSS viewport approximates 200% browser zoom from the 768x1024 row
+  // while allowing responsive media queries to reflow the interface.
+  await page.setViewportSize({ width: 384, height: 512 });
   await expect(status).toBeVisible();
-  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
+  await expectWithinViewport(status);
+  const zoomStatusOverflows = await status.evaluate(element => element.scrollWidth > element.clientWidth + 1);
+  expect(zoomStatusOverflows).toBe(false);
 
   const debugLog = await page.evaluate(() => window.Blend.log.exportJson());
   expect(debugLog).toContain('QuotaExceededError');
   expect(debugLog).not.toContain('private-path-and-token-sentinel');
 
   const downloadPromise = page.waitForEvent('download');
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await exportBackup.focus();
   await expect(exportBackup).toBeFocused();
+  await expectWithinViewport(exportBackup);
   await page.keyboard.press('Enter');
   const download = await downloadPromise;
   const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
@@ -299,6 +330,7 @@ test('failed save keeps edits exportable, announces status, and supports keyboar
 
   await retry.focus();
   await expect(retry).toBeFocused();
+  await expectWithinViewport(retry);
   await page.keyboard.press('Enter');
   await expect(status).toHaveText('All changes saved');
   await expect(alert).not.toBeVisible();

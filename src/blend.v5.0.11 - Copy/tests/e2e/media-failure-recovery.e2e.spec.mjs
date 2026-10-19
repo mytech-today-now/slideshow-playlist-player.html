@@ -198,6 +198,8 @@ test('expired Supabase signed URLs renew from the portable reference and direct 
 
   await page.evaluate(() => window.Blend.play());
   expect(signingRequests).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.Blend.state.library.get('private-renewal-image')?.sourceUrl))
+    .toContain('token=refreshed-1');
   const firstResolution = await page.evaluate(() => {
     const item = window.Blend.state.library.get('private-renewal-image');
     const ref = window.Blend.state.slideshow[0];

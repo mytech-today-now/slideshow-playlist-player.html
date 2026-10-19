@@ -172,6 +172,7 @@ test.describe('experience lifecycle regression', () => {
 
     await blendPage.deleteCurrentExperience();
     await blendPage.expectExperienceOption(names.nyc, false);
+    await blendPage.flushSaveState();
 
     await blendPage.importExperience(nycExportPath);
     await blendPage.expectExperienceOption(names.nyc, true);

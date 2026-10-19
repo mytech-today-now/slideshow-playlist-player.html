@@ -28,7 +28,11 @@ async function openAuthDialog(app) {
   await expect(app.page.locator('#supabase-auth-persist-session'))
     .toHaveAttribute('aria-describedby', 'supabase-auth-persistence-description');
   await expect(app.page.locator('#supabase-auth-persistence-description'))
-    .toContainText('A saved token can be read by scripts running on this site.');
+    .toContainText('a saved token can be read by scripts running on this site.');
+  await expect(app.page.locator('#supabase-auth-persistence-description'))
+    .toContainText('Analytics stays off while a saved session exists or its storage cannot be checked.');
+  await expect(app.page.locator('#supabase-auth-persistence-description'))
+    .toContainText('That includes any same-origin script.');
 }
 
 async function readExperienceExport(app, testInfo) {
@@ -214,7 +218,7 @@ test('fresh profile uses a tab-only session by default and keeps private media g
   await page.locator('[data-auth-submit]').click();
   await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
   await expect(page.locator('#supabase-auth-status'))
-    .toContainText('Supabase API token connected for private media.');
+    .toHaveText('The connection is available for this tab only. Do not save credentials on this device.');
 
   const afterConnect = await page.evaluate(({ accessToken, refreshToken }) => ({
     authKey: localStorage.getItem('blend-supabase-auth-session-v2'),
@@ -262,6 +266,62 @@ test('fresh profile uses a tab-only session by default and keeps private media g
   const captured = [...consoleEntries, ...requestUrls].join('\n');
   expect(captured).not.toContain(ACCESS_TOKEN);
   expect(captured).not.toContain(REFRESH_TOKEN);
+});
+
+test('tab-only auth disclosure and fallback stay readable at the issue viewports', async ({ page }) => {
+  const app = new BlendAppPage(page);
+  await app.boot();
+  await openAuthDialog(app);
+  const persist = page.locator('#supabase-auth-persist-session');
+  await persist.check();
+  await expect(persist).toBeChecked();
+  await persist.uncheck();
+  await expect(persist).not.toBeChecked();
+  await page.locator('#supabase-auth-token').fill(ACCESS_TOKEN);
+  await page.locator('#supabase-auth-refresh-token').fill(REFRESH_TOKEN);
+  await page.locator('[data-auth-submit]').click();
+  const status = page.locator('#supabase-auth-status');
+  await expect(status).toHaveText('The connection is available for this tab only. Do not save credentials on this device.');
+  await expect(page.locator('#supabase-sign-out'))
+    .toHaveAttribute('aria-describedby', 'supabase-auth-signout-description');
+
+  const viewportRows = [
+    { width: 414, height: 896 },
+    { width: 320, height: 480 },
+    { width: 160, height: 240 }
+  ];
+  for (const viewport of viewportRows) {
+    await page.setViewportSize(viewport);
+    await status.scrollIntoViewIfNeeded();
+    await expect(status).toBeVisible();
+    const layout = await status.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return {
+        width: innerWidth,
+        height: innerHeight,
+        pageScrollWidth: document.documentElement.scrollWidth,
+        pageClientWidth: document.documentElement.clientWidth,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        textScrollWidth: element.scrollWidth,
+        textClientWidth: element.clientWidth,
+        whiteSpace: getComputedStyle(element).whiteSpace
+      };
+    });
+    expect(layout.pageScrollWidth, `${viewport.width}x${viewport.height}: page overflow`)
+      .toBeLessThanOrEqual(layout.pageClientWidth + 2);
+    expect(layout.right, `${viewport.width}x${viewport.height}: status right edge`)
+      .toBeLessThanOrEqual(layout.width + 1);
+    expect(layout.left, `${viewport.width}x${viewport.height}: status left edge`).toBeGreaterThanOrEqual(-1);
+    expect(layout.bottom, `${viewport.width}x${viewport.height}: status bottom edge`)
+      .toBeLessThanOrEqual(layout.height + 1);
+    expect(layout.top, `${viewport.width}x${viewport.height}: status top edge`).toBeGreaterThanOrEqual(-1);
+    expect(layout.textScrollWidth, `${viewport.width}x${viewport.height}: status text overflow`)
+      .toBeLessThanOrEqual(layout.textClientWidth + 1);
+    expect(layout.whiteSpace, `${viewport.width}x${viewport.height}: status wrap`).not.toBe('nowrap');
+  }
 });
 
 test('temporary refresh outage keeps the saved session, local playback, and private media recovery available', async ({ page }) => {
@@ -313,13 +373,16 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
 
   const app = new BlendAppPage(page);
   await app.boot();
-  await expect(page.locator('#supabase-auth-status')).toHaveText(fallbackCopy);
-  await expect(page.locator('#supabase-auth-retry')).toBeVisible();
-  const offlineSession = await page.evaluate(storageKey => ({
-    entry: localStorage.getItem(storageKey),
-    statusState: document.querySelector('#supabase-auth-status')?.dataset.state,
-    authStatusText: document.querySelector('#supabase-auth-status')?.textContent
-  }), AUTH_STORAGE_KEY);
+  const offlineSessionHandle = await page.waitForFunction(storageKey => {
+    const status = document.querySelector('#supabase-auth-status');
+    if (status?.dataset.state !== 'temporarily-unavailable') return false;
+    return {
+      entry: localStorage.getItem(storageKey),
+      statusState: status.dataset.state,
+      authStatusText: status.textContent
+    };
+  }, AUTH_STORAGE_KEY);
+  const offlineSession = await offlineSessionHandle.jsonValue();
   expect(offlineSession.entry).toBe(savedSession);
   expect(offlineSession.statusState).toBe('temporarily-unavailable');
   expect(offlineSession.authStatusText).not.toContain(providerBodySentinel);
@@ -376,8 +439,11 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   await expect(page.locator('#supabase-auth-status')).toHaveText(fallbackCopy);
   await page.waitForFunction(() => document.querySelector('#playlist-layer video')?.currentSrc.startsWith('blob:'));
 
+  const retryButton = page.locator('#supabase-auth-retry');
+  await retryButton.focus();
+  await expect(retryButton).toBeFocused();
   providerAvailable = true;
-  await page.locator('#supabase-auth-retry').click();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#supabase-auth-status'))
     .toContainText('Supabase API token connected for private media.');
   await expect(page.locator('#supabase-auth-retry')).toBeHidden();
@@ -396,7 +462,7 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   });
   await expect.poll(() => signingRequests).toBe(1);
   expect(refreshAuthorizationPresent).toBe(true);
-  await expect.poll(() => page.locator('#playlist-layer video').evaluate(video => video.currentSrc))
+  await expect.poll(() => page.locator('#playlist-layer video').first().evaluate(video => video.currentSrc))
     .toContain('blob:');
 
   const captured = await page.evaluate(() => ({
@@ -462,7 +528,9 @@ test('explicit opt-in persists documented fields, restores after reload, and sig
   await app.openConfig();
   await page.locator('#supabase-sign-out').click();
   await expect(page.locator('#supabase-auth-status'))
-    .toContainText('Provide API token to access private Supabase media.');
+    .toContainText('Supabase accepted its default global sign-out request.');
+  await expect(page.locator('#supabase-sign-out'))
+    .toHaveAttribute('aria-describedby', 'supabase-auth-signout-description');
   await expect(page.locator('#btn-share')).toHaveAttribute('data-ipfs-state', 'unauthorized');
 
   const afterSignOut = await page.evaluate(storageKey => ({
@@ -485,7 +553,7 @@ test('explicit opt-in persists documented fields, restores after reload, and sig
 });
 
 test('sign-out clears both cached private playback layers and allows public, local, and authenticated retry', async ({ page }) => {
-  const signedOutCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
+  const signedOutCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
   const videoPath = fileURLToPath(new URL('../../samples/nyc-01.mp4', import.meta.url));
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const signingRequests = [];
@@ -606,8 +674,111 @@ test('sign-out clears both cached private playback layers and allows public, loc
   const activeExperienceId = await page.evaluate(() => window.Blend.state.activeExperienceId);
   await app.openConfig();
   await page.locator('#supabase-sign-out').click();
-  await expect(page.getByRole('alert')).toContainText(signedOutCopy);
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  const signOutAlert = page.getByRole('alert');
+  const signInAction = page.getByRole('button', { name: 'Sign in', exact: true });
+  await expect(signOutAlert).toContainText(signedOutCopy);
+  await expect(signInAction).toBeVisible();
+
+  const originalViewport = page.viewportSize() || { width: 1366, height: 900 };
+  const signOutViewports = [
+    { width: 320, height: 480 },
+    { width: 320, height: 568 },
+    { width: 360, height: 800 },
+    { width: 375, height: 667 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+    { width: 1280, height: 720 }
+  ];
+  for (const viewport of signOutViewports) {
+    await page.setViewportSize(viewport);
+    await expect(signOutAlert).toBeVisible();
+    const layout = await signOutAlert.evaluate(toast => {
+      const rect = toast.getBoundingClientRect();
+      const message = toast.querySelector('span');
+      const action = toast.querySelector('button');
+      const messageRect = message.getBoundingClientRect();
+      const actionRect = action.getBoundingClientRect();
+      return {
+        viewportWidth: innerWidth,
+        viewportHeight: innerHeight,
+        pageScrollWidth: document.documentElement.scrollWidth,
+        pageClientWidth: document.documentElement.clientWidth,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        messageScrollWidth: message.scrollWidth,
+        messageClientWidth: message.clientWidth,
+        messageHeight: messageRect.height,
+        messageLineHeight: parseFloat(getComputedStyle(message).lineHeight) || 0,
+        messageWhiteSpace: getComputedStyle(message).whiteSpace,
+        actionLeft: actionRect.left,
+        actionRight: actionRect.right,
+        actionBottom: actionRect.bottom
+      };
+    });
+    expect(layout.right, `${viewport.width}x${viewport.height}: toast right`).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    expect(layout.left, `${viewport.width}x${viewport.height}: toast left`).toBeGreaterThanOrEqual(0);
+    expect(layout.bottom, `${viewport.width}x${viewport.height}: toast bottom`).toBeLessThanOrEqual(layout.viewportHeight + 1);
+    expect(layout.top, `${viewport.width}x${viewport.height}: toast top`).toBeGreaterThanOrEqual(0);
+    expect(layout.pageScrollWidth, `${viewport.width}x${viewport.height}: page overflow`).toBeLessThanOrEqual(layout.pageClientWidth + 2);
+    expect(layout.messageScrollWidth, `${viewport.width}x${viewport.height}: message overflow`).toBeLessThanOrEqual(layout.messageClientWidth + 1);
+    expect(layout.messageWhiteSpace, `${viewport.width}x${viewport.height}: wrapping`).not.toBe('nowrap');
+    expect(layout.actionLeft, `${viewport.width}x${viewport.height}: action left`).toBeGreaterThanOrEqual(layout.left);
+    expect(layout.actionRight, `${viewport.width}x${viewport.height}: action right`).toBeLessThanOrEqual(layout.right + 1);
+    expect(layout.actionBottom, `${viewport.width}x${viewport.height}: action clipped`).toBeLessThanOrEqual(layout.viewportHeight + 1);
+    if (viewport.width === 320) {
+      expect(layout.messageHeight, `${viewport.width}x${viewport.height}: message should wrap`)
+        .toBeGreaterThan(layout.messageLineHeight);
+    }
+  }
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(signOutAlert).toBeVisible();
+  await signInAction.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(signInAction).toBeFocused();
+  expect(await signInAction.evaluate(element => element.matches(':focus-visible'))).toBe(true);
+
+  // A 200% page zoom at 320x480 leaves an effective 160x240 CSS viewport.
+  await page.setViewportSize({ width: 160, height: 240 });
+  const zoomLayout = await signOutAlert.evaluate(toast => {
+    const rect = toast.getBoundingClientRect();
+    return {
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      pageScrollWidth: document.documentElement.scrollWidth,
+      pageClientWidth: document.documentElement.clientWidth,
+      overflowY: getComputedStyle(toast).overflowY,
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom
+    };
+  });
+  await expect(signOutAlert).toBeVisible();
+  expect(zoomLayout.left).toBeGreaterThanOrEqual(0);
+  expect(zoomLayout.right).toBeLessThanOrEqual(zoomLayout.viewportWidth + 1);
+  expect(zoomLayout.top).toBeGreaterThanOrEqual(0);
+  expect(zoomLayout.bottom).toBeLessThanOrEqual(zoomLayout.viewportHeight + 1);
+  expect(zoomLayout.pageScrollWidth).toBeLessThanOrEqual(zoomLayout.pageClientWidth + 2);
+  expect(zoomLayout.overflowY).toBe('auto');
+  await signInAction.evaluate(element => element.blur());
+  await signInAction.focus();
+  const [actionBounds, toastBounds] = await Promise.all([
+    signInAction.boundingBox(),
+    signOutAlert.boundingBox()
+  ]);
+  expect(actionBounds?.y).toBeGreaterThanOrEqual(toastBounds?.y || 0);
+  expect((actionBounds?.y || 0) + (actionBounds?.height || 0))
+    .toBeLessThanOrEqual((toastBounds?.y || 0) + (toastBounds?.height || 0) + 1);
+  await page.setViewportSize(originalViewport);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(signOutAlert).toBeVisible();
+
   await page.waitForFunction(() => window.Blend.state.playlist[0]?.sourceUrl === null
     && window.Blend.state.slideshow[0]?.sourceUrl === null
     && window.Blend.state.library.get('private-video')?.sourceUrl === null
@@ -734,8 +905,8 @@ test('sign-out clears both cached private playback layers and allows public, loc
 });
 
 test('sign-out offers an accessible retry when local media cleanup fails without logging bearer data', async ({ page }) => {
-  const normalCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
-  const incompleteCopy = 'You are signed out. Local cleanup is incomplete. Retry to clear remaining sources and save private references. Copied links can remain usable until expiry, and cached responses may last longer.';
+  const normalCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
+  const incompleteCopy = 'Local cleanup is incomplete. Retry to clear remaining sources and save private references. A copied link may still work until its provider and cache lifetime ends.';
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const sourceUrl = 'http://127.0.0.1:4191/storage/v1/object/sign/media/private/failure.jpeg?token=cleanup-failure-sentinel';
   const reference = 'supabase://media/private/failure.jpeg';
@@ -828,7 +999,7 @@ test('sign-out offers an accessible retry when local media cleanup fails without
 });
 
 test('sign-out cancels pending private signing and ignores its late response', async ({ page }) => {
-  const signedOutCopy = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
+  const signedOutCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const signingRequests = [];
   let releaseSigning;
@@ -967,7 +1138,7 @@ test('a peer tab clears signed media when it receives the existing local-reset e
     channel.postMessage({ type: 'local-reset', nonce: 'synthetic-peer-local-reset' });
     channel.close();
   });
-  await expect(peer.locator('#toast-container')).toContainText('You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.');
+  await expect(peer.locator('#toast-container')).toContainText('Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.');
   const peerState = await peer.evaluate(() => ({
     listUrl: window.Blend.state.slideshow[0]?.sourceUrl,
     itemUrl: window.Blend.state.library.get('peer-private-image')?.sourceUrl,

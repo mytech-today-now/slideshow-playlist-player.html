@@ -122,10 +122,13 @@ async function installBoundedRelinkDirectoryPicker(page, {
   count,
   targetIndex = -1,
   failureName = '',
-  failureAfter = -1
+  failureAfter = -1,
+  pauseAfter = -1,
+  pauseMs = 0
 }) {
   await page.evaluate(options => {
     let visited = 0;
+    let pauseUsed = false;
     const filePrototype = {
       async getFile() {
         return new File([this.contents], this.name, { type: 'video/mp4' });
@@ -149,6 +152,10 @@ async function installBoundedRelinkDirectoryPicker(page, {
             throw new DOMException('simulated directory access failure', options.failureName);
           }
           visited += 1;
+          if (!pauseUsed && options.pauseAfter > 0 && visited >= options.pauseAfter) {
+            pauseUsed = true;
+            await new Promise(resolve => setTimeout(resolve, options.pauseMs));
+          }
           yield makeFile(index);
         }
       }
@@ -156,7 +163,7 @@ async function installBoundedRelinkDirectoryPicker(page, {
     Object.assign(root, { kind: 'directory', name: 'Assets' });
     window.__relinkVisited = () => visited;
     window.showDirectoryPicker = async () => root;
-  }, { count, targetIndex, failureName, failureAfter });
+  }, { count, targetIndex, failureName, failureAfter, pauseAfter, pauseMs });
 }
 
 async function startBoundedRelink(page, options) {
@@ -733,7 +740,7 @@ test('a removed relink root is partial, never a no-match, and offers retry', asy
 });
 
 test('keyboard cancellation during a large relink scan yields to input and preserves unresolved state', async ({ page }) => {
-  const before = await startBoundedRelink(page, { count: 10000 });
+  const before = await startBoundedRelink(page, { count: 10000, pauseAfter: 24, pauseMs: 250 });
   const progress = page.locator('.toast-directory-scan-progress');
   await expect(progress).toHaveAttribute('role', 'status');
   await expect(progress).toContainText('relink limit 250 media files');

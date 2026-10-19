@@ -93,7 +93,8 @@ function captureState(page) {
     activeName: window.Blend.state.projectName,
     experienceIds: window.Blend.state.experiences.map(record => record.id),
     experienceNames: window.Blend.state.experiences.map(record => record.name),
-    library: Array.from(window.Blend.state.library.values()).map(item => ({ id: item.id, name: item.name })),
+    library: Array.from(window.Blend.state.library.values()).map(item => ({ id: item.id, name: item.name }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
     playlist: window.Blend.state.playlist.map(item => ({ id: item.id, available: item.available, name: item.name })),
     slideshow: window.Blend.state.slideshow.map(item => ({ id: item.id, available: item.available, name: item.name })),
     opacity: window.Blend.state.settings.opacity,
@@ -226,7 +227,7 @@ test('malformed experience import leaves state unchanged and missing references 
   await expect.poll(() => blendPage.activeExperienceName()).toBe('Issue 05 Previous (2)');
   const importedId = await page.evaluate(() => window.Blend.state.activeExperienceId);
   const imported = await page.evaluate(() => ({
-    libraryNames: Array.from(window.Blend.state.library.values()).map(item => item.name),
+    libraryNames: Array.from(window.Blend.state.library.values()).map(item => item.name).sort(),
     playlist: window.Blend.state.playlist.map(item => ({ id: item.id, available: item.available, name: item.name })),
     slideshow: window.Blend.state.slideshow.map(item => ({ id: item.id, available: item.available, name: item.name })),
     opacity: window.Blend.state.settings.opacity,
@@ -252,7 +253,7 @@ test('malformed experience import leaves state unchanged and missing references 
   await blendPage.switchExperience('Issue 05 Previous (2)');
   expect(await page.evaluate(() => window.Blend.state.activeExperienceId)).toBe(importedId);
   expect(await page.evaluate(() => ({
-    libraryNames: Array.from(window.Blend.state.library.values()).map(item => item.name),
+    libraryNames: Array.from(window.Blend.state.library.values()).map(item => item.name).sort(),
     playlist: window.Blend.state.playlist.map(item => ({ id: item.id, available: item.available, name: item.name })),
     slideshow: window.Blend.state.slideshow.map(item => ({ id: item.id, available: item.available, name: item.name })),
     opacity: window.Blend.state.settings.opacity,

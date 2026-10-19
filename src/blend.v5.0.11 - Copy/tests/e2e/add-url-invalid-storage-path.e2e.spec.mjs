@@ -11,6 +11,7 @@ test('keeps malformed Supabase Add URL input editable and reports a safe validat
     return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
   });
   await blendPage.boot('/index.html');
+  await blendPage.openConfig();
   await page.locator('#add-url').click();
   await expect(blendPage.experienceModal).toBeVisible();
 

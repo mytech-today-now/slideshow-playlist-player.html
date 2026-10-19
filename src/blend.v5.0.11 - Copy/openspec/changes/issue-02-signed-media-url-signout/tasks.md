@@ -28,8 +28,8 @@
 ## 5. Expanded verification and tracking
 
 - [x] 5.1 Run the focused signed URL regression test and focused Supabase auth E2E spec; record exact command outcomes and browser details.
-  - Evidence: `node --test --test-isolation=none tests/regression/signed-url-cleanup.test.mjs` exited 0 with 6/6 passing. `npm run test:e2e -- tests/e2e/supabase-auth.e2e.spec.mjs` ran in Chromium 153.0.8010.12 with 7 passed and 1 failed; all issue-02 scenarios passed, while the unrelated temporary refresh-outage assertion still found `#supabase-auth-retry` hidden.
+  - Evidence: `node --test --test-isolation=none tests/regression/signed-url-cleanup.test.mjs` exited 0 with 6/6 passing. `npm run test:e2e -- tests/e2e/supabase-auth.e2e.spec.mjs tests/e2e/private-media-export.e2e.spec.mjs` exited 0 with 11/11 passing in Chromium; the runner output did not include the browser version. Sign-out UI checks covered 320x480, 320x568, 360x800, 375x667, 390x844, 430x932, 768x1024, 1024x768, and 1280x720, plus an effective 160x240 CSS viewport for 200% zoom reflow, keyboard focus, wrapping, scroll reachability, and overflow.
 - [x] 5.2 Run `npm run check` and `npm run test:regression`; record exact command outcomes and assertion counts.
-  - Evidence: `npm run check` exited 0. `npm run test:regression` exited 0 with 359/359 passing.
+  - Evidence: `npm run check` exited 0. `npm run test:regression` exited 0 with 361/361 passing.
 - [ ] 5.3 Validate the reused OpenSpec change and Beads `blend-ag8` status, then archive only after all acceptance checks pass.
-  - Pending archive: keep the change active while the focused auth spec retains its unrelated refresh-outage assertion failure.
+  - Pending archive: keep the change active until authorized synthetic staging records direct-object and CDN responses separately before and after a staging-controlled URL expiry. No staging confirmation or credentials were configured, so those provider outcomes remain Not run. Beads `blend-ag8` remains in progress and is linked to the current report.

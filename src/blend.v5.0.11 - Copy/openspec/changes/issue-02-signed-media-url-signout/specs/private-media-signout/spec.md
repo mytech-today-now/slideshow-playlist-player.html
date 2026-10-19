@@ -45,7 +45,7 @@ Blend MUST retain a retry path for private media after sign-out and MUST resolve
 
 #### Scenario: Sign-out recovery message
 - **WHEN** Blend reports that private media was cleared during sign-out
-- **THEN** it displays the accessible message `You are signed out. Sign in again to play private media. Copied links can remain usable until they expire, and cached responses may remain available longer.` and provides a path to sign in and retry
+- **THEN** it displays the accessible message `Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.` and provides a path to sign in and retry
 
 ### Requirement: Do not claim copied URLs were revoked
 Blend MUST describe only local cleanup on sign-out and MUST NOT claim to revoke signed URLs copied outside the app.

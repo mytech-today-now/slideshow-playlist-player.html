@@ -117,7 +117,7 @@ test('no request before consent; opt-in loads once, reload honors consent, and o
   const consent = page.locator('#analytics-consent');
   await openConfig(page);
   await expect(consent).not.toBeChecked();
-  await expect(consent).toHaveAttribute('aria-describedby', 'analytics-consent-description');
+  await expect(consent).toHaveAttribute('aria-describedby', 'analytics-consent-description analytics-consent-status');
   await expect(page.locator('#analytics-consent-description')).toContainText('media type/layer');
   await expect(page.locator('#analytics-consent-description')).toContainText('fixed Blend Player title/origin and standard browser/session metadata');
   await expect(page.locator('#analytics-consent-description')).toContainText('event parameters exclude user names, media IDs');

@@ -489,7 +489,9 @@ test('layer order controls persist and random navigation uses per-layer history'
   await expect(playlistOrder).toHaveValue('sequential');
   await expect(slideshowOrder).toHaveValue('sequential');
 
-  await page.getByRole('combobox', { name: 'Experience playback mode' }).focus();
+  const experiencePlaybackMode = page.getByRole('combobox', { name: 'Experience playback mode' });
+  await experiencePlaybackMode.focus();
+  await expect(experiencePlaybackMode).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(playlistOrder).toBeFocused();
   await page.keyboard.press('ArrowDown');

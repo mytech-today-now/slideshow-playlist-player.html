@@ -1,24 +1,24 @@
 import './pwa-config.js';
 import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './experience-persistence.js?v=20261019-v5.0.11-session-and-recovery';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261019-v5.0.11-session-and-recovery';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261019-v5.0.11-session-and-recovery';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261019-v5.0.11-session-and-recovery';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './supabase-config.js?v=20261019-v5.0.11-session-and-recovery';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -28,34 +28,34 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './storage-url-resolver.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './signed-url-cleanup.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './transition-manager.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './playback-clock.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { fetchReadme } from './readme-fetcher.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+import { renderMarkdown } from './markdown.js?v=20261019-v5.0.11-session-and-recovery';
+import { fetchReadme } from './readme-fetcher.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -70,28 +70,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './url-share.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './url-share-diagnostics.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './timeline-analysis.js?v=20261019-v5.0.11-session-and-recovery';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261013-v5.0.11-signed-media-url-lifetime';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './shared-experience-download.js?v=20261019-v5.0.11-session-and-recovery';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261019-v5.0.11-session-and-recovery';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261019-v5.0.11-session-and-recovery';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -102,7 +102,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './git-playlist-catalog.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -113,7 +113,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './git-playlist-storage.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -126,17 +126,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './local-import-limits.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './directory-scan-yield.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261013-v5.0.11-signed-media-url-lifetime';
+} from './resume-on-load.js?v=20261019-v5.0.11-session-and-recovery';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -231,7 +231,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261013-v5.0.11-signed-media-url-lifetime';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261019-v5.0.11-session-and-recovery';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
 const EXPERIENCE_STORE = 'experiences';
@@ -393,6 +393,7 @@ const supabaseAuthClient = createSupabaseAuthClient({
   supabaseUrl: RUNTIME_CONFIG.supabaseUrl,
   supabaseAnonKey: RUNTIME_CONFIG.supabaseAnonKey,
   authRedirectUrl: RUNTIME_CONFIG.authRedirectUrl,
+  persistenceBoundary: runSupabasePersistenceBoundary,
   logger: log
 });
 
@@ -493,8 +494,8 @@ const slideshowPreload = new Map();
 const playlistPreload = new Map();
 const activePlaybackRequests = { playlist: null, slideshow: null };
 const STORAGE_REQUEST_TIMEOUT_COPY = 'The storage request timed out. Check your connection and retry.';
-const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'You are signed out. Sign in again to play private media. Signing out here does not revoke copied links; they can remain usable until expiry, and cached responses may last longer.';
-const PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY = 'You are signed out. Local cleanup is incomplete. Retry to clear remaining sources and save private references. Copied links can remain usable until expiry, and cached responses may last longer.';
+const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
+const PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY = 'Local cleanup is incomplete. Retry to clear remaining sources and save private references. A copied link may still work until its provider and cache lifetime ends.';
 const thumbUrlCache = new Map();
 const thumbRequests = new Map();
 const thumbElementState = new WeakMap();
@@ -1471,11 +1472,14 @@ async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
     }
     if (shouldPromptForAuth(error) && (Date.now() - lastAuthPromptAt) > 4000) {
       lastAuthPromptAt = Date.now();
-      showToast('Sign in to access private media.', {
-        timeout: 6200,
+      const expiredLinkMessage = expiredSignedUrl
+        ? 'This private media link expired. Connect Supabase to refresh access.'
+        : 'Sign in to access private media.';
+      showToast(expiredLinkMessage, {
+        timeout: 0,
         role: 'alert',
         action: {
-          label: 'Sign in',
+          label: expiredSignedUrl ? 'Connect' : 'Sign in',
           run: () => { void promptSupabaseSignIn(); }
         }
       });
@@ -1801,11 +1805,46 @@ function getPrivacyPreferenceSignals() {
   };
 }
 
-function analyticsCredentialState() {
+function gitAnalyticsCredentialState() {
   try {
     return inspectRememberedGitPlaylistCredential(window.localStorage);
   } catch (_) {
     return 'unavailable';
+  }
+}
+
+function analyticsCredentialState() {
+  const gitState = gitAnalyticsCredentialState();
+  let supabaseState = 'unavailable';
+  try { supabaseState = supabaseAuthClient.inspectSavedSessionState(); } catch (_) {}
+  if (gitState === 'present' || supabaseState === 'present') return 'present';
+  if (gitState === 'unavailable' || supabaseState === 'unavailable') return 'unavailable';
+  return 'clear';
+}
+
+async function runSupabasePersistenceBoundary(write) {
+  let locks = null;
+  try { locks = navigator.locks; } catch (_) {}
+  if (!locks || typeof locks.request !== 'function') {
+    return { acquired: false, reason: 'unavailable' };
+  }
+
+  let callbackStarted = false;
+  try {
+    return await locks.request(ANALYTICS_CREDENTIAL_BOUNDARY_LOCK, {
+      mode: 'exclusive',
+      ifAvailable: true
+    }, async lock => {
+      callbackStarted = true;
+      if (!lock) return { acquired: false, reason: 'busy' };
+      if (analyticsCredentialState() === 'unavailable') {
+        return { acquired: false, reason: 'storage' };
+      }
+      return { acquired: true, value: await write() };
+    });
+  } catch (error) {
+    if (callbackStarted) throw error;
+    return { acquired: false, reason: 'unavailable' };
   }
 }
 
@@ -1824,14 +1863,24 @@ function syncAnalyticsConsentStatus(signals = getPrivacyPreferenceSignals()) {
   const status = $('#analytics-consent-status');
   if (!status) return;
   const decision = analyticsDecision(signals);
+  const credentialState = analyticsCredentialState();
+  const gitState = gitAnalyticsCredentialState();
+  let supabaseState = 'unavailable';
+  try { supabaseState = supabaseAuthClient.inspectSavedSessionState(); } catch (_) {}
   let message = 'Analytics does not load until you enable it.';
   let stateName = 'off';
 
-  if (decision.blockedByCredential && analyticsCredentialState() === 'present') {
+  if (decision.blockedByCredential && credentialState === 'present' && gitState === 'present') {
     message = 'Analytics is off while a repository credential is remembered on this device. Forget the credential or continue without analytics. The playlist connection remains available.';
     stateName = 'blocked-credential';
-  } else if (decision.blockedByCredential && analyticsCredentialState() === 'unavailable' && analyticsConsentGranted) {
+  } else if (decision.blockedByCredential && credentialState === 'present' && supabaseState === 'present') {
+    message = 'Analytics is off while a Supabase session is saved in this browser. Clear the saved session or continue without analytics.';
+    stateName = 'blocked-credential';
+  } else if (decision.blockedByCredential && credentialState === 'unavailable' && analyticsConsentGranted && gitState === 'unavailable') {
     message = 'Analytics is off because saved repository credential storage could not be checked. The in-memory Git connection remains available.';
+    stateName = 'blocked-storage';
+  } else if (decision.blockedByCredential && credentialState === 'unavailable' && analyticsConsentGranted) {
+    message = 'Analytics is off because saved session storage could not be checked. Clear or reconnect the Supabase session before enabling analytics.';
     stateName = 'blocked-storage';
   } else if (analyticsConsentGranted && analyticsBoundaryState === 'checking') {
     message = 'Checking whether analytics can load without overlapping a remembered repository credential…';
@@ -1869,9 +1918,9 @@ function syncAnalyticsConsentControl(signals = getPrivacyPreferenceSignals()) {
     const credentialState = analyticsCredentialState();
     const blockedBySignal = signals.doNotTrack || signals.globalPrivacyControl || signals.localFileContext;
     if (credentialState === 'present') {
-      control.title = 'Analytics remains off while a repository credential is remembered on this device.';
+      control.title = 'Analytics remains off while a credential or Supabase session is saved on this device.';
     } else if (credentialState === 'unavailable') {
-      control.title = 'Analytics is blocked because saved repository credential storage cannot be checked.';
+      control.title = 'Analytics is blocked because saved credential storage cannot be checked.';
     } else if (blockedBySignal && analyticsConsentGranted) {
       control.title = 'Analytics is currently blocked by a privacy or local-file safeguard.';
     } else if (analyticsBoundaryState === 'unavailable' || analyticsBoundaryState === 'busy') {
@@ -1911,12 +1960,12 @@ function configureAnalyticsAfterLoad() {
   return true;
 }
 
-function requestAnalyticsScriptBoundary() {
+function requestAnalyticsScriptBoundary(retryRequested = false) {
   if (analyticsBoundaryLockHeld) {
-    if (analyticsDecision().shouldLoadScript) loadAnalyticsScript();
+    if (analyticsDecision(getPrivacyPreferenceSignals(), retryRequested).shouldLoadScript) loadAnalyticsScript();
     return;
   }
-  if (analyticsBoundaryLockPending || !analyticsDecision().shouldLoadScript) return;
+  if (analyticsBoundaryLockPending || !analyticsDecision(getPrivacyPreferenceSignals(), retryRequested).shouldLoadScript) return;
 
   let locks = null;
   try { locks = navigator.locks; } catch (_) {}
@@ -1944,7 +1993,7 @@ function requestAnalyticsScriptBoundary() {
         return;
       }
 
-      const decision = analyticsDecision();
+      const decision = analyticsDecision(getPrivacyPreferenceSignals(), retryRequested);
       if (!decision.shouldLoadScript) {
         analyticsBoundaryState = 'idle';
         syncAnalyticsConsentControl();
@@ -2057,7 +2106,7 @@ function updateAnalyticsConsentState(opts = {}) {
       trackVirtualPageView(activeExperienceContext, 'analytics_consent');
     }
   } else if (decision.shouldLoadScript) {
-    requestAnalyticsScriptBoundary();
+    requestAnalyticsScriptBoundary(opts.retry === true);
   }
 
   try {
@@ -2490,6 +2539,69 @@ function currentAuthReadiness() {
   const hasSession = supabaseAuthClient.isAuthenticated();
   const hasSavedSession = !!supabaseAuthClient.getSession();
   const authStatus = supabaseAuthClient.getStatus();
+  const signOutOutcome = supabaseAuthClient.getLastSignOutOutcome();
+  const savedSessionState = supabaseAuthClient.inspectSavedSessionState();
+  const tabOnlyMessage = 'The connection is available for this tab only. Do not save credentials on this device.';
+  if (authStatus.code === 'auth_session_memory_only'
+    || authStatus.code === 'auth_session_storage_failed'
+    || authStatus.code === 'auth_session_storage_unavailable') {
+    const caveat = savedSessionState === 'present'
+      ? ' A previous saved session may remain in browser storage.'
+      : (savedSessionState === 'unavailable'
+        ? ' Browser storage could not confirm removal of an earlier saved session.'
+        : '');
+    return {
+      state: hasSession ? 'ready' : 'unauthorized',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: hasSession,
+      message: tabOnlyMessage + caveat
+    };
+  }
+  if (authStatus.code === 'auth_sign_out_remote_unknown_session_kept') {
+    return {
+      state: hasSession ? 'ready' : 'unauthorized',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: hasSession,
+      message: 'The provider sign-out outcome is unknown. Your Supabase session remains active in this tab; retry when online.'
+    };
+  }
+  if (authStatus.code === 'auth_sign_out_local_clear_failed') {
+    const remoteMessage = signOutOutcome?.remote === 'confirmed'
+      ? 'Supabase accepted its default global sign-out request; already issued access tokens may remain valid until expiry.'
+      : (signOutOutcome?.remote === 'unknown'
+        ? 'The provider sign-out outcome is unknown; already issued access tokens may remain valid until expiry.'
+        : 'No provider logout request was sent because no access token was available.');
+    return {
+      state: 'error',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: false,
+      message: `The local session was cleared from this tab, but browser storage could not confirm removal of a saved session. ${remoteMessage} Retry local cleanup.`
+    };
+  }
+  if (authStatus.code === 'auth_sign_out_confirmed') {
+    return {
+      state: 'unauthorized',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: false,
+      message: 'Supabase accepted its default global sign-out request. Already issued access tokens may remain valid until expiry.'
+    };
+  }
+  if (authStatus.code === 'auth_sign_out_unknown') {
+    return {
+      state: 'unauthorized',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: false,
+      message: 'The local session was cleared, but the provider sign-out outcome is unknown. Already issued access tokens may remain valid until expiry.'
+    };
+  }
+  if (authStatus.code === 'auth_sign_out_skipped') {
+    return {
+      state: 'unauthorized',
+      statusState: authStatus.state,
+      canAccessPrivateMedia: false,
+      message: 'The saved local session was cleared. No provider logout request was sent because no access token was available.'
+    };
+  }
   if (!config.privateMediaRequiresAuth) {
     return {
       state: 'ready',
@@ -2568,7 +2680,10 @@ function syncIpfsControls() {
   }
   if (retryBtn) retryBtn.hidden = readiness.statusState !== 'temporarily-unavailable';
   if (signInBtn) signInBtn.disabled = readiness.state === 'ready';
-  if (signOutBtn) signOutBtn.disabled = !supabaseAuthClient.getSession();
+  if (signOutBtn) {
+    signOutBtn.disabled = !supabaseAuthClient.getSession()
+      && supabaseAuthClient.inspectSavedSessionState() === 'clear';
+  }
   updateIpfsShareButtonState(readiness);
 }
 
@@ -2599,7 +2714,7 @@ function buildIpfsExperienceShareUrl(mediaReference) {
 
 // ====================== URL SHARING (v5.0.7) ======================
 
-const SHARED_LINK_TOO_LARGE_MESSAGE = 'This shared experience is too large for this browser to open safely. Your current Blend experience is unchanged. Ask for a smaller share link or import a JSON backup.';
+const SHARED_LINK_RECOVERY_MESSAGE = 'This shared experience could not be loaded. Your current experience and share link are unchanged; ask for a smaller link or import a JSON backup.';
 
 /**
  * Detect a compressed experience payload in the current URL.
@@ -2718,16 +2833,14 @@ async function loadUrlSharedExperience(request) {
 
   } catch (error) {
     const outputLimitRejected = error?.code === URL_SHARE_SIZE_LIMIT_ERROR_CODE;
-    if (outputLimitRejected) {
-      log.error('[url-share] shared link rejected at the decompressed output limit');
-    } else {
-      log.error('[url-share] load failed', error);
-    }
-    const msg = outputLimitRejected
-      ? SHARED_LINK_TOO_LARGE_MESSAGE
-      : error?.message || 'Could not load shared experience';
+    const failureKind = outputLimitRejected
+      ? 'output_limit'
+      : ['RangeError', 'OutOfMemoryError'].includes(error?.name)
+        ? 'allocation_failure'
+        : 'import_failure';
+    log.error('[url-share] load failed', { failureKind });
+    const msg = SHARED_LINK_RECOVERY_MESSAGE;
     progress.complete(false, msg);
-    showToast(msg, { timeout: 5200 });
 
     // Keep the source share parameters in place so the user can retry after
     // recovering or replacing an invalid/oversized link.
@@ -3067,9 +3180,11 @@ async function promptSupabaseSignIn() {
         accessToken.value = '';
         refreshToken.value = '';
         syncIpfsControls();
-        showToast(persistSession.checked
-          ? 'Supabase API token connected and saved in this browser.'
-          : 'Supabase API token connected for this tab.', { timeout: 2800 });
+        if (persistSession.checked && supabaseAuthClient.isSessionPersistenceEnabled()) {
+          showToast('Supabase API token connected and saved in this browser.', { timeout: 2800 });
+        } else {
+          showToast('The connection is available for this tab only. Do not save credentials on this device.', { timeout: 5000 });
+        }
         finish(session);
       } catch (authError) {
         error.textContent = authError?.message || 'Token connection failed. Check the token and try again.';
@@ -3087,6 +3202,7 @@ async function promptSupabaseSignIn() {
 }
 
 async function ensureAuthenticatedSession({ interactive = false } = {}) {
+  if (supabaseAuthClient.isAuthenticated()) return supabaseAuthClient.getSession();
   await bootstrapAuthSession();
   if (supabaseAuthClient.isAuthenticated()) return supabaseAuthClient.getSession();
   if (!interactive) return null;
@@ -3246,6 +3362,7 @@ function showSignedOutCleanupStatus(signedUrls, cleanupComplete) {
     })();
   };
   showToast(cleanupComplete ? PRIVATE_MEDIA_SIGNED_OUT_COPY : PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY, {
+    className: 'toast-private-media-signout',
     timeout: 0,
     role: 'alert',
     action: cleanupComplete
@@ -3292,6 +3409,9 @@ async function clearSignedPrivateMediaForSignedOut() {
 supabaseAuthClient.onAuthStateChange(({ event }) => {
   syncIpfsControls();
   updateIpfsShareButtonState();
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
+    updateAnalyticsConsentState({ consent: analyticsConsentGranted });
+  }
   if (event === 'SIGNED_OUT') {
     cancelPlaybackRequest('playlist');
     cancelPlaybackRequest('slideshow');
@@ -4008,6 +4128,7 @@ installThumbnailTestHooks();
 const SAVE_FAILURE_MESSAGE = 'Changes are not saved yet. Retry or export a backup before closing.';
 const SAVE_CONFLICT_MESSAGE = 'This experience changed in another tab. Reload or export a backup before saving.';
 let saveFailureNotice = null;
+const pendingExperienceDeletes = new Set();
 const saveRevisionCoordinator = createSaveRevisionCoordinator({
   delayMs: 850,
   persist: () => persistCurrentStateSnapshot(),
@@ -4621,7 +4742,11 @@ async function persistCurrentStateSnapshot() {
     const recordsByStore = experiencePersistenceRecords(activeRecord);
 
     await waitForSnapshotPersistTestHook();
-    const persisted = await persistExperienceRecordsAtomically(recordsByStore, state.library.keys());
+    const deleteExperienceIds = Array.from(pendingExperienceDeletes);
+    const persisted = await persistExperienceRecordsAtomically(recordsByStore, state.library.keys(), {
+      deleteExperienceIds
+    });
+    for (const id of deleteExperienceIds) pendingExperienceDeletes.delete(id);
     if (reconcilePersistedLibrary(persisted.recordsByStore.library)) renderLibrary();
 
     try {
@@ -9891,9 +10016,21 @@ function wireTransport() {
       try {
         await supabaseAuthClient.signOut();
         storageUrlResolver.clearCache();
-        showToast('Signed out from Supabase.', { timeout: 2600 });
+        const outcome = supabaseAuthClient.getLastSignOutOutcome();
+        if (outcome?.local === 'unconfirmed') {
+          showToast('The local session was cleared from this tab, but browser storage could not confirm removal of a saved session. Retry local cleanup.', { timeout: 6000 });
+        } else if (outcome?.remote === 'unknown') {
+          showToast('The local session was cleared, but the provider sign-out outcome is unknown. Already issued access tokens may remain valid until expiry.', { timeout: 5500 });
+        } else if (outcome?.remote === 'skipped') {
+          showToast('The saved local session was cleared. No provider logout request was sent because no access token was available.', { timeout: 5000 });
+        } else {
+          showToast('Supabase accepted its default global sign-out request. Already issued access tokens may remain valid until expiry.', { timeout: 5000 });
+        }
       } catch (error) {
-        showToast(error?.message || 'Could not sign out', { timeout: 3000 });
+        const outcome = supabaseAuthClient.getLastSignOutOutcome();
+        showToast(outcome?.remote === 'unknown' && outcome?.local === 'not-requested'
+          ? 'The provider sign-out outcome is unknown. Your Supabase session remains active in this tab; retry when online.'
+          : (error?.message || 'Could not sign out'), { timeout: 5000 });
       } finally {
         syncIpfsControls();
       }
@@ -11049,7 +11186,8 @@ function forgetGitPlaylistCredential() {
 }
 
 function handleCredentialStorageChange(event) {
-  if (event?.key !== gitPlaylistCredentialKey() && event?.key !== null) return;
+  const isSupabaseSessionKey = supabaseAuthClient.isSessionStorageKey(event?.key);
+  if (event?.key !== gitPlaylistCredentialKey() && !isSupabaseSessionKey && event?.key !== null) return;
   if (event?.key === null) analyticsConsentGranted = readStoredAnalyticsConsent();
   updateAnalyticsConsentState({ consent: analyticsConsentGranted });
   const remember = $('#git-playlist-remember');
@@ -12900,6 +13038,8 @@ async function createExperience() {
   const name = await promptExperienceName('New experience name', suggested);
   if (!name) return null;
 
+  if (!(await flushSaveState())) return null;
+
   const snapshot = createBlankExperienceSnapshot(name, state.settings);
   const record = makeExperienceRecord(snapshot, {
     id: `exp-${uid()}`,
@@ -12909,6 +13049,16 @@ async function createExperience() {
   state.experiences.push(record);
   state.experiences = sortExperienceRecords(state.experiences);
   await idbPut(EXPERIENCE_STORE, record);
+  if (persistedExperienceRecordsByStore) {
+    const existingRecords = persistedExperienceRecordsByStore.experiences || [];
+    persistedExperienceRecordsByStore = {
+      ...persistedExperienceRecordsByStore,
+      experiences: [
+        ...existingRecords.filter(existing => existing.id !== record.id),
+        record
+      ]
+    };
+  }
   await switchExperienceById(record.id, { silent: true });
   if (await saveStateNow()) showToast(`Created experience "${record.name}"`);
   return record;
@@ -12945,7 +13095,7 @@ async function deleteCurrentExperience() {
   const sortedBeforeDelete = sortExperienceRecords(state.experiences);
   const deletedIndex = sortedBeforeDelete.findIndex(exp => exp.id === current.id);
   stopPlayback();
-  await idbDelete(EXPERIENCE_STORE, current.id);
+  pendingExperienceDeletes.add(current.id);
   state.experiences = sortExperienceRecords(sortedBeforeDelete.filter(exp => exp.id !== current.id));
 
   if (!state.experiences.length) {

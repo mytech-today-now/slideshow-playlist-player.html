@@ -148,13 +148,12 @@ test('reports a readable error when shared experience fetch fails', async ({ pag
 test('restores deep-link playback state with autoplay enabled', async ({ page }) => {
   await boot(page);
 
-  const seeded = await page.evaluate(async () => {
+  const seededItemId = await page.evaluate(async () => {
     const { Blend } = window;
     const now = Date.now();
     const base = window.location.origin;
     const firstId = `deep-link-a-${now}`;
     const secondId = `deep-link-b-${now}`;
-    const activeExperienceId = Blend.state.activeExperienceId;
 
     Blend.state.library.clear();
     Blend.state.playlist = [];
@@ -218,17 +217,26 @@ test('restores deep-link playback state with autoplay enabled', async ({ page })
     Blend.renderListEditor();
     await Blend.saveStateNow();
 
+    return secondId;
+  });
+
+  // The empty first-run state may not receive its persistent experience ID
+  // until the saved snapshot is hydrated. Read the ID from that persisted state.
+  await page.reload();
+  await page.waitForFunction(() => !!window.Blend && !!window.Blend.state);
+  const seeded = await page.evaluate(itemId => {
+    const { Blend } = window;
+    const activeExperienceId = Blend.state.activeExperienceId;
     return {
       activeExperienceId,
-      targetItemId: secondId,
+      targetItemId: itemId,
       deepLink: Blend.buildDeepLinkUrl({
         experienceId: activeExperienceId,
         layer: 'slideshow',
-        itemId: secondId
+        itemId
       })
     };
-  });
-
+  }, seededItemId);
   const deepLinkUrl = new URL(seeded.deepLink);
   deepLinkUrl.searchParams.set('autoplay', '1');
   await page.goto(deepLinkUrl.toString());

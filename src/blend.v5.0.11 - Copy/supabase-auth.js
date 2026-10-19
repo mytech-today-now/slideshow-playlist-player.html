@@ -133,6 +133,7 @@ export function createSupabaseAuthClient({
   storage,
   fetchImpl = globalThis.fetch?.bind(globalThis),
   storageKey = DEFAULT_STORAGE_KEY,
+  persistenceBoundary = null,
   logger = null,
   requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
   refreshRetryDelaysMs = DEFAULT_REFRESH_RETRY_DELAYS_MS,
@@ -150,6 +151,7 @@ export function createSupabaseAuthClient({
   let sessionGeneration = 0;
   let retryAttempt = 0;
   let authStatus = { state: 'signed-out', code: 'auth_signed_out' };
+  let lastSignOutOutcome = null;
   const tabNonce = createLocalNonce();
   const peerTabNonces = new Set();
   const pendingLocalResets = new Map();
@@ -278,47 +280,58 @@ export function createSupabaseAuthClient({
     }, delayMs);
   }
 
-  function setSession(nextSession, { persist = persistenceEnabled, event = 'SESSION_UPDATED' } = {}) {
+  function setSession(nextSession, {
+    persist = persistenceEnabled,
+    event = 'SESSION_UPDATED',
+    statusCode = ''
+  } = {}) {
     abortRefreshRequest();
     const normalized = normalizeSession(nextSession);
+    let persistenceFailed = false;
     if (persist) {
       try {
         persistSession(normalized);
-      } catch (error) {
-        session = null;
-        sessionGeneration += 1;
-        retryAttempt = 0;
+      } catch (_) {
         persistenceEnabled = false;
-        clearRefreshTimer();
         try { persistSession(null); } catch (_) {}
-        authStatus = { state: 'signed-out', code: 'auth_signed_out' };
-        emit('SIGNED_OUT');
-        throw error;
+        persistenceFailed = true;
       }
     }
     session = normalized;
     sessionGeneration += 1;
     retryAttempt = 0;
     authStatus = normalized
-      ? { state: 'ready', code: 'auth_session_ready' }
+      ? { state: 'ready', code: persistenceFailed ? 'auth_session_storage_failed' : (statusCode || 'auth_session_ready') }
       : { state: 'signed-out', code: 'auth_signed_out' };
     scheduleRefresh();
     emit(event);
     return session;
   }
 
-  function clearSession({ persist = persistenceEnabled, event = 'SIGNED_OUT' } = {}) {
+  function clearSession({
+    persist = persistenceEnabled,
+    event = 'SIGNED_OUT',
+    signOutRemoteOutcome = null
+  } = {}) {
     abortRefreshRequest();
     session = null;
     sessionGeneration += 1;
     retryAttempt = 0;
     clearRefreshTimer();
+    let localOutcome = persist ? 'cleared' : 'not-requested';
     if (persist) {
-      try { persistSession(null); } catch (_) {}
+      try { persistSession(null); } catch (_) { localOutcome = 'unconfirmed'; }
     }
     persistenceEnabled = false;
-    authStatus = { state: 'signed-out', code: 'auth_signed_out' };
+    if (signOutRemoteOutcome) {
+      lastSignOutOutcome = { remote: signOutRemoteOutcome, local: localOutcome };
+    }
+    const statusCode = signOutRemoteOutcome
+      ? (localOutcome === 'unconfirmed' ? 'auth_sign_out_local_clear_failed' : `auth_sign_out_${signOutRemoteOutcome}`)
+      : (localOutcome === 'unconfirmed' ? 'auth_local_clear_failed' : 'auth_signed_out');
+    authStatus = { state: 'signed-out', code: statusCode };
     emit(event);
+    return localOutcome !== 'unconfirmed';
   }
 
   function clearLocalSession() {
@@ -570,6 +583,22 @@ export function createSupabaseAuthClient({
     }
   }
 
+  function inspectSavedSessionState() {
+    const target = getStorage();
+    if (!target || typeof target.getItem !== 'function') return 'unavailable';
+    try {
+      const stored = target.getItem(storageKey);
+      const legacy = storageKey === LEGACY_STORAGE_KEY ? null : target.getItem(LEGACY_STORAGE_KEY);
+      return stored != null || legacy != null ? 'present' : 'clear';
+    } catch (_) {
+      return 'unavailable';
+    }
+  }
+
+  function isSessionStorageKey(key) {
+    return key === storageKey || key === LEGACY_STORAGE_KEY;
+  }
+
   async function requestJson(url, init = {}, friendlyCode = 'auth_request_failed') {
     if (typeof fetchImpl !== 'function') {
       throw new SupabaseAuthError('Fetch is not available in this environment.', {
@@ -751,23 +780,53 @@ export function createSupabaseAuthClient({
     return activateSession(normalized, { persist, event: 'SIGNED_IN' });
   }
 
-  function activateSession(nextSession, { persist = false, event = 'SIGNED_IN' } = {}) {
+  async function activateSession(nextSession, { persist = false, event = 'SIGNED_IN' } = {}) {
     persistenceEnabled = persist === true;
+    if (persistenceEnabled) {
+      if (typeof persistenceBoundary !== 'function') {
+        return setSession(nextSession, { persist: true, event });
+      }
+      try {
+        const outcome = await persistenceBoundary(() => setSession(nextSession, { persist: true, event }));
+        if (outcome?.acquired !== false) {
+          return outcome && Object.hasOwn(outcome, 'value') ? outcome.value : session;
+        }
+      } catch (_) {}
+
+      persistenceEnabled = false;
+      try { persistSession(null); } catch (_) {}
+      return setSession(nextSession, { persist: false, event, statusCode: 'auth_session_memory_only' });
+    }
+
     if (!persistenceEnabled) {
       try {
         persistSession(null);
-      } catch (error) {
-        session = null;
-        sessionGeneration += 1;
-        retryAttempt = 0;
-        clearRefreshTimer();
-        persistenceEnabled = false;
-        authStatus = { state: 'signed-out', code: 'auth_signed_out' };
-        emit('SIGNED_OUT');
-        throw error;
+      } catch (_) {
+        return setSession(nextSession, { persist: false, event, statusCode: 'auth_session_storage_unavailable' });
       }
     }
-    return setSession(nextSession, { persist: persistenceEnabled, event });
+    return setSession(nextSession, { persist: false, event, statusCode: 'auth_session_memory_only' });
+  }
+
+  async function setRefreshedSession(nextSession) {
+    const event = 'TOKEN_REFRESHED';
+    if (!persistenceEnabled) {
+      return setSession(nextSession, { persist: false, event, statusCode: 'auth_session_memory_only' });
+    }
+    if (typeof persistenceBoundary !== 'function') {
+      return setSession(nextSession, { persist: true, event });
+    }
+
+    try {
+      const outcome = await persistenceBoundary(() => setSession(nextSession, { persist: true, event }));
+      if (outcome?.acquired !== false) {
+        return outcome && Object.hasOwn(outcome, 'value') ? outcome.value : session;
+      }
+    } catch (_) {}
+
+    persistenceEnabled = false;
+    try { persistSession(null); } catch (_) {}
+    return setSession(nextSession, { persist: false, event, statusCode: 'auth_session_memory_only' });
   }
 
   async function signInWithApiToken({
@@ -862,7 +921,7 @@ export function createSupabaseAuthClient({
             retryable: false
           });
         }
-        return setSession(normalized, { event: 'TOKEN_REFRESHED' });
+        return await setRefreshedSession(normalized);
       } catch (caught) {
         if (generation !== sessionGeneration || !session) return session;
         const error = caught instanceof SupabaseAuthError
@@ -900,6 +959,8 @@ export function createSupabaseAuthClient({
     abortRefreshRequest();
     const token = session?.access_token || '';
     const url = `${String(supabaseUrl || '').replace(/\/+$/, '')}/auth/v1/logout`;
+    lastSignOutOutcome = null;
+    let remoteOutcome = token ? 'unknown' : 'skipped';
     if (token) {
       try {
         await requestJson(url, {
@@ -910,14 +971,17 @@ export function createSupabaseAuthClient({
             Authorization: `Bearer ${token}`
           }
         }, 'auth_sign_out_failed');
+        remoteOutcome = 'confirmed';
       } catch (error) {
         if (error instanceof SupabaseAuthError && error.status >= 500) {
+          lastSignOutOutcome = { remote: 'unknown', local: 'not-requested' };
+          authStatus = { state: 'ready', code: 'auth_sign_out_remote_unknown_session_kept' };
           scheduleRefresh();
           throw error;
         }
       }
     }
-    clearSession({ persist: true, event: 'SIGNED_OUT' });
+    clearSession({ persist: true, event: 'SIGNED_OUT', signOutRemoteOutcome: remoteOutcome });
     return true;
   }
 
@@ -945,6 +1009,14 @@ export function createSupabaseAuthClient({
 
   function getRefreshToken() {
     return session?.refresh_token || '';
+  }
+
+  function isSessionPersistenceEnabled() {
+    return persistenceEnabled;
+  }
+
+  function getLastSignOutOutcome() {
+    return lastSignOutOutcome ? { ...lastSignOutOutcome } : null;
   }
 
   function getRedirectUrl() {
@@ -983,6 +1055,10 @@ export function createSupabaseAuthClient({
     getAccessToken,
     getRefreshToken,
     getRedirectUrl,
+    inspectSavedSessionState,
+    isSessionStorageKey,
+    isSessionPersistenceEnabled,
+    getLastSignOutOutcome,
     clearSession,
     clearLocalSession,
     clearLocalSessionAcrossTabs,

@@ -65,7 +65,7 @@ test('connects Supabase API token and marks sharing as ready', async ({ page }) 
   await openSupabaseAuthModal(page);
   await connectTokenFromModal(page);
 
-  await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  await expect(page.locator('#supabase-auth-status')).toContainText('The connection is available for this tab only. Do not save credentials on this device.');
   await expect(page.locator('#btn-share')).toHaveAttribute('data-ipfs-state', 'ready');
 
   const hasSession = await page.evaluate(async () => {
@@ -99,6 +99,8 @@ test('sign out clears the active Supabase session', async ({ page }) => {
 
   await openConfig(page);
   await page.locator('#supabase-sign-out').click();
-  await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+  await expect(page.locator('#supabase-auth-status')).toContainText(
+    'The local session was cleared, but the provider sign-out outcome is unknown. Already issued access tokens may remain valid until expiry.'
+  );
   await expect(page.locator('#btn-share')).toHaveAttribute('data-ipfs-state', 'unauthorized');
 });

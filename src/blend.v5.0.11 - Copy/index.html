@@ -25,8 +25,8 @@
   <title>Blend version 5.0.11</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest?v=20261013-v5.0.11-signed-media-url-lifetime">
-  <link rel="stylesheet" href="./styles.css?v=20261013-v5.0.11-signed-media-url-lifetime">
+  <link rel="manifest" href="./manifest.webmanifest?v=20261019-v5.0.11-session-and-recovery">
+  <link rel="stylesheet" href="./styles.css?v=20261019-v5.0.11-session-and-recovery">
 </head>
 <body>
   <a class="skip-link" href="#config-gear">Go to configuration controls</a>
@@ -375,13 +375,14 @@
         <div class="setting setting--wide">
           <label>Supabase session</label>
           <div class="setting__control" style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-            <span id="supabase-auth-status" role="status" aria-live="polite" style="min-width:0;flex:1 1 140px;">Checking session…</span>
+            <span id="supabase-auth-status" role="status" aria-live="polite">Checking session…</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button id="supabase-auth-retry" type="button" class="list-action" hidden>Retry now</button>
               <button id="supabase-sign-in" type="button" class="list-action">Use token</button>
-              <button id="supabase-sign-out" type="button" class="list-action">Sign out</button>
+              <button id="supabase-sign-out" type="button" class="list-action" aria-describedby="supabase-auth-signout-description">Sign out</button>
             </div>
           </div>
+          <p id="supabase-auth-signout-description" class="setting__hint">Sign out requests Supabase's default global scope and can revoke refresh tokens for all sessions. Already issued access tokens may remain valid until they expire.</p>
           <p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.</p>
         </div>
         <section class="setting setting--wide git-catalog-setting" aria-labelledby="git-catalog-title">
@@ -601,7 +602,7 @@
           <input id="supabase-auth-persist-session" name="persistSession" type="checkbox" aria-describedby="supabase-auth-persistence-description">
           <span>Save session in this browser</span>
         </label>
-        <p id="supabase-auth-persistence-description" class="muted" style="margin:6px 0 0 0;font-size:12px;">When selected, the access and refresh tokens are saved in LocalStorage so private media access can survive reloads. A saved token can be read by scripts running on this site.</p>
+        <p id="supabase-auth-persistence-description" class="muted" style="margin:6px 0 0 0;font-size:12px;">When selected, the access and refresh tokens are saved in LocalStorage so private media access can survive reloads. LocalStorage is not a secure vault: a saved token can be read by scripts running on this site. That includes any same-origin script. Analytics stays off while a saved session exists or its storage cannot be checked. If analytics already holds the shared browser lock, the connection stays available for this tab only.</p>
         <p data-auth-error class="muted" style="min-height:18px;margin:10px 0 0 0;color:#f87171;"></p>
       </div>
       <div class="modal-footer">
@@ -752,6 +753,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261013-v5.0.11-signed-media-url-lifetime"></script>
+  <script type="module" src="./app.js?v=20261019-v5.0.11-session-and-recovery"></script>
 </body>
 </html>

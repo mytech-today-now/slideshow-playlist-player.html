@@ -61,7 +61,7 @@ test('analytics requires affirmative consent before a loader can be requested', 
   assert.equal(getAnalyticsConsentDecision({ consent: true }).shouldLoadScript, true);
 });
 
-test('remembered or unreadable Git credential state blocks analytics loading', () => {
+test('remembered or unreadable credential state blocks analytics loading', () => {
   for (const credentialState of ['present', 'unavailable']) {
     const decision = getAnalyticsConsentDecision({ consent: true, credentialState });
     assert.equal(decision.allowed, false, credentialState);
