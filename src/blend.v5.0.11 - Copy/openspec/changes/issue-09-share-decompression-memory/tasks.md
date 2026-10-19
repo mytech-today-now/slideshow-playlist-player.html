@@ -55,3 +55,23 @@
 - The browser `performance.memory` value (10,000,000 bytes before and after rejection) is informational only and is not Android renderer RSS.
 - Redirecting Android user and emulator paths to task temp removed the protected default-profile lock error. ADB now sees `emulator-5554` as `unauthorized`; user authorization is required before guest Chrome/version inspection or trials. Android measurements are Not run (0/9), and responsiveness, duration, and device-side URL/state recovery remain unmeasured.
 - The 8 MiB cap remains unchanged. Task 3.4 remains open pending all nine RSS trials and acceptance.
+
+## Android measurement follow-up (2026-10-19)
+
+Current device access check: `adb` and `emulator` were unavailable as commands, `ANDROID_HOME` and `ANDROID_SDK_ROOT` were unset, and the conventional Android SDK tool locations checked did not contain either executable. The current device/emulator state, guest image, and installed Chrome build could not be inspected. No Android or browser memory measurement was substituted for the required renderer RSS measurement.
+
+All nine requested trials are explicitly Not run:
+
+| Output size | Trial | Result | Blocker |
+|---|---:|---|---|
+| Valid 1 MiB | 1 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Valid 1 MiB | 2 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Valid 1 MiB | 3 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Exact 8 MiB | 1 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Exact 8 MiB | 2 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Exact 8 MiB | 3 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Over-limit 10 MiB | 1 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Over-limit 10 MiB | 2 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+| Over-limit 10 MiB | 3 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
+
+No trial duration, idle baseline, peak anonymous renderer RSS, responsiveness, or device-side URL/state recovery result was collected. The requested Chrome for Android 155.0.8059.39 build and exact active AVD image/configuration remain unverified in this session. Task 3.4 remains open at 9/10, the 8 MiB cap is unchanged, and Beads `blend-lmg` remains in progress.

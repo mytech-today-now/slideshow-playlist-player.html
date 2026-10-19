@@ -33,3 +33,15 @@
   - Evidence: `npm run check` exited 0. `npm run test:regression` exited 0 with 361/361 passing.
 - [ ] 5.3 Validate the reused OpenSpec change and Beads `blend-ag8` status, then archive only after all acceptance checks pass.
   - Pending archive: keep the change active until authorized synthetic staging records direct-object and CDN responses separately before and after a staging-controlled URL expiry. No staging confirmation or credentials were configured, so those provider outcomes remain Not run. Beads `blend-ag8` remains in progress and is linked to the current report.
+
+## Staging expiry follow-up (2026-10-19)
+
+- Result: Not run. No staging confirmation or staging settings were present. `BLEND_STORAGE_STAGING_CONFIRM` and the required `BLEND_STORAGE_STAGING_*` settings were absent, and the checkout contains `.env.example` only. No provider requests were sent. The existing `tests/integration/storage-policy-staging.mjs` covers storage authorization policy, not signed URL expiry through a CDN.
+- Prerequisites: owner-authorized disposable Supabase staging project; private synthetic object; an approved CDN route for that same object, if CDN behavior is in scope; a short staging-only signed URL lifetime; and permission to remove the fixture after the run.
+- Operator sequence:
+  1. Create one synthetic private object under a unique test prefix and mint one signed URL with an approved short TTL, such as 60 seconds. Keep the URL only in the test process memory. Do not print it, write it to a file, capture it in a screenshot, or include it in logs or reports.
+  2. At baseline, at the configured expiry, and five seconds after expiry, issue a one-byte range GET to the direct Storage object route and separately to the configured CDN route. Preserve the signed query only in memory when using the approved CDN route. Do not use local sign-out as a revocation step or expected result.
+  3. For each route and observation time, record sanitized UTC time, HTTP status, and only relevant cache headers present: `Date`, `Cache-Control`, `Age`, `Expires`, `Via`, `X-Cache`, and `CF-Cache-Status`. Do not record request URLs, query strings, response bodies, authorization values, or screenshots.
+  4. Delete the synthetic object using the authorized staging procedure and discard the in-memory URL. Record direct-object and CDN outcomes separately. Do not infer CDN expiry from the direct-object response.
+- Result template: `baseline`, `configured expiry`, and `expiry + 5 seconds` rows, with separate direct-object and CDN status/cache-header fields. If no approved CDN route exists, mark only the CDN observations Not run and keep acceptance pending.
+- OpenSpec task 5.3 remains open. Beads `blend-ag8` remains in progress pending staging evidence and owner acceptance.
