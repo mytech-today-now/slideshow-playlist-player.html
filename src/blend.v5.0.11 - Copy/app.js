@@ -5535,6 +5535,11 @@ async function scanDirectoryWithProgress(dirHandle, { forMissingPaths = false, o
     role: 'status',
     className: 'toast-directory-scan-progress'
   });
+  const configPanel = $('#config-panel');
+  const stickyControls = configPanel?.querySelector('.config-sticky-controls');
+  if (configPanel?.classList.contains('open') && stickyControls) {
+    configPanel.insertBefore(progress.toast, stickyControls);
+  }
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.className = 'btn';
@@ -5614,9 +5619,9 @@ function showDirectoryScanToast(message, options = {}) {
     className: 'toast-directory-scan'
   });
   const configPanel = $('#config-panel');
-  const configBody = configPanel?.querySelector('.config-body');
-  if (configPanel?.classList.contains('open') && configBody) {
-    configPanel.insertBefore(notice.toast, configBody);
+  const stickyControls = configPanel?.querySelector('.config-sticky-controls');
+  if (configPanel?.classList.contains('open') && stickyControls) {
+    configPanel.insertBefore(notice.toast, stickyControls);
   }
   return notice;
 }
@@ -10421,7 +10426,11 @@ async function ensureReadmeRendered({ source = infoReadmeSource, forceRefresh = 
     renderInfoReadme(viewModel);
   } catch (error) {
     if (requestId !== infoReadmeLoadSequence) return;
-    log.warn('README load failed', error);
+    log.warn('README load failed', {
+      operation: 'info-readme-load',
+      source: requestedSource,
+      errorName: String(error?.name || 'Error').slice(0, 80)
+    });
     if (requestedSource === 'online' && infoReadmeModels.local) {
       const fallback = { ...infoReadmeModels.local, onlineUnavailable: true, onlinePending: false };
       infoReadmeModels.local = fallback;
@@ -10490,8 +10499,8 @@ function renderInfoReadme(viewModel, { preservePanelScroll = false } = {}) {
 
   const fallbackNotice = viewModel.onlineUnavailable
     ? '<p class="info-readme-status info-readme-status--notice" role="status">'
-      + `The online guide is too large or unavailable. You are still viewing the installed Blend guide for version ${VERSION}. Retry online help later. `
-      + '<button type="button" class="info-readme-retry info-readme-retry-online">Retry online help</button>'
+      + 'Online documentation is unavailable. The installed guide remains available; you can retry the online copy. '
+      + '<button type="button" class="info-readme-retry info-readme-retry-online">Retry online copy</button>'
       + '</p>'
     : '';
   target.innerHTML = fallbackNotice + renderMarkdown(viewModel.markdown);

@@ -1652,15 +1652,18 @@ button {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.toast-directory-scan .btn {
+.toast-directory-scan .btn,
+.toast-directory-scan-progress .btn {
   min-height: 44px;
   white-space: normal;
 }
-.toast-directory-scan .btn:focus-visible {
+.toast-directory-scan .btn:focus-visible,
+.toast-directory-scan-progress .btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-#config-panel > .toast-directory-scan {
+#config-panel > .toast-directory-scan,
+#config-panel > .toast-directory-scan-progress {
   align-self: center;
   width: min(560px, calc(100vw - 48px));
   max-width: min(560px, calc(100vw - 48px));

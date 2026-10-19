@@ -21,6 +21,17 @@ const ONLINE_README_FIXTURE = [
   ...Array.from({ length: 60 }, (_, i) => `Online paragraph line ${i + 1}: consectetur adipiscing elit.`),
 ].join('\n');
 
+const REQUIRED_INFO_VIEWPORTS = [
+  { width: 320, height: 480 },
+  { width: 360, height: 800 },
+  { width: 375, height: 667 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
+  { width: 1280, height: 720 }
+];
+
 test.describe('Configuration dialog', () => {
   test('opens centered, scrolls vertically only, and traps focus', async ({ page }) => {
     test.setTimeout(60000);
@@ -384,6 +395,46 @@ test.describe('Information dialog', () => {
     expect(await page.evaluate(() => window.__infoReadmeEmptyCommits)).toEqual([]);
   });
 
+  test('a stale online response cannot replace a newer selected local guide', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.unroute('https://raw.githubusercontent.com/**');
+    let markRemoteStarted;
+    let markRemoteCompleted;
+    const remoteStarted = new Promise(resolve => { markRemoteStarted = resolve; });
+    const remoteCompleted = new Promise(resolve => { markRemoteCompleted = resolve; });
+    await page.route('https://raw.githubusercontent.com/**', async route => {
+      markRemoteStarted();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain; charset=utf-8',
+        body: ONLINE_README_FIXTURE,
+      });
+      markRemoteCompleted();
+    });
+
+    await openInfo(page);
+    await page.locator('#info-tab-readme').click();
+    const content = page.locator('#info-readme-content');
+    const source = page.getByLabel('Documentation source');
+    await expect(content).toContainText('Current Version Information');
+
+    await source.selectOption('online');
+    await remoteStarted;
+    await expect(page.locator('#info-readme-source-status'))
+      .toContainText('Checking current online documentation');
+
+    await source.selectOption('local');
+    await expect(source).toHaveValue('local');
+    await expect(content).toContainText('Current Version Information');
+    await expect(page.locator('#info-tab-readme')).toHaveAttribute('aria-selected', 'true');
+
+    await remoteCompleted;
+    await expect(source).toHaveValue('local');
+    await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-source', 'local');
+    await expect(content).not.toContainText('Current online guide marker');
+  });
+
   test('source selector remains usable across the responsiveness matrix and scaled text', async ({ page }) => {
     test.setTimeout(90000);
     await openInfo(page);
@@ -392,13 +443,10 @@ test.describe('Information dialog', () => {
     await expect(source).toBeVisible();
 
     const viewports = [
+      ...REQUIRED_INFO_VIEWPORTS,
       { width: 3840, height: 2160 },
       { width: 1920, height: 1080 },
-      { width: 1024, height: 768 },
-      { width: 768, height: 1024 },
-      { width: 390, height: 844 },
       { width: 844, height: 390 },
-      { width: 360, height: 800 }
     ];
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
@@ -415,8 +463,15 @@ test.describe('Information dialog', () => {
           selectHeight: select.getBoundingClientRect().height,
           requiredTouchHeight: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--touch')),
           labelWidth: label.getBoundingClientRect().width,
+          labelHeight: label.getBoundingClientRect().height,
+          labelScrollHeight: label.scrollHeight,
           labelScrollWidth: label.scrollWidth,
-          labelClientWidth: label.clientWidth
+          labelClientWidth: label.clientWidth,
+          labelOverflowWrap: getComputedStyle(label).overflowWrap,
+          labelTop: label.getBoundingClientRect().top,
+          labelBottom: label.getBoundingClientRect().bottom,
+          panelTop: panel.getBoundingClientRect().top,
+          panelBottom: panel.getBoundingClientRect().bottom
         };
       });
       expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewportWidth + 1);
@@ -424,6 +479,10 @@ test.describe('Information dialog', () => {
       expect(metrics.selectHeight).toBeGreaterThanOrEqual(metrics.requiredTouchHeight - 1);
       expect(metrics.labelWidth).toBeLessThanOrEqual(metrics.panelWidth + 1);
       expect(metrics.labelScrollWidth).toBeLessThanOrEqual(metrics.labelClientWidth + 1);
+      expect(metrics.labelScrollHeight).toBeLessThanOrEqual(metrics.labelHeight + 1);
+      expect(metrics.labelOverflowWrap).toBe('anywhere');
+      expect(metrics.labelTop).toBeGreaterThanOrEqual(metrics.panelTop - 1);
+      expect(metrics.labelBottom).toBeLessThanOrEqual(metrics.panelBottom + 1);
 
       await source.selectOption('local');
       await source.focus();
@@ -431,6 +490,16 @@ test.describe('Information dialog', () => {
       await source.press('Enter');
       await expect(source).toHaveValue('online');
       await expect(page.locator('#info-readme-source-status')).toContainText('Current online documentation');
+      const focusState = await source.evaluate(node => ({
+        focused: document.activeElement === node,
+        focusVisible: node.matches(':focus-visible'),
+        outlineStyle: getComputedStyle(node).outlineStyle,
+        outlineWidth: getComputedStyle(node).outlineWidth
+      }));
+      expect(focusState.focused).toBe(true);
+      expect(focusState.focusVisible).toBe(true);
+      expect(focusState.outlineStyle).not.toBe('none');
+      expect(parseFloat(focusState.outlineWidth)).toBeGreaterThan(0);
     }
 
     await page.evaluate(() => { document.body.style.fontSize = '24px'; });
@@ -463,12 +532,18 @@ test.describe('Information dialog', () => {
       await openInfo(page);
       await page.locator('#info-tab-readme').tap();
       const source = page.getByLabel('Documentation source');
-      await expect(source).toBeVisible();
-      const height = await source.evaluate(node => node.getBoundingClientRect().height);
-      expect(height).toBeGreaterThanOrEqual(40);
-      await source.tap();
-      await source.selectOption('online');
-      await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+      for (const viewport of REQUIRED_INFO_VIEWPORTS) {
+        await page.setViewportSize(viewport);
+        await expect(source).toBeVisible();
+        const height = await source.evaluate(node => node.getBoundingClientRect().height);
+        expect(height).toBeGreaterThanOrEqual(40);
+        await source.tap();
+        await source.selectOption('online');
+        await expect(page.locator('#info-readme-content')).toContainText('Current online guide marker');
+        await source.tap();
+        await source.selectOption('local');
+        await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
+      }
     } finally {
       await context.close();
     }
@@ -524,7 +599,7 @@ test.describe('Information dialog', () => {
     await page.locator('#info-readme-source').selectOption('online');
 
     const fallbackNotice = page.getByRole('status').filter({
-      hasText: 'The online guide is too large or unavailable. You are still viewing the installed Blend guide for version 5.0.11. Retry online help later.'
+      hasText: 'Online documentation is unavailable. The installed guide remains available; you can retry the online copy.'
     });
     await expect(fallbackNotice).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#info-readme-content')).toContainText('Current Version Information');
@@ -540,7 +615,7 @@ test.describe('Information dialog', () => {
       });
     });
 
-    const retry = page.getByRole('button', { name: 'Retry online help' });
+    const retry = page.getByRole('button', { name: 'Retry online copy' });
     await retry.focus();
     await page.keyboard.press('Enter');
 
@@ -570,10 +645,10 @@ test.describe('Information dialog', () => {
     await page.locator('#info-readme-source').selectOption('online');
 
     const fallbackNotice = page.getByRole('status').filter({
-      hasText: 'The online guide is too large or unavailable. You are still viewing the installed Blend guide for version 5.0.11. Retry online help later.'
+      hasText: 'Online documentation is unavailable. The installed guide remains available; you can retry the online copy.'
     });
     await expect(fallbackNotice).toBeVisible({ timeout: 15000 });
-    await expect(fallbackNotice).toContainText('Retry online help');
+    await expect(fallbackNotice.getByRole('button', { name: 'Retry online copy' })).toBeVisible();
     await expect(content).toContainText('Current Version Information');
     await expect(content).not.toContainText('Oversized online guide');
     await expect(page.locator('#info-readme-source')).toHaveValue('local');
