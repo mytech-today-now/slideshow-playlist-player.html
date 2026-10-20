@@ -486,12 +486,13 @@ test('a limited scan reports pending files and recovers from a smaller folder wi
 
   const chooseSmaller = status.getByRole('button', { name: 'Choose smaller folder' });
   await page.locator('#close-config').focus();
-  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+  const stickyTabStops = await page.locator('.config-sticky-controls').evaluate(region => region.querySelectorAll(
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
   ).length);
   let reachedChooseSmaller = false;
-  for (let index = 0; index < focusableCount; index += 1) {
-    await page.keyboard.press('Tab');
+  // Traverse backward from the close button; the virtualized library changes its mounted row count during forward Tab navigation.
+  for (let index = 0; index < stickyTabStops; index += 1) {
+    await page.keyboard.press('Shift+Tab');
     if (await chooseSmaller.evaluate(node => node === document.activeElement)) {
       reachedChooseSmaller = true;
       break;
@@ -588,12 +589,12 @@ test('a folder scan stops at the total entry budget and preserves its committed 
   await expectDirectoryToastFits(page, status);
 
   await page.locator('#close-config').focus();
-  const focusableCount = await page.locator('#config-panel').evaluate(panel => panel.querySelectorAll(
+  const stickyTabStops = await page.locator('.config-sticky-controls').evaluate(region => region.querySelectorAll(
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
   ).length);
   let reachedChooseSmaller = false;
-  for (let index = 0; index < focusableCount; index += 1) {
-    await page.keyboard.press('Tab');
+  for (let index = 0; index < stickyTabStops; index += 1) {
+    await page.keyboard.press('Shift+Tab');
     if (await chooseSmaller.evaluate(node => node === document.activeElement)) {
       reachedChooseSmaller = true;
       break;

@@ -185,12 +185,17 @@ test('input fallback preserves media filtering for an accepted selection', async
   await expect.poll(() => readLibrarySnapshot(page)).toHaveLength(1);
   expect((await readLibrarySnapshot(page)).map(item => item.name)).toEqual(['accepted-image.png']);
   const saveStatus = page.locator('#save-status');
-  await expect.poll(() => saveStatus.getAttribute('data-state')).toMatch(/^(saved|failed)$/);
-  if (await saveStatus.getAttribute('data-state') === 'failed') {
-    await expect(page.locator('#toast-container'))
-      .toContainText('Selected 2; accepted 1; remaining 0. Added 1; already in library 0; skipped 1.');
+  const toast = page.locator('#toast-container');
+  await expect.poll(() => toast.innerText()).toMatch(/Added 1 media file|Blend could not save the selected media in browser storage/);
+  if ((await toast.innerText()).includes('Blend could not save the selected media in browser storage')) {
+    await expect(toast).toContainText('Selected 2; accepted 1; remaining 0. Added 1; already in library 0; skipped 1.');
+    await expect(saveStatus).toHaveAttribute('data-state', 'failed');
+    await expect(toast).toContainText('The files are available for this session only; keep the originals and select them again after reload.');
+    await expect(toast).toContainText('Use Retry in the save status to try again.');
   } else {
-    await expect(page.locator('#toast-container')).toContainText('Added 1 media file');
+    await expect(saveStatus).toHaveAttribute('data-state', 'saved');
+    await expect(toast).toContainText('Added 1 media file');
+    await expect(toast).toContainText('Blend saved the selected file data in this browser.');
   }
 });
 
