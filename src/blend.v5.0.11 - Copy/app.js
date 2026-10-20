@@ -379,9 +379,9 @@ const REMOTE_MEDIA_RETRY_COOLDOWN_MS = 30000;
 const REMOTE_MEDIA_MAX_RETRIES = 1;
 const PERF = {
   LIBRARY_ROW_HEIGHT: 52,
-  // Timeline details occupy three compact rows beneath the media name.
+  // Narrow desktop panes wrap availability and timeline details; keep this in sync with the CSS row height.
   // Keep this in sync with .list-item.virtual-row in styles.css.
-  LIST_ROW_HEIGHT: 84,
+  LIST_ROW_HEIGHT: 94,
   VIRTUAL_OVERSCAN: 10,
   WORKER_THRESHOLD: 800,
   THUMB_CACHE_LIMIT: 360,

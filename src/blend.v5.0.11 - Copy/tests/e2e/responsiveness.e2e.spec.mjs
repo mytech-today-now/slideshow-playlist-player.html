@@ -5,11 +5,15 @@ import { BlendAppPage } from './support/blend-app-page.mjs';
 const VIEWPORTS = [
   { label: '4K UHD desktop', width: 3840, height: 2160 },
   { label: 'HD desktop', width: 1920, height: 1080 },
+  { label: 'compact phone', width: 320, height: 480 },
   { label: 'tablet landscape', width: 1024, height: 768 },
   { label: 'tablet portrait', width: 768, height: 1024 },
+  { label: 'small phone', width: 375, height: 667 },
   { label: 'iPhone portrait', width: 390, height: 844 },
+  { label: 'large phone', width: 430, height: 932 },
   { label: 'iPhone landscape', width: 844, height: 390 },
-  { label: 'Android portrait', width: 360, height: 800 }
+  { label: 'Android portrait', width: 360, height: 800 },
+  { label: 'laptop desktop', width: 1280, height: 720 }
 ];
 
 for (const vp of VIEWPORTS) {

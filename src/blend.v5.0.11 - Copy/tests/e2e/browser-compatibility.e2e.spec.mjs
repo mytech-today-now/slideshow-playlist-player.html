@@ -8,11 +8,15 @@ import { attachBrowserEngineEvidence } from './support/browser-engine-evidence.m
 const VIEWPORTS = [
   { label: '4K desktop', width: 3840, height: 2160 },
   { label: 'HD desktop', width: 1920, height: 1080 },
+  { label: '1280 by 720', width: 1280, height: 720 },
   { label: 'tablet landscape', width: 1024, height: 768 },
   { label: 'tablet portrait', width: 768, height: 1024 },
   { label: 'mobile portrait', width: 390, height: 844 },
+  { label: 'large mobile portrait', width: 430, height: 932 },
+  { label: 'small mobile portrait', width: 375, height: 667 },
   { label: 'mobile landscape', width: 844, height: 390 },
-  { label: 'small mobile', width: 360, height: 800 }
+  { label: 'small mobile', width: 360, height: 800 },
+  { label: 'compact mobile', width: 320, height: 480 }
 ];
 
 const pageErrors = new WeakMap();
@@ -80,6 +84,55 @@ async function stateSnapshot(page) {
       selection: Array.from(state.ui.selectedLibrary).sort()
     };
   });
+}
+
+async function focusByKeyboard(page, selector) {
+  const target = page.locator(selector);
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+
+  for (let attempt = 0; attempt < 80; attempt++) {
+    await page.keyboard.press('Tab');
+    const focused = await target.evaluate(element => element === document.activeElement);
+    if (focused) {
+      return target.evaluate(element => {
+        const style = getComputedStyle(element);
+        return element.matches(':focus-visible')
+          && style.outlineStyle !== 'none'
+          && Number.parseFloat(style.outlineWidth) >= 2;
+      });
+    }
+  }
+
+  return false;
+}
+
+async function expectStatusFitsViewport(page) {
+  const status = page.locator('#toast-container .toast[role="status"]').last();
+  await expect(status).toBeVisible();
+  const bounds = await status.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight
+    };
+  });
+
+  expect(bounds.left).toBeGreaterThanOrEqual(-1);
+  expect(bounds.right).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+  expect(bounds.top).toBeGreaterThanOrEqual(-1);
+  expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewportHeight + 1);
+  expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.clientWidth + 1);
+  expect(bounds.scrollHeight).toBeLessThanOrEqual(bounds.clientHeight + 1);
 }
 
 test('file-input fallback reports reload persistence and keeps list editing keyboard-accessible', async ({ page }) => {
@@ -496,19 +549,53 @@ test('service-worker shell is registered and cached or its limitation is announc
 test('responsive viewport, text scale, and touch targets remain usable', async ({ page }) => {
   const app = await bootApp(page);
   await app.openConfig();
+  await page.evaluate(() => {
+    const createElement = document.createElement.bind(document);
+    document.createElement = (tagName, ...args) => {
+      const element = createElement(tagName, ...args);
+      if (String(tagName).toLowerCase() === 'input') {
+        Object.defineProperty(element, 'webkitdirectory', {
+          configurable: true,
+          writable: true,
+          value: undefined
+        });
+      }
+      return element;
+    };
+  });
 
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.locator('#config-panel').evaluate(panel => { panel.scrollTop = 0; });
     const metrics = await page.evaluate(() => {
       const panel = document.querySelector('#config-panel');
       const panelRect = panel.getBoundingClientRect();
       const buttons = ['#add-files', '#add-folder'].map(selector => {
-        const rect = document.querySelector(selector).getBoundingClientRect();
-        return { width: rect.width, height: rect.height };
+        const button = document.querySelector(selector);
+        const rect = button.getBoundingClientRect();
+        return {
+          width: rect.width,
+          height: rect.height
+        };
       });
+      const actionTops = Array.from(document.querySelectorAll(
+        '#add-files, #add-folder, #add-url, #library-sort, #clear-library, #remove-stale'
+      ), button => Math.round(button.getBoundingClientRect().top));
+      const overflowingChildren = Array.from(panel.querySelectorAll('*'), element => {
+        const rect = element.getBoundingClientRect();
+        return {
+          element: `${element.tagName.toLowerCase()}#${element.id}.${String(element.className).replace(/\s+/g, '.')}`,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width
+        };
+      }).filter(item => item.width > 0 && (item.left < panelRect.left - 1 || item.right > panelRect.right + 1))
+        .slice(0, 8);
       return {
         pageWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
+        pageHeight: document.documentElement.scrollHeight,
+        clientHeight: document.documentElement.clientHeight,
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         panelLeft: panelRect.left,
@@ -517,22 +604,69 @@ test('responsive viewport, text scale, and touch targets remain usable', async (
         panelBottom: panelRect.bottom,
         panelClientWidth: panel.clientWidth,
         panelScrollWidth: panel.scrollWidth,
+        overflowingChildren,
+        actionRowCount: new Set(actionTops).size,
         buttons
       };
     });
 
     expect(metrics.pageWidth).toBeLessThanOrEqual(metrics.clientWidth + 2);
+    expect(metrics.pageHeight).toBeLessThanOrEqual(metrics.clientHeight + 2);
     expect(metrics.panelLeft).toBeGreaterThanOrEqual(-2);
     expect(metrics.panelRight).toBeLessThanOrEqual(metrics.viewportWidth + 2);
     expect(metrics.panelTop).toBeGreaterThanOrEqual(-2);
     expect(metrics.panelBottom).toBeLessThanOrEqual(metrics.viewportHeight + 2);
-    expect(metrics.panelScrollWidth).toBeLessThanOrEqual(metrics.panelClientWidth + 1);
+    expect(metrics.panelScrollWidth, `${viewport.label} overflow: ${JSON.stringify(metrics.overflowingChildren)}`)
+      .toBeLessThanOrEqual(metrics.panelClientWidth + 1);
     if (viewport.width <= 844) {
       for (const button of metrics.buttons) {
         expect(button.width).toBeGreaterThanOrEqual(32);
         expect(button.height).toBeGreaterThanOrEqual(32);
       }
     }
+
+    if (viewport.width <= 430) expect(metrics.actionRowCount).toBeGreaterThan(1);
+    expect(await focusByKeyboard(page, '#add-files')).toBe(true);
+    await page.locator('#add-files').scrollIntoViewIfNeeded();
+    await page.locator('#add-folder').scrollIntoViewIfNeeded();
+    if (viewport.width <= 844) {
+      const touchTargets = await page.evaluate(() => ['#add-files', '#add-folder'].map(selector => {
+        const button = document.querySelector(selector);
+        const rect = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const hitRect = hit?.getBoundingClientRect();
+        return {
+          selector,
+          bounds: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+          reachableAtCenter: !!hit && (hit === button || button.contains(hit)),
+          centerHit: hit ? `${hit.tagName.toLowerCase()}#${hit.id}.${String(hit.className).replace(/\s+/g, '.')}` : 'none',
+          centerHitBounds: hitRect && { left: hitRect.left, right: hitRect.right, top: hitRect.top, bottom: hitRect.bottom }
+        };
+      }));
+      for (const target of touchTargets) {
+        expect(target.reachableAtCenter, `${viewport.label} touch target: ${JSON.stringify(target)}`).toBe(true);
+      }
+    }
+
+    await page.getByRole('button', { name: 'Add Folder' }).click();
+    await expect(page.locator('#toast-container .toast[role="status"]').last())
+      .toHaveText('This browser cannot open a folder here. Choose media files individually, or continue with saved items.');
+    await expect(page.getByRole('button', { name: 'Add Files' })).toBeEnabled();
+    await expectStatusFitsViewport(page);
+    await page.locator('#toast-container').evaluate(container => container.replaceChildren());
+
+    await page.evaluate(() => {
+      Object.defineProperty(document.querySelector('#viewport'), 'requestFullscreen', {
+        configurable: true,
+        value: undefined
+      });
+    });
+    await page.getByRole('button', { name: 'Toggle fullscreen viewport' }).click();
+    await expect(page.locator('#toast-container .toast[role="status"]').last())
+      .toHaveText('Fullscreen is unavailable; playback controls remain on screen.');
+    await expect(page.locator('#btn-play')).toBeEnabled();
+    await expectStatusFitsViewport(page);
+    await page.locator('#toast-container').evaluate(container => container.replaceChildren());
 
     if (viewport.width === 360) {
       await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });

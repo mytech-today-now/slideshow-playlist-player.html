@@ -1034,8 +1034,8 @@ button {
   margin: 3px 0;
 }
 .list-item.virtual-row {
-  height: 78px;
-  min-height: 78px;
+  height: 88px;
+  min-height: 88px;
   margin: 3px 0;
   /* VirtualList already limits DOM rows. Keep controls measurable while a row
      sits just outside the editor viewport, which is required for pointer drag
@@ -1748,6 +1748,10 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
     max-width: 100%;
   }
 }
+@media (max-width: 360px) {
+  .global-settings { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .global-settings__grid { min-width: 0; max-width: 100%; }
+}
 .ipfs-warning-copy p {
   margin: 0 0 10px;
 }
@@ -2123,6 +2127,11 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
   #config-panel { width: 96vw; height: 96vh; max-width: 96vw; max-height: 96vh; }
   .info-modal { width: 96vw; height: 96vh; max-width: 96vw; max-height: 96vh; }
   #library-grid, #list-editor { max-height: 50vh; }
+}
+
+@media (max-height: 560px) {
+  /* A tall sticky toolbar can cover focused controls in a short viewport. */
+  .config-sticky-controls { position: relative; }
 }
 
 /* HD and up (≥1920px): give the dense settings grid more breathing room. */

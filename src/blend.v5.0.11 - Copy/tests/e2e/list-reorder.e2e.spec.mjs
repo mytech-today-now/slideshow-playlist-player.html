@@ -276,13 +276,24 @@ test.describe('list reorder', () => {
     }
   });
 
-  test('keeps row content and focus visible at 320 px and 390 px widths', async ({ page }) => {
+  test('keeps row content and keyboard focus visible across the accessibility viewport matrix', async ({ page }) => {
     const row = page.locator('#list-editor .list-item[data-id="seed-0"]');
     const select = row.getByRole('button', { name: 'Select one.png in Slideshow' });
+    const viewports = [
+      { width: 320, height: 480 },
+      { width: 360, height: 800 },
+      { width: 375, height: 667 },
+      { width: 390, height: 844 },
+      { width: 430, height: 932 },
+      { width: 768, height: 1024 },
+      { width: 1024, height: 768 },
+      { width: 1280, height: 720 }
+    ];
 
-    for (const width of [320, 390]) {
-      await page.setViewportSize({ width, height: 900 });
+    for (const { width, height } of viewports) {
+      await page.setViewportSize({ width, height });
       await expect(row).toBeVisible();
+      await row.scrollIntoViewIfNeeded();
       const geometry = await row.evaluate(element => {
         const rowRect = element.getBoundingClientRect();
         const children = Array.from(element.children).filter(child => getComputedStyle(child).position !== 'absolute');
@@ -303,7 +314,7 @@ test.describe('list reorder', () => {
 
       await row.focus();
       await page.keyboard.press('Tab');
-      await expect(select).toBeFocused();
+      await expect(select, `keyboard focus on the row selection control at ${width}×${height}`).toBeFocused();
       const focusStyle = await select.evaluate(element => {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
