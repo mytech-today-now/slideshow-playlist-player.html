@@ -373,7 +373,8 @@ function snapshotMatches(provider, before, current) {
   return before.head === current.head && (!before.exists || before.text === current.text);
 }
 
-export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis.fetch } = {}) {
+export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis.fetch, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+  const requestTimeoutMs = Math.min(REQUEST_TIMEOUT_MS, Math.max(1, Number(timeoutMs) || REQUEST_TIMEOUT_MS));
   let sessionCredential = null;
   let activeConnection = null;
   let uncertainSubmission = null;
@@ -424,14 +425,14 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
 
   async function getBranchHead(settings, token) {
     if (settings.provider === 'github') {
-      const request = await requestApi(fetchImpl, settings.provider, githubRefUrl(settings), token, { allowNotFound: true });
+      const request = await requestApi(fetchImpl, settings.provider, githubRefUrl(settings), token, { allowNotFound: true, timeoutMs: requestTimeoutMs });
       if (request.response.status === 404) {
         request.finish();
         fail('branch_not_found');
       }
       return parseGitHubRef(await request.readText(), settings.branch);
     }
-    const request = await requestApi(fetchImpl, settings.provider, bitbucketBranchesUrl(settings), token, { allowNotFound: true });
+    const request = await requestApi(fetchImpl, settings.provider, bitbucketBranchesUrl(settings), token, { allowNotFound: true, timeoutMs: requestTimeoutMs });
     if (request.response.status === 404) {
       request.finish();
       fail('branch_not_found');
@@ -441,7 +442,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
 
   async function getRemoteFile(settings, token, head) {
     const url = settings.provider === 'github' ? githubFileUrl(settings) : bitbucketFileUrl(settings, head);
-    const request = await requestApi(fetchImpl, settings.provider, url, token, { allowNotFound: true });
+    const request = await requestApi(fetchImpl, settings.provider, url, token, { allowNotFound: true, timeoutMs: requestTimeoutMs });
     if (request.response.status === 404) {
       request.finish();
       return { exists: false, sha: null, text: null, head };
@@ -475,7 +476,7 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
       if (!token) fail('token_required');
 
       const repositoryUrl = `${repoBase(settings, settings.provider)}`;
-      const repositoryRequest = await requestApi(fetchImpl, settings.provider, repositoryUrl, token);
+      const repositoryRequest = await requestApi(fetchImpl, settings.provider, repositoryUrl, token, { timeoutMs: requestTimeoutMs });
       const visibility = parseRepositoryVisibility(await repositoryRequest.readText(128_000), settings.provider);
       const head = await getBranchHead(settings, token);
       sessionCredential = { provider: settings.provider, token };
@@ -577,7 +578,8 @@ export function createGitPlaylistClient({ storage = null, fetchImpl = globalThis
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
-            write: true
+            write: true,
+            timeoutMs: requestTimeoutMs
           });
           let result;
           try { result = parseJson(await request.readText(128_000)); }

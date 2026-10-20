@@ -11219,6 +11219,8 @@ function gitPlaylistSettingsChanged() {
 
 async function readGitPlaylist() {
   if (gitPlaylistBusy || !gitPlaylistConnection || !gitPlaylistSettings) return;
+  const readButton = $('#git-playlist-read');
+  const restoreReadFocus = document.activeElement === readButton;
   setGitPlaylistBusy(true);
   clearGitPlaylistReadResult();
   setGitPlaylistStatus('Reading and validating the remote playlist…', 'loading');
@@ -11238,9 +11240,20 @@ async function readGitPlaylist() {
       : 'Remote playlist read and validated. Import it into Blend only if you choose the separate import action below.', 'ready');
     focusGitPlaylistConfigHeading('#git-playlist-read-title');
   } catch (error) {
-    setGitPlaylistStatus(gitPlaylistErrorMessage(error), 'error');
+    if (!(error instanceof GitPlaylistError)) {
+      const provider = ['github', 'bitbucket'].includes(gitPlaylistSettings?.provider)
+        ? gitPlaylistSettings.provider
+        : 'unknown';
+      log.warn('[git-playlist] unexpected read failure', {
+        operation: 'playlist_read',
+        provider,
+        errorType: error instanceof Error ? 'Error' : 'non_error'
+      });
+    }
+    setGitPlaylistStatus('The remote playlist could not be read. Check the repository and read permission, then retry.', 'error');
   } finally {
     setGitPlaylistBusy(false);
+    if (restoreReadFocus && document.activeElement === document.body) readButton?.focus();
   }
 }
 

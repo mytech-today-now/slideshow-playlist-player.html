@@ -1,8 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { BlendAppPage } from './support/blend-app-page.mjs';
-import { formatSanitizedProviderDiagnostic } from '../integration/git-playlist-provider-diagnostics.js';
+import {
+  BITBUCKET_READ_ONLY_SCOPE_CONFIRMATION,
+  formatBitbucketReadSmokeResult,
+  isBitbucketReadSmokeConfigured,
+  formatSanitizedProviderDiagnostic
+} from '../integration/git-playlist-provider-diagnostics.js';
 
 const NOT_RUN_MESSAGE = 'Provider verification was not run. Local playlist edits remain saved; inspect the disposable repository before retrying a publish.';
+const BITBUCKET_NOT_RUN_MESSAGE = 'Bitbucket read-only verification was not run. No provider request was made.';
 const FIXTURE_PATH = 'blend-smoke/playlist.json';
 const PRIVATE_REPOSITORY_PREFIX = 'blend-smoke-';
 test.describe.configure({ retries: 0 });
@@ -28,27 +34,40 @@ function bitbucketConfig() {
   const branch = process.env.BLEND_BITBUCKET_SMOKE_BRANCH || 'main';
   const token = process.env.BLEND_BITBUCKET_SMOKE_TOKEN || '';
   const confirmation = process.env.BLEND_BITBUCKET_SMOKE_CONFIRM || '';
-  const expectedConfirmation = `I_CONFIRM_DISPOSABLE_PRIVATE_REPOSITORY:${owner}/${repository}`;
-  const repositoryIsDisposable = repository.toLowerCase().startsWith(PRIVATE_REPOSITORY_PREFIX);
+  const scopeConfirmation = process.env.BLEND_BITBUCKET_SMOKE_SCOPE_CONFIRM || '';
+  const scopeConfirmed = scopeConfirmation === BITBUCKET_READ_ONLY_SCOPE_CONFIRMATION;
   return {
-    ready: !!token && !!owner && repositoryIsDisposable && confirmation === expectedConfirmation,
+    ready: isBitbucketReadSmokeConfigured({
+      workspace: owner,
+      repository,
+      token,
+      confirmation,
+      scopeConfirmation
+    }),
     settings: { provider: 'bitbucket', owner, repository, branch, path: FIXTURE_PATH },
-    token
+    token,
+    scopeConfirmed
   };
 }
 
 const github = githubConfig();
 const bitbucket = bitbucketConfig();
-if (!github.ready || !bitbucket.ready) process.stdout.write(`${NOT_RUN_MESSAGE}\n`);
+if (!github.ready) process.stdout.write(`${NOT_RUN_MESSAGE}\n`);
+if (!bitbucket.ready) {
+  process.stdout.write(`${BITBUCKET_NOT_RUN_MESSAGE}\n`);
+  process.stdout.write(`Bitbucket read-only smoke result: ${formatBitbucketReadSmokeResult({ errorCode: 'configuration_incomplete' })}\n`);
+}
 
 function smokePageFunction() {
   return async ({ provider, token, settings, githubWriteAuthorized }) => {
     const allowedCodes = new Set([
       'authentication_failed', 'branch_not_found', 'conditional_write_unavailable', 'disposable_confirmation_required',
-      'empty_fixture_playlist', 'file_not_found', 'network_or_cors_error', 'permission_denied', 'provider_unavailable',
-      'provider_request_failed', 'publish_not_confirmed', 'rate_limited', 'readback_mismatch', 'remote_conflict',
+      'empty_fixture_playlist', 'file_not_found', 'invalid_remote_playlist', 'invalid_utf8', 'malformed_provider_response',
+      'fetch_unavailable', 'invalid_provider', 'invalid_repository_settings', 'network_or_cors_error',
+      'permission_denied', 'provider_unavailable', 'provider_request_failed', 'publish_not_confirmed',
+      'rate_limited', 'readback_mismatch', 'remote_conflict', 'response_too_large',
       'remote_reconciliation_required', 'request_timeout', 'repository_not_private', 'repository_or_file_not_found',
-      'stale_conflict_missing', 'unsafe_playlist_content', 'write_outcome_uncertain'
+      'stale_conflict_missing', 'streaming_response_required', 'unsafe_playlist_content', 'write_outcome_uncertain'
     ]);
     const [{ createGitPlaylistClient, serializeRemotePlaylist }, { createSanitizedProviderFetch, formatSanitizedProviderDiagnostic }] = await Promise.all([
       import('/git-playlist-storage.js'),
@@ -235,21 +254,32 @@ test.describe('opt-in GitHub live smoke', () => {
 });
 
 test.describe('opt-in Bitbucket live smoke', () => {
-  test.skip(!bitbucket.ready, NOT_RUN_MESSAGE);
+  test.skip(!bitbucket.ready, BITBUCKET_NOT_RUN_MESSAGE);
 
-  test('verifies a disposable private repository read only', async ({ page, browser }) => {
+  test('verifies a disposable private repository read only', async ({ page }) => {
     test.setTimeout(300000);
     const report = await runSmoke(page, bitbucket, false);
     printDiagnostics(report);
-    process.stdout.write(`Bitbucket read-only smoke result: ${JSON.stringify({
-      provider: report.provider,
-      browser: browser.browserType().name(),
-      browserVersion: browser.version(),
+    const resultText = formatBitbucketReadSmokeResult({
+      configured: true,
+      branch: bitbucket.settings.branch,
+      scopeConfirmed: bitbucket.scopeConfirmed,
+      checkedAt: new Date().toISOString(),
       outcome: report.outcome,
-      visibility: report.visibility,
       readVerified: report.readVerified,
       errorCode: report.errorCode
-    })}\n`);
+    });
+    process.stdout.write(`Bitbucket read-only smoke result: ${resultText}\n`);
+    const result = JSON.parse(resultText);
+    expect(result).toMatchObject({
+      provider: report.provider,
+      branch: bitbucket.settings.branch,
+      scope: 'Repository Read (operator-confirmed)',
+      status: 'success',
+      readVerified: report.readVerified,
+      errorCode: null
+    });
+    expect(Number.isFinite(Date.parse(result.checkedAt))).toBe(true);
     expect(report.provider).toBe('bitbucket');
     expect(report.visibility).toBe('private');
     expect(report.readVerified).toBe(true);

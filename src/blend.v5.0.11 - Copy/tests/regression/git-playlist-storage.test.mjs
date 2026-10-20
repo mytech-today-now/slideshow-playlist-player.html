@@ -108,7 +108,7 @@ function githubFetch({ privateRepo = false, fileText = playlistDocument(), fileS
   return { calls, fetchImpl };
 }
 
-function bitbucketFetch({ privateRepo = true, fileText = playlistDocument(), head = SHA_A, onPost = null } = {}) {
+function bitbucketFetch({ privateRepo = true, fileText = playlistDocument(), head = SHA_A, onPost = null, fileResponse = null } = {}) {
   const calls = [];
   const fetchImpl = async (urlValue, options) => {
     const url = new URL(urlValue);
@@ -121,6 +121,7 @@ function bitbucketFetch({ privateRepo = true, fileText = playlistDocument(), hea
       return new Response(JSON.stringify({ values: [{ name: 'main', target: { hash: head } }] }), { status: 200 });
     }
     if (url.pathname === `/2.0/repositories/blend-workspace/playlists/src/${head}/playlists/ambient.json` && options.method === 'GET') {
+      if (fileResponse) return fileResponse({ url, options, calls });
       return fileText == null ? new Response('not found', { status: 404 }) : new Response(fileText, { status: 200 });
     }
     if (url.pathname === '/2.0/repositories/blend-workspace/playlists/src' && options.method === 'POST') {
@@ -390,6 +391,67 @@ test('Bitbucket reads use the filtered branch head and raw UTF-8 source endpoint
   const file = calls.find(call => call.url.pathname.includes(`/src/${SHA_A}/`));
   assert.ok(file);
   assertApiOptions(file);
+});
+
+test('Bitbucket denied, missing, malformed, and oversized reads return stable sanitized errors without writes', async () => {
+  const deniedCases = [
+    { status: 401, code: 'authentication_failed' },
+    { status: 403, code: 'permission_denied' },
+    { status: 404, code: 'file_not_found' }
+  ];
+  for (const { status, code } of deniedCases) {
+    const sentinel = `private response body ${TOKEN}`;
+    const { calls, fetchImpl } = bitbucketFetch({
+      fileResponse: () => new Response(sentinel, { status })
+    });
+    const client = createGitPlaylistClient({ fetchImpl });
+    await connectBitbucket(client);
+    await assert.rejects(client.readPlaylist(settings('bitbucket')), error => {
+      assert.equal(error.code, code);
+      assert.equal(error.message.includes(TOKEN), false);
+      assert.equal(error.message.includes(sentinel), false);
+      return true;
+    });
+    assert.ok(calls.every(call => call.options.method === 'GET'));
+  }
+
+  for (const [fileText, code] of [
+    [`malformed private body ${TOKEN}`, 'invalid_remote_playlist'],
+    ['x'.repeat(1_000_001), 'response_too_large']
+  ]) {
+    const { calls, fetchImpl } = bitbucketFetch({ fileText });
+    const client = createGitPlaylistClient({ fetchImpl });
+    await connectBitbucket(client);
+    await assert.rejects(client.readPlaylist(settings('bitbucket')), error => {
+      assert.equal(error.code, code);
+      assert.equal(error.message.includes(TOKEN), false);
+      assert.equal(error.message.includes('malformed private body'), false);
+      return true;
+    });
+    assert.ok(calls.every(call => call.options.method === 'GET'));
+  }
+});
+
+test('Bitbucket playlist read timeout maps to a stable error without a write request', async () => {
+  const { calls, fetchImpl: baseFetch } = bitbucketFetch();
+  const fetchImpl = async (urlValue, options) => {
+    const url = new URL(urlValue);
+    if (url.pathname.includes('/src/') && options.method === 'GET') {
+      calls.push({ url, options });
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException(`private ${TOKEN}`, 'AbortError')), { once: true });
+      });
+    }
+    return baseFetch(urlValue, options);
+  };
+  const client = createGitPlaylistClient({ fetchImpl, timeoutMs: 5 });
+  await connectBitbucket(client);
+  await assert.rejects(client.readPlaylist(settings('bitbucket')), error => {
+    assert.equal(error.code, 'request_timeout');
+    assert.equal(error.message.includes(TOKEN), false);
+    return true;
+  });
+  assert.ok(calls.every(call => call.options.method === 'GET'));
 });
 
 test('remote reads reject malformed and oversized files without exposing raw content', async () => {

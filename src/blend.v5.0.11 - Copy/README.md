@@ -415,6 +415,8 @@ Create a harmless fixture with one public HTTPS media URL, for example:
 
 Use a GitHub fine-grained token restricted to the disposable repository with Contents read and write. Use a Bitbucket repository token with Repository Read only. Enter tokens at a hidden secure prompt in a private PowerShell session; the smoke runner reads them from process environment and does not print them. Set the repository coordinates and exact confirmation for the private repository. GitHub writes require confirmation before any publish; Bitbucket's smoke is read-only.
 
+For Bitbucket, inspect the token settings and confirm it has Repository Read only before setting `BLEND_BITBUCKET_SMOKE_SCOPE_CONFIRM` to `I_CONFIRM_BITBUCKET_REPOSITORY_READ_ONLY_SCOPE`. The smoke records this as an operator-confirmed scope; it does not inspect or certify whether the token has additional permissions.
+
 ```powershell
 function Set-BlendSmokeToken($Name) {
   $secure = Read-Host "Synthetic token for $Name" -AsSecureString
@@ -433,6 +435,7 @@ $env:BLEND_BITBUCKET_SMOKE_WORKSPACE = 'YOUR_BITBUCKET_WORKSPACE'
 $env:BLEND_BITBUCKET_SMOKE_REPOSITORY = 'blend-smoke-bitbucket-unique'
 $env:BLEND_BITBUCKET_SMOKE_BRANCH = 'main'
 $env:BLEND_BITBUCKET_SMOKE_CONFIRM = "I_CONFIRM_DISPOSABLE_PRIVATE_REPOSITORY:$($env:BLEND_BITBUCKET_SMOKE_WORKSPACE)/$($env:BLEND_BITBUCKET_SMOKE_REPOSITORY)"
+$env:BLEND_BITBUCKET_SMOKE_SCOPE_CONFIRM = 'I_CONFIRM_BITBUCKET_REPOSITORY_READ_ONLY_SCOPE'
 Set-BlendSmokeToken BLEND_BITBUCKET_SMOKE_TOKEN
 
 npm run test:git-provider-smoke
@@ -440,7 +443,7 @@ npm run test:git-provider-smoke
 
 The GitHub check connects and reads the fixture, publishes a harmless synthetic list, reads it back, checks that a stale review is rejected, then restores and verifies the original validated fixture. Cleanup restores file content but cannot erase commits from Git history. If a publish response is uncertain, the smoke reads the repository before any restoration attempt; it stops if the remote content is not one of the known smoke states. Inspect the disposable repository before retrying if cleanup cannot be verified. The Bitbucket check verifies only repository, branch, and playlist reads; it sends no write request.
 
-Output contains only provider, operation label, method, HTTP status, and a stable sanitized outcome. It omits headers, URLs, repository names or paths, response bodies, and token values. The fixture web server does not inherit smoke environment variables. No account or token is configured by default, so both provider checks are reported as skipped. To clear the current PowerShell session after a run, remove the `BLEND_GITHUB_SMOKE_*` and `BLEND_BITBUCKET_SMOKE_*` environment variables. After verification, delete only the disposable repositories and revoke only the synthetic tokens.
+Request diagnostics contain only provider, operation label, method, HTTP status, and a stable sanitized outcome. The Bitbucket summary adds the selected branch, operator-confirmed Repository Read scope, UTC check time, sanitized status (`success`, `failed`, `skipped`, or `unknown`), and a stable error code when available. It omits headers, URLs, repository coordinates and paths, response bodies, and token values. The fixture web server does not inherit smoke environment variables. No account or token is configured by default, so both provider checks are reported as skipped and no provider request is made. To clear the current PowerShell session after a run, remove the `BLEND_GITHUB_SMOKE_*` and `BLEND_BITBUCKET_SMOKE_*` environment variables. After verification, delete only the disposable repositories and revoke only the synthetic tokens.
 
 To exercise a read-only GitHub token manually, scope a separate synthetic token to Contents read for only its disposable repository, connect with it in Blend, review a harmless playlist, and confirm that publish returns a sanitized permission error without changing the repository. Review the token's scope in the provider settings; this smoke does not inspect or certify account-wide permissions. Do not run a least-privilege experiment against a production playlist.
 
