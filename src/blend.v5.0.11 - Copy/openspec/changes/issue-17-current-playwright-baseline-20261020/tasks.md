@@ -17,6 +17,14 @@
 - [x] 3.1 Updated Beads `blend-6dw` with the current supported run, serial trace triage, report verification, and regression evidence; verified the record and closed it after acceptance.
 - [x] 3.2 Strict validation passed; reviewed the final diff and status. Historical reports and pre-existing Issue 16 work remain untouched.
 
+## 4. Report issue-07 current-tree revalidation (2026-10-21)
+
+- [x] 4.1 Recheck the dirty worktree at revision `92e08696fe45b4b651661c20d68803add2433d21`; record Node `v24.14.1`, Playwright `1.63.0`, Chromium `153.0.8010.12`, Firefox `155.0`, and WebKit `26.6`. `npm run check` exited 0, `npm run test:regression` passed 373/373, and `npx playwright test --config=playwright.config.mjs --list` exited 0 with 318 discovered tests in 46 files (256 Chromium, 31 Firefox, 31 WebKit).
+- [x] 4.2 The process-enabled `npm run test:e2e` executed all 318 tests in 9.2 minutes: 303 passed, 3 failed, and 12 skipped. Per project (passed/failed/skipped): Chromium 249/3/4, Firefox 28/0/3, WebKit 26/0/5. The three failures were Chromium assertions in two `missing-media-relink.e2e.spec.mjs` cases and one `player-controls.e2e.spec.mjs` case. No opt-in GitHub or Bitbucket smoke variables were set.
+- [x] 4.3 The full HTML report at `%TEMP%\blend-issue07-full-process-bc16a59a7714469c9267c8feb2a6714a\playwright-report` passed `node tests/e2e/verify-playwright-report.mjs`: 5 files, no credential-like values or private local paths. The separate default-sandbox attempt stopped with `spawn EPERM` before discovery and ran zero assertions.
+- [x] 4.4 Each of the three full-run failures passed a separate one-test Chromium rerun with `--workers=1 --trace=on`; none reproduced in isolation. The trace outputs remain in unique temporary directories. No app behavior or E2E assertion was changed in response to these failures.
+- [x] 4.5 Updated the README and its workflow-contract regression to link the current evidence to `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-07`; updated the exact Beads record `blend-6dw`; reran `npm run check`, `npm run test:regression`, and Playwright discovery; strict OpenSpec validation passed.
+
 ## Workflow follow-up
 
-- Keep this change active until a process-enabled full-suite result resolves the current browser baseline; archive after acceptance if required.
+- The current-tree browser baseline is now known and non-green. Keep the three non-reproduced full-run failures documented as flaky evidence; do not describe the run as a green suite or release pass.

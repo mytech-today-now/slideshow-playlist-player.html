@@ -592,6 +592,70 @@ test('accepted GitHub write with a lost response is reconciled before cleanup an
   assert.equal(restored.playlist.items[0].sourceUrl, original.playlist.items[0].sourceUrl);
 });
 
+test('GitHub cleanup stops on a conflicting remote change and keeps diagnostics sanitized', async () => {
+  let remoteText = playlistDocument();
+  let remoteSha = SHA_A;
+  let putCalls = 0;
+  let submittedText = '';
+  const diagnostics = [];
+  const fallback = githubFetch({ privateRepo: true });
+  const rawFetch = async (urlValue, options) => {
+    const url = new URL(urlValue);
+    if (url.pathname === '/repos/blend-team/playlists/contents/playlists/ambient.json') {
+      if (options.method === 'PUT') {
+        putCalls += 1;
+        submittedText = Buffer.from(JSON.parse(options.body).content, 'base64').toString('utf8');
+        remoteText = submittedText;
+        remoteSha = SHA_B;
+        const error = new Error('private response body sentinel');
+        error.name = 'AbortError';
+        throw error;
+      }
+      return githubContents(remoteText, remoteSha);
+    }
+    return fallback.fetchImpl(urlValue, options);
+  };
+  const fetchImpl = createSanitizedProviderFetch({
+    provider: 'github',
+    token: TOKEN,
+    fetchImpl: rawFetch,
+    onDiagnostic: event => diagnostics.push(event)
+  });
+  const client = createGitPlaylistClient({ fetchImpl });
+  await connectGithub(client);
+
+  const original = await client.readPlaylist(settings());
+  const candidateText = serializeRemotePlaylist([
+    { sourceUrl: 'https://media.example.org/disposable.mp3', name: 'Synthetic candidate', type: 'audio' }
+  ]);
+  const candidateReview = await client.preparePublish(settings(), candidateText);
+  await assert.rejects(client.publish(candidateReview), error => error.code === 'write_outcome_uncertain');
+  assert.equal(submittedText, candidateReview.text, 'the accepted write must match the reviewed document');
+
+  await client.readPlaylist(settings());
+  const cleanupReview = await client.preparePublish(settings(), original.text);
+  assert.equal(cleanupReview.text, original.text, 'cleanup must review the original validated fixture');
+
+  const externalText = playlistDocument({ name: 'Concurrent external playlist sentinel' });
+  remoteText = externalText;
+  remoteSha = SHA_C;
+  await assert.rejects(client.publish(cleanupReview), error => error.code === 'remote_conflict');
+  assert.equal(putCalls, 1, 'cleanup must stop without publishing over a concurrent remote change');
+
+  const observed = await client.readPlaylist(settings());
+  assert.equal(observed.playlist.name, 'Concurrent external playlist sentinel');
+  const diagnosticText = diagnostics.map(formatSanitizedProviderDiagnostic).join('\n');
+  for (const privateValue of [
+    TOKEN,
+    '/repos/blend-team/playlists/contents/playlists/ambient.json',
+    'private response body sentinel',
+    'Concurrent external playlist sentinel'
+  ]) {
+    assert.equal(diagnosticText.includes(privateValue), false);
+  }
+  assert.equal(diagnostics.every(event => Object.keys(event).sort().join(',') === 'method,operation,outcome,provider,status'), true);
+});
+
 test('GitHub creates a missing playlist without a stale SHA', async () => {
   let sentBody;
   const { fetchImpl } = githubFetch({ fileText: null, onPut: ({ options }) => {

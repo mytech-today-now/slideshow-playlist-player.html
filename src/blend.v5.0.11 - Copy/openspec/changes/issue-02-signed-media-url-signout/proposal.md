@@ -36,4 +36,5 @@ Affected code includes `app.js`, `supabase-config.js`, the signed URL cleanup he
 ## Tracking
 
 - Beads: `blend-ag8`
-- Source report: `ai-prompts/pre-mortem-2026-10-17-21-05-36.html#issue-02`
+- Original source report: `ai-prompts/pre-mortem-2026-10-17-21-05-36.html#issue-02`
+- Current review: `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-02` (stable article ID `issue-02`; title: A copied signed Storage URL can outlive local sign-out)

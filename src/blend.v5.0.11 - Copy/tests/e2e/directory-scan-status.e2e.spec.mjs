@@ -128,6 +128,31 @@ async function installDirectoryPicker(page, mode) {
       window.__directoryEntriesYielded = () => yieldedEntries;
       window.showDirectoryPicker = async () => root;
       return;
+    } else if (scanMode.startsWith('entry-boundary:')) {
+      const availableEntries = Number(scanMode.slice('entry-boundary:'.length));
+      const mediaBeforeCutoff = makeSyntheticFiles(2);
+      const hasEntryAfterCutoff = availableEntries > 2_000;
+      const unsupportedCount = availableEntries - mediaBeforeCutoff.length - 2 - Number(hasEntryAfterCutoff);
+      let yieldedEntries = 0;
+      const tracked = entry => {
+        yieldedEntries += 1;
+        return entry;
+      };
+      const unsupportedBranch = makeDirectory('UnsupportedEntries', async function* () {
+        for (let index = 0; index < unsupportedCount; index += 1) {
+          yield tracked(makeFile(`Unsupported-${String(index).padStart(5, '0')}.txt`, 'unsupported'));
+        }
+      });
+      root = makeDirectory('EntryBoundaryRoot', async function* () {
+        for (const file of mediaBeforeCutoff) yield tracked(file);
+        yield tracked(unsupportedBranch);
+        yield tracked(makeFile('AtEntryCeiling.mp4', 'at-entry-ceiling'));
+        if (hasEntryAfterCutoff) yield tracked(makeFile('AfterEntryCeiling.mp4', 'after-entry-ceiling'));
+      });
+      window.__directoryEntriesAvailable = () => availableEntries;
+      window.__directoryEntriesYielded = () => yieldedEntries;
+      window.showDirectoryPicker = async () => root;
+      return;
     } else if (scanMode === 'limit-recovery') {
       const importedBranch = makeSixLevelBranch('Imported', makeSyntheticFiles(250));
       const pendingBranch = makeSixLevelBranch('Pending', [makeFile('Synthetic-00250.mp4', 'synthetic')]);
@@ -550,7 +575,7 @@ for (const count of [1_000, 10_000]) {
     const status = page.locator('.toast-directory-scan');
     const reachedEntryLimit = count > LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES;
     if (reachedEntryLimit) {
-      await expect(status).toContainText(`Folder scan stopped after visiting ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES} entries.`, { timeout: 30000 });
+      await expect(status).toContainText(`Folder scan reached its ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit.`, { timeout: 30000 });
       await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
     } else {
       await expect(status).toContainText(`${count} supported media files found; 250 added, 0 skipped (0 already present), ${count - 250} pending.`, { timeout: 30000 });
@@ -581,7 +606,7 @@ test('a folder scan stops at the total entry budget and preserves its committed 
   await page.locator('#add-folder').click();
   const status = page.locator('#config-panel > .toast-directory-scan');
   await expect(status).toHaveAttribute('role', 'status');
-  await expect(status).toContainText(`Folder scan stopped after visiting ${entryLimit} entries. Later entries were not visited.`);
+  await expect(status).toContainText(`Folder scan reached its ${entryLimit}-entry limit. Entries beyond that point, if any, were not visited.`);
   await expect(status).toContainText('251 supported media files found within the visited entries; 250 added, 0 skipped (0 already present), 1 pending within the visited entries.');
   const chooseSmaller = status.getByRole('button', { name: 'Choose smaller folder' });
   await expect(chooseSmaller).toHaveCount(1);
@@ -617,6 +642,51 @@ test('a folder scan stops at the total entry budget and preserves its committed 
   expect(persisted.library).toHaveLength(250);
   expect(new Set(persisted.library.map(item => item.id)).size).toBe(250);
 });
+
+for (const availableEntries of [1_999, 2_000, 2_001]) {
+  test(`issue-03 mixed folder scan handles exactly ${availableEntries} available entries`, async ({ page }) => {
+    test.setTimeout(60000);
+    const entryLimit = LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES;
+    const isPartial = availableEntries >= entryLimit;
+    const expectedImportedNames = ['Synthetic-00000.mp4', 'Synthetic-00001.mp4', 'AtEntryCeiling.mp4'];
+    await page.setViewportSize({ width: 360, height: 800 });
+    await bootApp(page);
+    await installDirectoryPicker(page, `entry-boundary:${availableEntries}`);
+
+    await page.locator('#add-folder').click();
+    const status = page.locator('#config-panel > .toast-directory-scan');
+    if (isPartial) {
+      await expect(status).toContainText(`Folder scan reached its ${entryLimit}-entry limit. Entries beyond that point, if any, were not visited.`, { timeout: 30000 });
+    } else {
+      await page.waitForFunction(() => window.Blend?.state?.library?.size === 3, undefined, { timeout: 30000 });
+    }
+    const scan = await page.evaluate(() => ({
+      availableEntries: window.__directoryEntriesAvailable(),
+      yieldedEntries: window.__directoryEntriesYielded(),
+      library: Array.from(window.Blend.state.library.values(), item => ({ id: item.id, name: item.name }))
+    }));
+    expect(scan.availableEntries).toBe(availableEntries);
+    expect(scan.yieldedEntries).toBe(Math.min(availableEntries, entryLimit));
+    expect(scan.yieldedEntries).toBeLessThanOrEqual(entryLimit);
+    expect(scan.library.map(item => item.name).sort()).toEqual(expectedImportedNames.sort());
+    expect(new Set(scan.library.map(item => item.id)).size).toBe(scan.library.length);
+
+    if (isPartial) {
+      await expect(status).toHaveAttribute('role', 'status');
+      await expect(status).toContainText('3 supported media files found within the visited entries; 3 added, 0 skipped (0 already present), 0 pending within the visited entries.');
+      await expect(status).not.toContainText('AfterEntryCeiling.mp4');
+      await expect(page.getByText('Folder scan complete.', { exact: false })).toHaveCount(0);
+      await expectDirectoryToastFits(page, status);
+    } else {
+      await expect(status).toHaveCount(0);
+      await expect(page.locator('#toast-container')).toContainText('Added 3 items from "EntryBoundaryRoot" (0 already present)');
+    }
+
+    const persisted = await readPersistedFolderImport(page);
+    expect(persisted.library.map(item => item.name).sort()).toEqual(expectedImportedNames.sort());
+    expect(new Set(persisted.library.map(item => item.id)).size).toBe(expectedImportedNames.length);
+  });
+}
 
 test('directory-input folder fallback retains only the limit and offers a smaller-folder recovery', async ({ page }) => {
   test.setTimeout(60000);

@@ -1364,6 +1364,26 @@ function hasStoredSignedUrlExpiry(metadata = {}) {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
+function isExpiredStoredSignedUrl(url, metadata = {}) {
+  return !!url && hasStoredSignedUrlExpiry(metadata) && !isSignedUrlFresh(metadata.signedUrlExpiresAt);
+}
+
+function showPrivateMediaAuthPrompt(expiredSignedUrl = false) {
+  if ((Date.now() - lastAuthPromptAt) <= 4000) return false;
+  lastAuthPromptAt = Date.now();
+  showToast(expiredSignedUrl
+    ? 'This private media link expired. Connect Supabase to refresh access.'
+    : 'Sign in to access private media.', {
+    timeout: 0,
+    role: 'alert',
+    action: {
+      label: expiredSignedUrl ? 'Connect' : 'Sign in',
+      run: () => { void promptSupabaseSignIn(); }
+    }
+  });
+  return true;
+}
+
 function markMediaAuthRequired(item, ref) {
   if (item) item.stale = false;
   if (!ref) return;
@@ -1470,19 +1490,8 @@ async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
       item.metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
       item.metadata.lastStorageError = String(error?.code || error?.message || 'storage_error');
     }
-    if (shouldPromptForAuth(error) && (Date.now() - lastAuthPromptAt) > 4000) {
-      lastAuthPromptAt = Date.now();
-      const expiredLinkMessage = expiredSignedUrl
-        ? 'This private media link expired. Connect Supabase to refresh access.'
-        : 'Sign in to access private media.';
-      showToast(expiredLinkMessage, {
-        timeout: 0,
-        role: 'alert',
-        action: {
-          label: expiredSignedUrl ? 'Connect' : 'Sign in',
-          run: () => { void promptSupabaseSignIn(); }
-        }
-      });
+    if (shouldPromptForAuth(error)) {
+      if (opts.showErrorToast !== false) showPrivateMediaAuthPrompt(expiredSignedUrl);
     } else if (opts.showErrorToast !== false) {
       showToast(error?.code === 'storage_request_timeout' ? STORAGE_REQUEST_TIMEOUT_COPY : (error?.message || 'Could not resolve media URL'), { timeout: 3200 });
     }
@@ -5609,7 +5618,7 @@ function folderImportLimitMessage(found, pending, result) {
 function folderScanEntryLimitMessage(summary, result) {
   const skipped = result.existing + result.skipped;
   const foundNoun = summary.found === 1 ? 'file' : 'files';
-  return `Folder scan stopped after visiting ${summary.scanned} entries. Later entries were not visited. Choose a smaller folder to scan another section. ${summary.found} supported media ${foundNoun} found within the visited entries; ${result.added} added, ${skipped} skipped (${result.existing} already present), ${summary.pending} pending within the visited entries.`;
+  return `Folder scan reached its ${summary.scanned}-entry limit. Entries beyond that point, if any, were not visited. Choose a smaller folder to scan another section. ${summary.found} supported media ${foundNoun} found within the visited entries; ${result.added} added, ${skipped} skipped (${result.existing} already present), ${summary.pending} pending within the visited entries.`;
 }
 
 function showDirectoryScanToast(message, options = {}) {
@@ -5695,7 +5704,7 @@ async function scanAndImportDirectory(dirHandle, options = {}) {
       ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
       : '';
     const entryLimitNotice = summary.entryLimitReached
-      ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; later entries were not visited.`
+      ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; entries beyond that point, if any, were not visited.`
       : '';
     const message = summary.pending
       ? `Folder scan canceled.${skipped}${depthNotice}${entryLimitNotice} ${folderImportCountSummary(summary.found, summary.pending, result)}`
@@ -8608,6 +8617,10 @@ async function loadPlaylistItem(itemRef, useB = false, opts = {}) {
       markRemoteMediaFailure('playlist', item, itemRef, failure);
     } else if (item?.metadata?.lastStorageError === 'auth_required') {
       markMediaAuthRequired(item, itemRef);
+      showPrivateMediaAuthPrompt(isExpiredStoredSignedUrl(
+        remoteUrlForItem(item, itemRef),
+        normalizeStorageMetadata(item, itemRef)
+      ));
     } else {
       item.stale = true;
       itemRef.available = false;
@@ -8735,6 +8748,10 @@ async function loadSlideshowItem(itemRef, withCrossfade = true, opts = {}) {
       markRemoteMediaFailure('slideshow', item, itemRef, failure);
     } else if (item?.metadata?.lastStorageError === 'auth_required') {
       markMediaAuthRequired(item, itemRef);
+      showPrivateMediaAuthPrompt(isExpiredStoredSignedUrl(
+        remoteUrlForItem(item, itemRef),
+        normalizeStorageMetadata(item, itemRef)
+      ));
     } else {
       item.stale = true;
       itemRef.available = false;
@@ -12627,7 +12644,7 @@ async function resolveMissingImports(missing, which) {
     if (summary.status === 'partial') {
       const messages = [];
       if (summary.entryLimitReached) {
-        messages.push(`Missing-media scan stopped after visiting ${summary.scanned} entries. Later entries were not inspected. No saved entries were removed; choose a smaller folder or narrow the search.`);
+        messages.push(`Missing-media scan reached its ${summary.scanned}-entry limit. Entries beyond that point, if any, were not inspected. No saved entries were removed; choose a smaller folder or narrow the search.`);
       }
       if (summary.limitReached) {
         messages.push('This folder contains more media than Blend can scan in one relink pass. No saved entries were removed. Choose a smaller folder or narrow the search.');
@@ -12662,7 +12679,7 @@ async function resolveMissingImports(missing, which) {
         ? ` ${folderDepthLimitNotice(summary.skippedDepthBranches)}`
         : '';
       const entryLimitNotice = summary.entryLimitReached
-        ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; later entries were not inspected.`
+        ? ` The scan reached the ${LOCAL_IMPORT_MAX_DIRECTORY_SCAN_ENTRIES}-entry limit; entries beyond that point, if any, were not inspected.`
         : '';
       const message = `Missing-media scan canceled${stoppedAfter}.${depthNotice}${entryLimitNotice} No saved entries were removed. ${resolvedMessage} from ${summary.found} found media file${summary.found === 1 ? '' : 's'}.`;
       const actions = [{ label: 'Retry scan', run: () => { void resolveMissingImports(missing, which); } }];

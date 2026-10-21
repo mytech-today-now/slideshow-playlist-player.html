@@ -609,7 +609,7 @@ test('a relink scan stops at 2,000 mixed entries, preserves saved rows, and offe
 
   await clickResolve(page, 'playlist');
   const notice = page.locator('.toast-directory-scan');
-  await expect(notice).toContainText(`Missing-media scan stopped after visiting ${entryLimit} entries. Later entries were not inspected.`);
+  await expect(notice).toContainText(`Missing-media scan reached its ${entryLimit}-entry limit. Entries beyond that point, if any, were not inspected.`);
   await expect(notice).toContainText('Resolved 1/2 missing paths from 1 found media file.');
   await expect(notice).toContainText('No saved entries were removed; choose a smaller folder or narrow the search.');
   const chooseSmaller = notice.getByRole('button', { name: 'Choose smaller folder' });

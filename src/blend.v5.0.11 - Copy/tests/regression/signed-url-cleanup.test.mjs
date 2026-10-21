@@ -281,5 +281,6 @@ test('clears expired signed URLs and continues after a media pause failure witho
   assert.deepEqual(operations, ['pause', 'remove:src', 'load', 'image-remove:src']);
   assert.deepEqual(diagnostics, [{ operation: 'pause', errorName: 'TypeError' }]);
   assert.doesNotMatch(JSON.stringify(diagnostics), /pause-error-secret|private\/expired/);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /https?:\/\/|storage\/v1\/object\/sign|[?&]token=/i);
   assert.equal(state.library.get('expired').sourceUrl, null);
 });

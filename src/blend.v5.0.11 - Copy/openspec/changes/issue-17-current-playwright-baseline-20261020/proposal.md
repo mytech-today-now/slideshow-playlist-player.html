@@ -24,4 +24,4 @@ None. Provider reads are an active delta-only capability in the separate Issue 1
 
 ## Impact
 
-This change records verification evidence for `ai-prompts/pre-mortem-2026-10-17-21-05-36.html#issue-17` and includes a minimal correction to the confirmed provider-read retry-focus failure in `app.js`, covered by the existing E2E spec. It does not change persisted data, CI configuration, or provider state. The Beads record is `blend-6dw`.
+This change first recorded verification evidence for `ai-prompts/pre-mortem-2026-10-17-21-05-36.html#issue-17` and includes a minimal correction to the confirmed provider-read retry-focus failure in `app.js`, covered by the existing E2E spec. Its current-tree revalidation is linked to `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-07` (prior source issue 17). It does not change persisted data, CI configuration, or provider state. The Beads record is `blend-6dw`.

@@ -17,6 +17,10 @@ const ACCESS_TOKEN = [
 ].join('.');
 const REFRESH_TOKEN = 'synthetic-browser-refresh-sentinel';
 
+function containsPrivateSignedUrlOrToken(value) {
+  return /\/storage\/v1\/object\/sign\/[^?#\s"'<>]+|[?&]token=[^&#\s"'<>]+/i.test(String(value ?? ''));
+}
+
 async function openAuthDialog(app) {
   await app.openConfig();
   await expect(app.page.locator('#private-media-policy-warning'))
@@ -397,7 +401,7 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   const privateReference = 'supabase://media/private/recovery.png';
   await page.evaluate(reference => {
     const B = window.Blend;
-    const expiredUrl = `${location.origin}/samples/IL.jpeg?token=expired-private-fixture`;
+    const expiredUrl = `${location.origin}/storage/v1/object/sign/media/private/recovery.png?token=expired-private-fixture`;
     const metadata = {
       storageReference: reference,
       storageBucket: 'media',
@@ -435,6 +439,29 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
     await window.Blend.play();
   });
   await expect(page.locator('#toast-container')).toContainText('This private media link expired. Connect Supabase to refresh access.');
+  await expect(page.getByRole('button', { name: 'Connect', exact: true })).toBeVisible();
+  const expiredRecoveryState = await page.evaluate(() => {
+    const B = window.Blend;
+    const containsBearerData = value => /\/storage\/v1\/object\/sign\/[^?#\s"'<>]+|[?&]token=[^&#\s"'<>]+/i.test(String(value ?? ''));
+    const status = document.querySelector('#supabase-auth-status')?.textContent || '';
+    const alert = document.querySelector('[role="alert"]')?.textContent || '';
+    const log = B.log.exportJson();
+    return {
+      storageReference: B.state.slideshow[0]?.metadata?.storageReference,
+      slideshowIndex: B.state.runtime.slideshowIndex,
+      statusContainsBearerData: containsBearerData(status),
+      alertContainsBearerData: containsBearerData(alert),
+      logContainsBearerData: containsBearerData(log)
+    };
+  });
+  expect(expiredRecoveryState.storageReference).toBe(privateReference);
+  expect(expiredRecoveryState.slideshowIndex).toBe(0);
+  expect(expiredRecoveryState.statusContainsBearerData).toBe(false);
+  expect(expiredRecoveryState.alertContainsBearerData).toBe(false);
+  expect(expiredRecoveryState.logContainsBearerData).toBe(false);
+  await page.evaluate(() => window.Blend.flushSaveState());
+  const expiredPersistence = await readPersistedMediaStores(page);
+  expect(containsPrivateSignedUrlOrToken(expiredPersistence)).toBe(false);
   expect(signingRequests).toBe(0);
   await expect(page.locator('#supabase-auth-status')).toHaveText(fallbackCopy);
   await page.waitForFunction(() => document.querySelector('#playlist-layer video')?.currentSrc.startsWith('blob:'));
@@ -662,12 +689,11 @@ test('sign-out clears both cached private playback layers and allows public, loc
     window.Blend.state.library.get('private-video')?.sourceUrl,
     window.Blend.state.slideshow[0]?.sourceUrl
   ]);
-  expect(liveSignedSources.join('\n')).toContain('private-video-copy-sentinel');
-  expect(liveSignedSources.join('\n')).toContain('private-image-copy-sentinel');
+  expect(liveSignedSources.some(source => source?.includes('private-video-copy-sentinel'))).toBe(true);
+  expect(liveSignedSources.some(source => source?.includes('private-image-copy-sentinel'))).toBe(true);
   await page.evaluate(() => window.Blend.flushSaveState());
   const durableBeforeSignOut = await readPersistedMediaStores(page);
-  expect(durableBeforeSignOut).not.toContain('private-video-copy-sentinel');
-  expect(durableBeforeSignOut).not.toContain('private-image-copy-sentinel');
+  expect(containsPrivateSignedUrlOrToken(durableBeforeSignOut)).toBe(false);
   expect(durableBeforeSignOut).toContain('supabase://media/private/playlist.mp4');
   expect(durableBeforeSignOut).toContain('supabase://media/private/slideshow.jpeg');
 
@@ -814,6 +840,8 @@ test('sign-out clears both cached private playback layers and allows public, loc
         available: B.state.slideshow[0].available
       },
       publicUrls: [B.state.playlist[1].sourceUrl, B.state.slideshow[1].sourceUrl],
+      authStatusText: document.querySelector('#supabase-auth-status')?.textContent || '',
+      alertText: document.querySelector('[role="alert"]')?.textContent || '',
       mediaElements: Array.from(document.querySelectorAll('#playlist-layer video, #slideshow-layer video, #slideshow-layer img'))
         .map(element => ({
           tagName: element.tagName,
@@ -847,12 +875,11 @@ test('sign-out clears both cached private playback layers and allows public, loc
   expect(afterSignOut.mediaElements.every(element => !element.sourceAttribute && !element.sourceProperty)).toBe(true);
   expect(afterSignOut.mediaElements.filter(element => element.tagName === 'VIDEO')
     .every(element => element.paused && element.readyState === 0 && element.networkState === 0)).toBe(true);
-  expect(afterSignOut.log).not.toContain('private-video-copy-sentinel');
-  expect(afterSignOut.log).not.toContain('private-image-copy-sentinel');
+  expect(containsPrivateSignedUrlOrToken(`${afterSignOut.authStatusText}\n${afterSignOut.alertText}\n${afterSignOut.body}`)).toBe(false);
+  expect(containsPrivateSignedUrlOrToken(afterSignOut.log)).toBe(false);
   expect(afterSignOut.body).not.toMatch(/signed URLs? (?:were )?revoked/i);
   const durableAfterSignOut = await readPersistedMediaStores(page);
-  expect(durableAfterSignOut).not.toContain('private-video-copy-sentinel');
-  expect(durableAfterSignOut).not.toContain('private-image-copy-sentinel');
+  expect(containsPrivateSignedUrlOrToken(durableAfterSignOut)).toBe(false);
 
   const copiedLinkStatus = await page.evaluate(async url => (await fetch(url)).status, copiedUrl);
   expect(copiedLinkStatus).toBe(200);
@@ -900,7 +927,7 @@ test('sign-out clears both cached private playback layers and allows public, loc
     elements.some(element => element.currentSrc.includes('private-media-retry-1')))).toBe(true);
   await page.evaluate(() => window.Blend.flushSaveState());
   const durableAfterRetry = await readPersistedMediaStores(page);
-  expect(durableAfterRetry).not.toContain('private-media-retry-1');
+  expect(containsPrivateSignedUrlOrToken(durableAfterRetry)).toBe(false);
   expect(durableAfterRetry).toContain('supabase://media/private/playlist.mp4');
 });
 
@@ -960,9 +987,16 @@ test('sign-out offers an accessible retry when local media cleanup fails without
     };
   }, { sourceUrl, reference });
   await page.evaluate(() => window.Blend.flushSaveState());
-  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
-
+  expect(containsPrivateSignedUrlOrToken(await readPersistedMediaStores(page))).toBe(false);
   await app.openConfig();
+  const playbackStateBeforeSignOut = await page.evaluate(() => {
+    const B = window.Blend;
+    return [
+      B.state.runtime.playlistIndex ?? null,
+      B.state.runtime.slideshowIndex ?? null,
+      B.state.slideshow[0]?.id ?? null
+    ];
+  });
   await page.locator('#supabase-sign-out').click();
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByRole('alert')).toContainText(incompleteCopy);
@@ -977,25 +1011,38 @@ test('sign-out offers an accessible retry when local media cleanup fails without
   expect(retryBox.x).toBeGreaterThanOrEqual(0);
   expect(retryBox.x + retryBox.width).toBeLessThanOrEqual(375);
 
-  const failedCleanupState = await page.evaluate(() => ({
-    mediaSource: document.querySelector('#signed-cleanup-failure-probe')?.getAttribute('src'),
-    itemSource: window.Blend.state.library.get('cleanup-failure')?.sourceUrl,
-    reference: window.Blend.state.library.get('cleanup-failure')?.metadata?.storageReference,
-    log: window.Blend.log.exportJson()
-  }));
-  expect(failedCleanupState.mediaSource).toContain('cleanup-failure-sentinel');
-  expect(failedCleanupState.itemSource).toBeNull();
+  const failedCleanupState = await page.evaluate(expectedUrl => {
+    const B = window.Blend;
+    const diagnostics = [
+      document.querySelector('#supabase-auth-status')?.textContent || '',
+      document.querySelector('.toast-private-media-signout')?.textContent || '',
+      B.log.exportJson()
+    ].join('\n');
+    return {
+      mediaSourceRetained: document.querySelector('#signed-cleanup-failure-probe')?.getAttribute('src') === expectedUrl,
+      itemSourceCleared: B.state.library.get('cleanup-failure')?.sourceUrl === null,
+      reference: B.state.library.get('cleanup-failure')?.metadata?.storageReference,
+      diagnosticsContainBearerData: /\/storage\/v1\/object\/sign\/[^?#\s"'<>]+|[?&]token=[^&#\s"'<>]+/i.test(diagnostics),
+      playbackState: [
+        B.state.runtime.playlistIndex ?? null,
+        B.state.runtime.slideshowIndex ?? null,
+        B.state.slideshow[0]?.id ?? null
+      ]
+    };
+  }, sourceUrl);
+  expect(failedCleanupState.mediaSourceRetained).toBe(true);
+  expect(failedCleanupState.itemSourceCleared).toBe(true);
   expect(failedCleanupState.reference).toBe(reference);
-  expect(failedCleanupState.log).not.toContain('cleanup-failure-sentinel');
-  expect(failedCleanupState.log).not.toContain('private/failure.jpeg');
-  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
+  expect(failedCleanupState.diagnosticsContainBearerData).toBe(false);
+  expect(failedCleanupState.playbackState).toEqual(playbackStateBeforeSignOut);
+  expect(containsPrivateSignedUrlOrToken(await readPersistedMediaStores(page))).toBe(false);
 
   await retryButton.focus();
   await expect(retryButton).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#toast-container')).toContainText(normalCopy);
   expect(await page.locator('#signed-cleanup-failure-probe').getAttribute('src')).toBeNull();
-  expect(await readPersistedMediaStores(page)).not.toContain('cleanup-failure-sentinel');
+  expect(containsPrivateSignedUrlOrToken(await readPersistedMediaStores(page))).toBe(false);
 });
 
 test('sign-out cancels pending private signing and ignores its late response', async ({ page }) => {

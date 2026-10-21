@@ -7,7 +7,7 @@
 
 ## 2. Complete the provider matrix record
 
-- [x] 2.1 Extend the opt-in staging script to check and report all six principal/object outcomes using aliases and HTTP status codes only; verify the no-confirmation path reports `SKIP` before reading credentials or sending requests.
+- [x] 2.1 Extend the opt-in staging script to check and report all six principal/object outcomes using aliases and HTTP status codes only; verify absent and inexact confirmation report `SKIP` before reading credentials or sending requests.
 - [x] 2.2 Update the verification record and README to explain the app share gate, all six staging outcomes, owner-reviewed policy and rollback exports, and the distinction between local mock evidence and provider proof.
 
 ## 3. Verify and report
@@ -22,6 +22,15 @@
 - `npm run test:storage-policy-staging`: skipped before credential access or network requests because the exact confirmation was absent.
 - `openspec validate issue-01-private-storage-authorization-gate --strict`: passed.
 - The in-app Browser was unavailable; the authorized Playwright fallback exercised the local HTTP fixture. Private share showed the expected alert without opening the dialog; public-only share opened with only the referenced public item. No relevant console errors were observed.
+
+### 2026-10-20 report-linked follow-up
+
+Finding: `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-01`: **Private Storage authorization remains an unpassed release gate**.
+
+- `node --test --test-isolation=none --test-name-pattern="staging command skips" tests/regression/storage-policy-contract.test.mjs`: 2 passed for absent and inexact confirmation; only the confirmation setting was read and no fetch was called.
+- `npm run sanity`: syntax check passed; 370/372 regressions passed. The two failures are README workflow-contract assertions in `tests/regression/playwright-workflow-contract.test.mjs`.
+- `npm run test:storage-policy-staging` with a deliberately non-matching confirmation: `SKIP`; no requests sent.
+- Provider behavior: **NOT RUN**. All six provider cells remain **NOT RUN** and the release gate remains **NOT PASSED**.
 
 ## Workflow follow-up
 

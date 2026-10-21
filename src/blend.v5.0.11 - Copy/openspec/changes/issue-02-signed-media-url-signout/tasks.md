@@ -32,7 +32,9 @@
 - [x] 5.2 Run `npm run check` and `npm run test:regression`; record exact command outcomes and assertion counts.
   - Evidence: `npm run check` exited 0. `npm run test:regression` exited 0 with 361/361 passing.
 - [ ] 5.3 Validate the reused OpenSpec change and Beads `blend-ag8` status, then archive only after all acceptance checks pass.
-  - Pending archive: keep the change active until authorized synthetic staging records direct-object and CDN responses separately before and after a staging-controlled URL expiry. No staging confirmation or credentials were configured, so those provider outcomes remain Not run. Beads `blend-ag8` remains in progress and is linked to the current report.
+  - Pending archive: keep the change active until owner-approved synthetic staging records direct-object and CDN responses separately before and after a staging-controlled URL expiry. Owner approval for a disposable staging target was not provided in this request, so those outcomes remain Not run and no provider requests were made. Beads `blend-ag8` remains in progress and links to `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-02` (A copied signed Storage URL can outlive local sign-out).
+- [x] 5.4 Link the current Issue 02 report finding and add focused synthetic assertions for the copied-link warning, expired-reference recovery, both-layer sign-out cleanup, playback-state preservation on cleanup failure, and private signed URL/token absence from status, logs, and persistence.
+  - Evidence: `npm run test:e2e -- tests/e2e/supabase-auth.e2e.spec.mjs` exited 0 with 9/9 Chromium tests. `node --test --test-isolation=none tests/regression/signed-url-cleanup.test.mjs` exited 0 with 6/6 tests. The first `npm run sanity` run exited 1 with 370/372 regressions because the README matrix inventory and launch-failure wording were stale. After updating those workflow-contract expectations and README evidence, the final `npm run sanity` passed 373/373. Provider/CDN lifetime was Not run.
 
 ## Staging expiry follow-up (2026-10-19)
 

@@ -17,7 +17,7 @@ These changes are present in the current review checkout. The app version remain
 ### Changed
 
 - New private Storage URLs use the owner-approved one-hour default, and signed resolver URLs stay out of IndexedDB while authenticated refresh continues to use portable storage references.
-- Folder scans now announce a pause while the tab is hidden, resume the existing enumeration when visible, and offer cancellation while preserving saved batches.
+- Folder scans now announce a pause while the tab is hidden, resume the existing enumeration when visible, and offer cancellation while preserving saved batches. Cutoff notices now state that entries beyond the 2,000-entry ceiling, if any, were not visited or inspected.
 - The configuration shell opens before storage initialization. Database recovery no longer covers the whole screen, and settings stay read-only until saved data is ready.
 - Startup can open a higher IndexedDB version when all stores and key paths required by this release match; incompatible schemas fail closed without changing saved data.
 - PWA manifests and required icon precache entries use the versioned app-root paths; the worker no longer requests legacy `/assets/icon.svg` files.
@@ -27,7 +27,7 @@ These changes are present in the current review checkout. The app version remain
 - The Information dialog uses the installed README by default. Online documentation is an explicit source, carries version and cache-age information, and refreshes while the installed guide stays visible.
 - Signing out cancels private playback and clears signed Storage URLs from transient in-app media references while retaining portable `supabase://` references for retry. The status distinguishes the provider result from local cleanup and discloses the default global scope; copied URLs remain independent of local cleanup, and cached responses may remain available beyond token expiry.
 - Opted-in Supabase sessions now share the cross-tab lock with consented analytics. If persistence cannot safely complete, a valid session remains available in the current tab, while saved or unreadable credential storage keeps analytics off.
-- Expired signed media offers a direct Connect action. URL-share imports keep the source link and current experience intact after rejection or failed persistence, with recovery through a smaller link or JSON backup. The 8 MiB decompression cap and bounded allocation strategy are unchanged.
+- Expired signed media already marked as requiring authentication offers a direct Connect action again when playback is retried. URL-share imports keep the source link and current experience intact after rejection or failed persistence, with recovery through a smaller link or JSON backup. The 8 MiB decompression cap and bounded allocation strategy are unchanged.
 - The Storage policy release checklist records the authorized owner, policy revision, rollback artifact, and expected outcomes for all six principal/object cases. Its staging matrix checks direct and resolver results without retaining signed URLs or credentials.
 - Clarified local-copy instructions, browser compatibility claims, reset behavior, and offline documentation behavior.
 - Clarified browser, mobile, and screen-reader verification records; unavailable branded-browser, physical-device, and human speech checks remain explicitly Not run.

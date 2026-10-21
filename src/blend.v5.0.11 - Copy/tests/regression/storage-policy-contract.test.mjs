@@ -172,33 +172,38 @@ test('public resolution uses only the configured bucket allowlist', async () => 
   assert.equal(requestCount, 0);
 });
 
-test('staging command skips before reading credentials or sending requests without exact confirmation', async () => {
-  const envReads = [];
-  const env = new Proxy({}, {
-    get(_target, key) {
-      envReads.push(String(key));
-      if (key !== 'BLEND_STORAGE_STAGING_CONFIRM') {
-        throw new Error(`Unexpected staging environment read: ${String(key)}`);
+for (const [label, confirmation] of [
+  ['absent', undefined],
+  ['inexact', 'I_CONFIRM_DISPOSABLE_STAGING_ONLY ']
+]) {
+  test(`staging command skips before reading credentials or sending requests with ${label} confirmation`, async () => {
+    const envReads = [];
+    const env = new Proxy({}, {
+      get(_target, key) {
+        envReads.push(String(key));
+        if (key !== 'BLEND_STORAGE_STAGING_CONFIRM') {
+          throw new Error(`Unexpected staging environment read: ${String(key)}`);
+        }
+        return confirmation;
       }
-      return 'I_CONFIRM_DISPOSABLE_STAGING_ONLY ';
-    }
-  });
-  const requests = [];
-  const output = [];
+    });
+    const requests = [];
+    const output = [];
 
-  const result = await runStoragePolicyStaging({
-    env,
-    fetchImpl: async (...args) => {
-      requests.push(args);
-      throw new Error('Network access is blocked in this regression test.');
-    },
-    log: message => output.push(message)
-  });
+    const result = await runStoragePolicyStaging({
+      env,
+      fetchImpl: async (...args) => {
+        requests.push(args);
+        throw new Error('Network access is blocked in this regression test.');
+      },
+      log: message => output.push(message)
+    });
 
-  assert.equal(result, 'SKIP');
-  assert.deepEqual(envReads, ['BLEND_STORAGE_STAGING_CONFIRM']);
-  assert.deepEqual(requests, []);
-  assert.deepEqual(output, [
-    'SKIP: no requests sent. Set BLEND_STORAGE_STAGING_CONFIRM to opt into the disposable staging matrix.'
-  ]);
-});
+    assert.equal(result, 'SKIP');
+    assert.deepEqual(envReads, ['BLEND_STORAGE_STAGING_CONFIRM']);
+    assert.deepEqual(requests, []);
+    assert.deepEqual(output, [
+      'SKIP: no requests sent. Set BLEND_STORAGE_STAGING_CONFIRM to opt into the disposable staging matrix.'
+    ]);
+  });
+}

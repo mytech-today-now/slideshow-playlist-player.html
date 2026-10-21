@@ -26,3 +26,12 @@
 ## Workflow follow-up
 
 - Archive this change only after implementation and applicable review evidence are complete.
+
+## Report-finding verification follow-up
+
+- Linked report finding: `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-03`: **Folder scans stop at 2,000 visited entries and leave a partial result**.
+- `npm run sanity`: syntax check passed; regression exited 1 with 370/372 passing and two failures in `tests/regression/playwright-workflow-contract.test.mjs` for a stale browser-matrix count and README launch-failure wording.
+- Focused Chromium E2E passed 30/30 with unique output `test-results/issue-03-folder-scan-20261021042214801` and report `playwright-report/issue-03-folder-scan-20261021042214801`. The mixed folder cases cover 1,999, 2,000, and 2,001 available entries; no case yielded over 2,000. Relink recovery, row preservation, keyboard activation, cancellation, permission recovery, and viewport-fit assertions passed.
+- The cutoff message now says entries beyond the ceiling, if any, were not visited or inspected, avoiding a false claim when a fixture contains exactly 2,000 entries while retaining partial status and smaller-folder recovery.
+- `tests/e2e/verify-playwright-report.mjs` passed for the HTML report; `git diff --check` passed.
+- A real native Directory Picker scan over an on-disk folder exceeding 2,000 entries remains Not run. Evidence here is synthetic Chromium fixture coverage; keep Beads `blend-c1s` in progress.
