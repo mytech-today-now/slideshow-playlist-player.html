@@ -66,3 +66,26 @@
 - The expanded row geometry check reproduced content extending about 9 px below the desktop virtual row at 768 px. The row height and virtualization stride were increased by 10 px; the row-content and keyboard-focus matrix then passed at all eight sizes. No current-row announcement semantics changed.
 - Environment checked: Windows NT 10.0.26300.0; Microsoft Edge 155.0.4283.62 is installed. Narrator.exe version 10.0.26100.8972 exists but Narrator was not running; NVDA was not found in the standard locations checked. No screen-reader/browser speech session was available, so the human review, exact utterances, and duplicate-announcement checks remain Not run. Physical-device checks were not run. Automated results are not speech-output or WCAG evidence.
 - Tasks 2.1 and 3.1 remain unchecked. Keep the change open pending a recorded human review.
+
+## Issue 10 verification refresh (2026-10-21)
+
+- Environment: Windows 10 Home 26H2, build 26300; Microsoft Edge 155.0.4283.62 is installed. NVDA was not found in the standard install locations checked and is not running. Narrator.exe 10.0.26100.8972 is installed but Narrator is not running. The available computer-use inventory had no open app or browser surfaces, so no supported screen-reader/browser speech session was available.
+- Human screen-reader review: Not run. No literal utterances were observed, and duplicate/stale announcement checks were not run.
+
+  | Action | Review result | Literal speech | Duplicate/stale result |
+  |---|---|---|---|
+  | Playlist play | Not run | Not observed | Not run |
+  | Slideshow play | Not run | Not observed | Not run |
+  | Playlist and Slideshow next | Not run | Not observed | Not run |
+  | Playlist and Slideshow previous | Not run | Not observed | Not run |
+  | Switch Playlist and Slideshow lists | Not run | Not observed | Not run |
+  | Pause and resume | Not run | Not observed | Not run |
+  | Stop | Not run | Not observed | Not run |
+  | Unavailable row | Not run | Not observed | Not run |
+  | Experience switch | Not run | Not observed | Not run |
+  | Virtualized rows | Not run | Not observed | Not run |
+  | Repeat transitions to detect duplicate or stale announcements | Not run | Not observed | Not run |
+
+- `npm run sanity` passed: syntax checks passed and regressions passed 373/373.
+- `npm run test:e2e -- tests/e2e/list-playback-accessibility.e2e.spec.mjs` exited 1 with `Error: spawn EPERM` before Playwright test discovery; no browser assertions ran. This E2E spec checks DOM state only and does not establish speech output.
+- No app or README semantics change is indicated without observed speech. README already states that the DOM checks do not capture speech. Tasks 2.1 and 3.1 remain open; task 4.1 remains complete. Keep the change open pending a recorded human review.

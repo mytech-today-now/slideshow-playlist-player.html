@@ -124,11 +124,15 @@ async function installBoundedRelinkDirectoryPicker(page, {
   failureName = '',
   failureAfter = -1,
   pauseAfter = -1,
-  pauseMs = 0
+  pauseUntilReleased = false
 }) {
   await page.evaluate(options => {
     let visited = 0;
     let pauseUsed = false;
+    let releasePause;
+    const pauseGate = options.pauseUntilReleased
+      ? new Promise(resolve => { releasePause = resolve; })
+      : null;
     const filePrototype = {
       async getFile() {
         return new File([this.contents], this.name, { type: 'video/mp4' });
@@ -154,7 +158,7 @@ async function installBoundedRelinkDirectoryPicker(page, {
           visited += 1;
           if (!pauseUsed && options.pauseAfter > 0 && visited >= options.pauseAfter) {
             pauseUsed = true;
-            await new Promise(resolve => setTimeout(resolve, options.pauseMs));
+            if (pauseGate) await pauseGate;
           }
           yield makeFile(index);
         }
@@ -162,8 +166,9 @@ async function installBoundedRelinkDirectoryPicker(page, {
     });
     Object.assign(root, { kind: 'directory', name: 'Assets' });
     window.__relinkVisited = () => visited;
+    window.__releaseRelinkPause = () => releasePause?.();
     window.showDirectoryPicker = async () => root;
-  }, { count, targetIndex, failureName, failureAfter, pauseAfter, pauseMs });
+  }, { count, targetIndex, failureName, failureAfter, pauseAfter, pauseUntilReleased });
 }
 
 async function startBoundedRelink(page, options) {
@@ -740,7 +745,7 @@ test('a removed relink root is partial, never a no-match, and offers retry', asy
 });
 
 test('keyboard cancellation during a large relink scan yields to input and preserves unresolved state', async ({ page }) => {
-  const before = await startBoundedRelink(page, { count: 10000, pauseAfter: 24, pauseMs: 250 });
+  const before = await startBoundedRelink(page, { count: 10000, pauseAfter: 24, pauseUntilReleased: true });
   const progress = page.locator('.toast-directory-scan-progress');
   await expect(progress).toHaveAttribute('role', 'status');
   await expect(progress).toContainText('relink limit 250 media files');
@@ -748,7 +753,9 @@ test('keyboard cancellation during a large relink scan yields to input and prese
   await expect(cancel).toBeVisible();
   await page.waitForFunction(() => window.__relinkVisited() >= 24);
   await cancel.focus();
+  await expect(cancel).toBeFocused();
   await page.keyboard.press('Enter');
+  await page.evaluate(() => window.__releaseRelinkPause());
 
   const notice = page.locator('.toast-directory-scan');
   await expect(notice).toContainText('Missing-media scan canceled.');

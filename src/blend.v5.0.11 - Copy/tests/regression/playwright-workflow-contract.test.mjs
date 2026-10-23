@@ -68,6 +68,11 @@ test('README distinguishes startup failures from the current Playwright baseline
   assert.match(readme, /each passed an isolated serial one-test trace rerun, so none reproduced/);
   assert.match(readme, /The full-suite baseline is known and non-green/);
   assert.match(readme, /unique report at `%TEMP%\\blend-issue07-full-process-bc16a59a7714469c9267c8feb2a6714a\\playwright-report\\` passed `node tests\/e2e\/verify-playwright-report\.mjs` with 5 files/);
+  assert.match(readme, /fresh process-enabled `npm run test:e2e` on the working tree based on revision `afdcf73f85017fa93d572b60f59de9cda5e9187f` ran all 318 tests in 9\.5 minutes: 303 passed, 4 failed, and 11 skipped/);
+  assert.match(readme, /The same boundary case passed a serial one-test trace rerun, 1\/1, so the state mismatch remains unexplained and the full suite is non-green/);
+  assert.match(readme, /the two affected specs passed 24\/24, the three original target cases passed a serial traced rerun 3\/3, and the layer-order case passed five serial repeats/i);
+  assert.match(readme, /issue07-full-final-20261021-b410c1cadea0470887ae05b7f42b6504/);
+  assert.match(readme, /spawn EPERM` before discovery and ran zero browser assertions/);
   assert.doesNotMatch(readme, /full-suite browser E2E status remains unknown/);
   assert.match(readme, /Firefox also runs the actual offline-shell reload/);
   assert.match(readme, /Playwright WebKit's offline-shell case is recorded as skipped/);

@@ -4,7 +4,7 @@ Issue 14: Mobile Safari and Android device workflows remain unverified
 
 ## Related current finding
 
-The current report `ai-prompts/pre-mortem-2026-10-13-14-11-28.html` tracks the same named-device acceptance gap as stable finding `issue-11`: “Named physical iOS Safari and Android Chrome workflows remain unverified.” Reuse this active change for that acceptance work; do not create a duplicate OpenSpec change.
+The current report `ai-prompts/pre-mortem-2026-10-20-13-13-58.html` tracks the same named-device acceptance gap as stable finding `issue-11`: “Named physical iOS Safari and Android Chrome workflows remain unverified.” Reuse this active change for that acceptance work; do not create a duplicate OpenSpec change.
 
 ## Verification record for issue-11 (2026-10-13)
 
@@ -25,3 +25,13 @@ The current report `ai-prompts/pre-mortem-2026-10-13-14-11-28.html` tracks the s
 - `openspec validate issue-14-mobile-safari-android-device-workflows --strict`: valid; the change remains 4/5 tasks complete, with physical-device task 2.2 open.
 - Beads: existing record `blend-amv` was verified and remains `in_progress`; no duplicate was created.
 - Physical-device acceptance: **Not run**. No iOS Safari or Android Chrome device session was available; `adb` was unavailable for Android device enumeration. The README records each mobile path as Not run for this attempt. No device data was accessed or cleared.
+
+## Verification refresh for issue-11 (2026-10-21)
+
+- `npm run sanity`: passed syntax checks and 373/373 regression tests.
+- Initial sandboxed compatibility run exited 1 with `spawn EPERM` before Playwright discovery; zero browser assertions ran. The process-enabled retry passed 30/30 browser-compatibility tests across desktop Playwright Chromium, Firefox, and WebKit.
+- Separate `npm run test:e2e -- --project=chromium tests/e2e/pwa-offline.e2e.spec.mjs`: passed 5/5 on desktop Playwright Chromium.
+- Both HTML reports passed `node tests/e2e/verify-playwright-report.mjs`; no credential-like values or private local paths were reported.
+- `openspec validate issue-14-mobile-safari-android-device-workflows --strict`: valid; the change remains 4/5 tasks complete, with physical-device task 2.2 open.
+- Beads: existing record `blend-amv` links to `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-11` and remains `in_progress`; no duplicate was created.
+- Physical-device acceptance: **Not run** on either platform. `adb` is unavailable, and no iOS Safari or Android Chrome session or matching attached device was detected. File/folder selection, import/save/reload, playback, rotation/fullscreen, permission/quota, installation/offline reload, recovery, and accessibility remain Not run on named devices. Device network state is unknown because no session was available. No device origin data was accessed or cleared.

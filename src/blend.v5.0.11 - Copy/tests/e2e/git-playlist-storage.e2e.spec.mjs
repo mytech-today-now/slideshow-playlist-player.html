@@ -482,7 +482,26 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
   await page.setViewportSize({ width: 390, height: 844 });
   const calls = [];
   let fileMode = 'valid';
-  const responseSentinel = `private provider body ${TOKEN} blend-workspace/playlists/playlists/ambient.json`;
+  const pathSentinel = 'private-sentinel/playlist-private.json';
+  const bodySentinel = `BODY_SENTINEL ${TOKEN} ${pathSentinel}`;
+  await page.addInitScript(() => {
+    const fetchImpl = globalThis.fetch.bind(globalThis);
+    globalThis.__BLEND_TEST_THROW_PROVIDER_READ__ = false;
+    globalThis.fetch = async (input, init) => {
+      const response = await fetchImpl(input, init);
+      const requestUrl = new URL(typeof input === 'string' ? input : input.url, location.href);
+      if (!globalThis.__BLEND_TEST_THROW_PROVIDER_READ__ || !requestUrl.pathname.endsWith('/private-sentinel/playlist-private.json')) {
+        return response;
+      }
+      return new Proxy(response, {
+        get(target, property) {
+          if (property === 'headers') throw new Error('UNEXPECTED_PROVIDER_BODY_SENTINEL');
+          const value = Reflect.get(target, property, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+      });
+    };
+  });
   await page.route('https://api.bitbucket.org/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -495,7 +514,7 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
     if (url.pathname === '/2.0/repositories/blend-workspace/playlists/refs/branches' && method === 'GET') {
       return fulfillJson(route, { values: [{ name: 'main', target: { hash: HEAD_SHA } }] });
     }
-    if (url.pathname === `/2.0/repositories/blend-workspace/playlists/src/${HEAD_SHA}/playlists/ambient.json` && method === 'GET') {
+    if (url.pathname === `/2.0/repositories/blend-workspace/playlists/src/${HEAD_SHA}/${pathSentinel}` && method === 'GET') {
       if (fileMode === 'timeout') {
         await new Promise(resolve => setTimeout(resolve, 21_000));
         try {
@@ -514,18 +533,18 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
           status: fileMode === 'unauthorized' ? 401 : 404,
           contentType: 'application/json',
           headers: corsHeaders,
-          body: JSON.stringify({ error: { message: responseSentinel } })
+          body: JSON.stringify({ error: { message: bodySentinel } })
         });
       }
       if (fileMode === 'malformed') {
-        return route.fulfill({ status: 200, contentType: 'text/plain', headers: corsHeaders, body: `{${responseSentinel}` });
+        return route.fulfill({ status: 200, contentType: 'text/plain', headers: corsHeaders, body: `{${bodySentinel}` });
       }
       if (fileMode === 'oversized') {
         return route.fulfill({
           status: 200,
           contentType: 'text/plain',
           headers: corsHeaders,
-          body: `${'x'.repeat(1_000_001)}${responseSentinel}`
+          body: `${'x'.repeat(1_000_001)}${bodySentinel}`
         });
       }
       return route.fulfill({
@@ -563,7 +582,7 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
   await page.locator('#git-playlist-owner').fill('blend-workspace');
   await page.locator('#git-playlist-repository').fill('playlists');
   await page.locator('#git-playlist-branch').fill('main');
-  await page.locator('#git-playlist-path').fill('playlists/ambient.json');
+  await page.locator('#git-playlist-path').fill(pathSentinel);
   await page.locator('#git-playlist-token').fill(TOKEN);
   await page.locator('#git-playlist-connect').click();
   await expect(page.locator('#git-playlist-read')).toBeEnabled();
@@ -571,29 +590,59 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
   const localState = () => page.evaluate(() => ({
     playlist: window.Blend.state.playlist.map(({ id, path, sourceUrl, name }) => ({ id, path, sourceUrl, name })),
     playlistIndex: window.Blend.state.runtime.playlistIndex,
-    slideshowIndex: window.Blend.state.runtime.slideshowIndex
+    slideshowIndex: window.Blend.state.runtime.slideshowIndex,
+    isPlaying: window.Blend.state.runtime.isPlaying,
+    transport: window.Blend.transport,
+    currentPlaylistItemId: window.Blend.state.playlist[window.Blend.state.runtime.playlistIndex]?.id || null
   }));
   const before = await localState();
   const status = page.locator('#git-playlist-connection');
+  const readButton = page.locator('#git-playlist-read');
   const fallbackCopy = 'The remote playlist could not be read. Check the repository and read permission, then retry.';
+  await expect(status).toHaveAttribute('role', 'status');
   await expect(status).toHaveAttribute('aria-live', 'polite');
 
   for (const mode of ['unauthorized', 'missing', 'malformed', 'oversized', 'timeout']) {
     fileMode = mode;
-    await page.locator('#git-playlist-read').click();
+    await readButton.focus();
+    await readButton.press('Enter');
     await expect(status).toHaveText(fallbackCopy, { timeout: mode === 'timeout' ? 25_000 : 10_000 });
     await expect(status).toBeVisible();
     await expect(page.locator('#git-playlist-read-result')).toBeHidden();
-    await expect(page.locator('#git-playlist-read')).toBeEnabled();
-    await expect(page.locator('#git-playlist-read')).toBeFocused();
+    await expect(readButton).toBeEnabled();
+    await expect(readButton).toBeFocused();
+    await expect(page.locator('#git-playlist-owner')).toHaveValue('blend-workspace');
+    await expect(page.locator('#git-playlist-repository')).toHaveValue('playlists');
+    await expect(page.locator('#git-playlist-branch')).toHaveValue('main');
+    await expect(page.locator('#git-playlist-path')).toHaveValue(pathSentinel);
     expect(await localState()).toEqual(before);
-    const logText = await page.evaluate(() => localStorage.getItem('blend-debug-log-v1') || '');
-    for (const secret of [TOKEN, responseSentinel, 'playlists/ambient.json', 'blend-workspace/playlists']) {
+    const logText = await page.evaluate(() => window.Blend.log.exportJson());
+    for (const secret of [TOKEN, bodySentinel, pathSentinel, 'blend-workspace/playlists']) {
       expect(logText).not.toContain(secret);
     }
+    expect(await status.textContent()).toBe(fallbackCopy);
     const statusMetrics = await status.evaluate(node => ({ width: node.clientWidth, scrollWidth: node.scrollWidth }));
     expect(statusMetrics.scrollWidth).toBeLessThanOrEqual(statusMetrics.width);
   }
+
+  fileMode = 'valid';
+  await page.evaluate(() => { globalThis.__BLEND_TEST_THROW_PROVIDER_READ__ = true; });
+  await readButton.focus();
+  await readButton.press('Enter');
+  await expect(status).toHaveText(fallbackCopy);
+  await expect(readButton).toBeFocused();
+  expect(await localState()).toEqual(before);
+  const unexpectedLog = await page.evaluate(() => {
+    const entries = JSON.parse(window.Blend.log.exportJson());
+    const warning = entries.filter(entry => entry.message === '[git-playlist] unexpected read failure').at(-1);
+    return warning?.args?.[1] || null;
+  });
+  expect(unexpectedLog).toEqual({ operation: 'playlist_read', provider: 'bitbucket', errorType: 'Error' });
+  const unexpectedLogText = await page.evaluate(() => window.Blend.log.exportJson());
+  for (const secret of [TOKEN, bodySentinel, pathSentinel, 'UNEXPECTED_PROVIDER_BODY_SENTINEL', 'blend-workspace/playlists']) {
+    expect(unexpectedLogText).not.toContain(secret);
+  }
+  await page.evaluate(() => { globalThis.__BLEND_TEST_THROW_PROVIDER_READ__ = false; });
 
   await page.evaluate(() => { document.documentElement.style.zoom = '200%'; });
   const zoomedStatusMetrics = await status.evaluate(node => ({ width: node.clientWidth, scrollWidth: node.scrollWidth }));
@@ -601,9 +650,15 @@ test('Bitbucket read failures keep the local playlist and expose a safe retry pa
   await page.evaluate(() => { document.documentElement.style.zoom = ''; });
 
   fileMode = 'valid';
-  await page.locator('#git-playlist-read').click();
+  await readButton.press('Enter');
   await expect(page.locator('#git-playlist-read-result')).toBeVisible();
   await expect(page.locator('#git-playlist-read-data')).toContainText('Café Ambient');
+  await expect(page.locator('#git-playlist-read-summary')).toContainText('Validated 1 playlist items');
+  await expect(page.locator('#git-playlist-import-read')).toBeVisible();
+  await expect(page.locator('#pl-count')).toContainText('(1)');
+  expect(await localState()).toEqual(before);
+  await page.locator('#close-config').click();
+  await expect(page.locator('#config-panel')).not.toHaveClass(/open/);
   expect(await localState()).toEqual(before);
   expect(calls.every(method => method === 'GET' || method === 'OPTIONS')).toBe(true);
 });
