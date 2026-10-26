@@ -35,3 +35,10 @@
 - The cutoff message now says entries beyond the ceiling, if any, were not visited or inspected, avoiding a false claim when a fixture contains exactly 2,000 entries while retaining partial status and smaller-folder recovery.
 - `tests/e2e/verify-playwright-report.mjs` passed for the HTML report; `git diff --check` passed.
 - A real native Directory Picker scan over an on-disk folder exceeding 2,000 entries remains Not run. Evidence here is synthetic Chromium fixture coverage; keep Beads `blend-c1s` in progress.
+
+## 2026-10-26 verification linked to the current report
+
+- Current report finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-03`: **Folder scans stop at 2,000 visited entries and leave a partial result**.
+- Before any product-code change, `npm run test:e2e -- --project=chromium --workers=1 --reporter=html,list tests/e2e/directory-scan-status.e2e.spec.mjs tests/e2e/missing-media-relink.e2e.spec.mjs` passed 30/30 in the process-enabled runner. Coverage includes mixed 1,999/2,000/2,001-entry folders, exact cutoff counts, keyboard recovery, retained rows, no duplicates or unintended list-reference changes, and 360x800 toast fit. Unique artifacts: `test-results/issue-03-20261026-prechange` and `playwright-report/issue-03-20261026-prechange`.
+- `npm run sanity` passed: syntax checks and 383/383 Node regressions. `node tests/e2e/verify-playwright-report.mjs` passed for the unique HTML report. `openspec validate issue-04-directory-scan-entry-budget --strict` passed.
+- No product-code mismatch reproduced, so no app source changes were needed. A real native Directory Picker scan over an on-disk folder exceeding 2,000 entries remains Not run; keep Beads `blend-c1s` in progress.
