@@ -1,6 +1,11 @@
 import './pwa-config.js';
 import './alias-router.js';
-import { assertIndexedDBObjectStoreKeyPaths, openIndexedDBCompatible } from './indexeddb-open.js?v=20261010-v5.0.11-idb-preflight';
+import {
+  assertIndexedDBObjectStoreKeyPaths,
+  DB_STORE_KEY_PATHS,
+  ensureBlendDatabaseStores,
+  openIndexedDBCompatible
+} from './indexeddb-open.js?v=20261019-v5.0.11-session-and-recovery';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;
@@ -8,18 +13,8 @@ const router = globalThis.BlendAliasRouter;
 const ALIAS_STORE = config?.ALIAS_STORE || 'aliases';
 const ALIAS_META_STORE = config?.ALIAS_META_STORE || 'aliasMeta';
 const DB_NAME = config?.DB_NAME || 'player-blend-v1';
-const DB_VERSION = config?.DB_VERSION || 5;
+const DB_VERSION = config?.DB_VERSION;
 const MANIFEST_META_KEY = 'manifest';
-
-export function ensureAliasObjectStores(database) {
-  if (!database?.objectStoreNames) return;
-  if (!database.objectStoreNames.contains(ALIAS_STORE)) {
-    database.createObjectStore(ALIAS_STORE, { keyPath: 'id' });
-  }
-  if (!database.objectStoreNames.contains(ALIAS_META_STORE)) {
-    database.createObjectStore(ALIAS_META_STORE, { keyPath: 'key' });
-  }
-}
 
 export function validateAliasManifestForStore(manifest, options = {}) {
   const normalized = router.normalizeAliasManifest(manifest, {
@@ -46,11 +41,8 @@ export async function openAliasDatabase() {
     indexedDB: globalThis.indexedDB,
     name: DB_NAME,
     version: DB_VERSION,
-    onUpgrade: event => ensureAliasObjectStores(event.target.result),
-    validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, {
-      [ALIAS_STORE]: 'id',
-      [ALIAS_META_STORE]: 'key'
-    })
+    onUpgrade: event => ensureBlendDatabaseStores(event.target.result),
+    validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, DB_STORE_KEY_PATHS)
   });
 }
 

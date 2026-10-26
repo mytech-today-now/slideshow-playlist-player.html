@@ -1,6 +1,11 @@
 import './pwa-config.js';
-import { ensureAliasObjectStores } from './alias-store.js';
-import { assertIndexedDBObjectStoreKeyPaths, IndexedDBOpenError, openIndexedDBCompatible } from './indexeddb-open.js?v=20261019-v5.0.11-session-and-recovery';
+import {
+  assertIndexedDBObjectStoreKeyPaths,
+  DB_STORE_KEY_PATHS,
+  ensureBlendDatabaseStores,
+  IndexedDBOpenError,
+  openIndexedDBCompatible
+} from './indexeddb-open.js?v=20261019-v5.0.11-session-and-recovery';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
@@ -233,7 +238,7 @@ const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
 const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261019-v5.0.11-session-and-recovery';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
-const DB_VERSION = PWA_CONFIG.DB_VERSION || 5;
+const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
 const EXPERIENCE_ACTIVE_KEY = 'blend-active-experience-id';
 const EXPERIENCE_EXPORT_SCHEMA = 'player.blend.experience.v2';
@@ -3554,18 +3559,6 @@ function showToast(message, opts = {}) {
 }
 
 // ====================== INDEXEDDB ======================
-const DB_STORE_KEY_PATHS = Object.freeze({
-  library: 'id',
-  playlist: 'key',
-  slideshow: 'key',
-  settings: 'key',
-  [EXPERIENCE_STORE]: 'id',
-  thumbnails: 'key',
-  dirHandles: 'id',
-  aliases: 'id',
-  aliasMeta: 'key'
-});
-
 async function openDB({ onBlocked } = {}) {
   log.debug('[storage] opening IndexedDB', {
     database: DB_NAME,
@@ -3599,17 +3592,7 @@ async function openDB({ onBlocked } = {}) {
         });
         onBlocked?.(event);
       },
-      onUpgrade: event => {
-        const d = event.target.result;
-        if (!d.objectStoreNames.contains('library')) d.createObjectStore('library', { keyPath: 'id' });
-        if (!d.objectStoreNames.contains('playlist')) d.createObjectStore('playlist', { keyPath: 'key' });
-        if (!d.objectStoreNames.contains('slideshow')) d.createObjectStore('slideshow', { keyPath: 'key' });
-        if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
-        if (!d.objectStoreNames.contains(EXPERIENCE_STORE)) d.createObjectStore(EXPERIENCE_STORE, { keyPath: 'id' });
-        if (!d.objectStoreNames.contains('thumbnails')) d.createObjectStore('thumbnails', { keyPath: 'key' });
-        if (!d.objectStoreNames.contains('dirHandles')) d.createObjectStore('dirHandles', { keyPath: 'id' });
-        ensureAliasObjectStores(d);
-      },
+      onUpgrade: event => ensureBlendDatabaseStores(event.target.result),
       validateConnection: database => assertIndexedDBObjectStoreKeyPaths(database, DB_STORE_KEY_PATHS)
     });
   } catch (error) {
@@ -10224,6 +10207,7 @@ function configDiagnosticSnapshot() {
       style: panelStyle
     },
     backdropOpen: Boolean(backdrop?.classList.contains('open')),
+    documentReadyState: document.readyState,
     documentVisibility: document.visibilityState
   };
 }

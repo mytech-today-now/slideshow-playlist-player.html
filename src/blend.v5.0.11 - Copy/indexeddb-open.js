@@ -6,6 +6,47 @@ export class IndexedDBOpenError extends Error {
   }
 }
 
+export const DB_STORE_KEY_PATHS = Object.freeze({
+  library: 'id',
+  playlist: 'key',
+  slideshow: 'key',
+  settings: 'key',
+  experiences: 'id',
+  thumbnails: 'key',
+  dirHandles: 'id',
+  aliases: 'id',
+  aliasMeta: 'key'
+});
+
+export function ensureBlendDatabaseStores(database) {
+  if (!database?.objectStoreNames || typeof database.createObjectStore !== 'function') {
+    throw new Error('The database cannot create the required Blend object stores.');
+  }
+
+  const existingStores = new Set(Array.from(database.objectStoreNames));
+  for (const [name, keyPath] of Object.entries(DB_STORE_KEY_PATHS)) {
+    if (!existingStores.has(name)) {
+      database.createObjectStore(name, { keyPath });
+      existingStores.add(name);
+    }
+  }
+
+  return true;
+}
+
+const VERSIONLESS_UPGRADE_REQUIRED = 'idb_versionless_upgrade_required';
+
+function versionlessUpgradeRequiredError(message) {
+  const error = new Error(message);
+  error.code = VERSIONLESS_UPGRADE_REQUIRED;
+  return error;
+}
+
+function isVersionlessUpgradeRequired(error) {
+  return error?.code === 'idb_upgrade_error'
+    && error?.cause?.code === VERSIONLESS_UPGRADE_REQUIRED;
+}
+
 function isVersionError(error) {
   return error?.name === 'VersionError' || error?.cause?.name === 'VersionError';
 }
@@ -32,7 +73,15 @@ async function findExistingDatabaseVersion(indexedDB, name) {
 }
 
 function openCurrentDatabaseWithoutVersion(options) {
-  return openIndexedDB({ ...options, version: undefined });
+  return openIndexedDB({
+    ...options,
+    version: undefined,
+    onUpgrade() {
+      throw versionlessUpgradeRequiredError(
+        'A versionless preflight cannot create or migrate the database.'
+      );
+    }
+  });
 }
 
 function openExistingDatabaseWithoutVersion(options) {
@@ -40,10 +89,10 @@ function openExistingDatabaseWithoutVersion(options) {
     ...options,
     version: undefined,
     onUpgrade(event) {
-      if (Number(event?.oldVersion || 0) === 0) {
-        throw new Error('The saved database changed before a compatible connection could be opened.');
-      }
-      options.onUpgrade?.(event);
+      const message = Number(event?.oldVersion || 0) === 0
+        ? 'The saved database changed before a compatible connection could be opened.'
+        : 'A versionless compatibility open cannot run database migrations.';
+      throw versionlessUpgradeRequiredError(message);
     }
   });
 }
@@ -75,7 +124,13 @@ export async function openIndexedDBCompatible(options = {}) {
   let usedVersionlessFallback = false;
   let usedVersionlessPreflight = false;
   const indexedDB = options.indexedDB === undefined ? globalThis.indexedDB : options.indexedDB;
-  const requestedVersion = Number(options.version);
+  if (!Number.isSafeInteger(options.version) || options.version < 1) {
+    throw new IndexedDBOpenError(
+      'idb_version_invalid',
+      'A valid configured database version is required.'
+    );
+  }
+  const requestedVersion = options.version;
   let inventory = { available: false, version: null };
   if (options.version !== undefined && typeof indexedDB?.databases === 'function') {
     inventory = await findExistingDatabaseVersion(indexedDB, options.name);
@@ -91,18 +146,33 @@ export async function openIndexedDBCompatible(options = {}) {
       requestedVersion: options.version,
       existingVersion: inventory.version
     });
-    const currentConnection = await openCurrentDatabaseWithoutVersion(options);
-    if (Number.isFinite(currentConnection.version) && currentConnection.version >= requestedVersion) {
-      connection = currentConnection;
-      usedVersionlessFallback = true;
-      usedVersionlessPreflight = true;
-    } else {
-      try { currentConnection.close(); } catch (_) {}
+    let currentConnection;
+    try {
+      currentConnection = await openCurrentDatabaseWithoutVersion(options);
+    } catch (error) {
+      if (!isVersionlessUpgradeRequired(error)) throw error;
+      if (inventory.available && Number.isFinite(inventory.version) && inventory.version > requestedVersion) {
+        throw error;
+      }
       reportDiagnostic(options, 'versionless_preflight_upgrade_required', {
         database: options.name || '',
         requestedVersion: options.version,
-        actualVersion: Number.isFinite(currentConnection.version) ? currentConnection.version : null
+        actualVersion: null
       });
+    }
+    if (currentConnection) {
+      if (Number.isFinite(currentConnection.version) && currentConnection.version >= requestedVersion) {
+        connection = currentConnection;
+        usedVersionlessFallback = true;
+        usedVersionlessPreflight = true;
+      } else {
+        try { currentConnection.close(); } catch (_) {}
+        reportDiagnostic(options, 'versionless_preflight_upgrade_required', {
+          database: options.name || '',
+          requestedVersion: options.version,
+          actualVersion: Number.isFinite(currentConnection.version) ? currentConnection.version : null
+        });
+      }
     }
   }
 

@@ -32,6 +32,33 @@ Finding: `ai-prompts/pre-mortem-2026-10-20-13-13-58.html#issue-01`: **Private St
 - `npm run test:storage-policy-staging` with a deliberately non-matching confirmation: `SKIP`; no requests sent.
 - Provider behavior: **NOT RUN**. All six provider cells remain **NOT RUN** and the release gate remains **NOT PASSED**.
 
+### 2026-10-23 report-linked follow-up
+
+Finding: `ai-prompts/pre-mortem-2026-10-22-23-55-46.html#issue-01`: **Private Storage authorization remains an unpassed release gate**.
+
+- `node --test --test-isolation=none --test-name-pattern="staging command skips" tests/regression/storage-policy-contract.test.mjs`: 2 passed for absent and inexact confirmation. The synthetic environment proxy observed only the confirmation setting, and the fetch spy observed no requests.
+- `npm run sanity` and `npm run test:storage-policy-staging` were not run for this follow-up. The current regression verifies only the local skip path.
+- Provider behavior: **NOT RUN**. The verification record still has all six cells **NOT RUN**, owner and rollback evidence **NOT RECORDED**, and the release gate **NOT PASSED**. Private-reference URL sharing remains blocked.
+- Beads `blend-5qc` remains `IN_PROGRESS`; this OpenSpec change remains unarchived pending owner-reviewed evidence.
+
+### 2026-10-23 assumption-draft follow-up
+
+Finding: `ai-prompts/pre-mortem-2026-10-22-23-55-46.html#issue-01`: **Private Storage authorization remains an unpassed release gate**.
+
+- Added `STORAGE_POLICY_ASSUMPTIONS_DRAFT.md` as a clearly labeled hypothetical owner-review draft. It is not a current export, rollback copy, or deployment artifact; the example SQL is commented out.
+- No provider behavior was tested. All six cells remain **NOT RUN**, owner and rollback evidence remain **NOT RECORDED**, and the release gate remains **NOT PASSED**.
+
+### 2026-10-25 report-linked follow-up
+
+Finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-01`: **Private Storage authorization remains an unpassed release gate**.
+
+- `node --test --test-isolation=none --test-name-pattern="staging command skips" tests/regression/storage-policy-contract.test.mjs`: 2 passed for absent and inexact confirmation. The environment proxy observed only the confirmation setting, the fetch spy observed no requests, and the output contained no credential values.
+- `npm run sanity`: passed; syntax checks passed and all 383 regressions passed.
+- `npm run test:storage-policy-staging`: not run because no owner-approved disposable project, redacted current and rollback exports, or synthetic fixtures were supplied.
+- Provider behavior: **NOT RUN**. All six cells remain **NOT RUN**, owner and rollback evidence remain **NOT RECORDED**, and the release gate remains **NOT PASSED**. Private-reference URL sharing remains blocked.
+- Added an explicit finding assessment linked to the same report article: no provider policy defect or exposure was observed, the policy remains unknown, and possible over-permission or owner denial is a testable assumption. Regression coverage checks that wording without treating it as provider evidence.
+- Beads `blend-5qc` remains `IN_PROGRESS`; this OpenSpec change remains unarchived pending owner-reviewed evidence.
+
 ## Workflow follow-up
 
 - The policy owner must review the redacted policy and rollback exports and all six disposable-staging outcomes before authorizing a later release change that opens private-reference URL sharing.

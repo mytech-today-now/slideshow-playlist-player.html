@@ -435,6 +435,8 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
     B.renderListEditor();
   }, privateReference);
   await page.evaluate(async () => {
+    const saved = await window.Blend.flushSaveState();
+    if (!saved) throw new Error('Could not persist the synthetic expired-media fixture.');
     await window.Blend.stop();
     await window.Blend.play();
   });
@@ -462,6 +464,7 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   await page.evaluate(() => window.Blend.flushSaveState());
   const expiredPersistence = await readPersistedMediaStores(page);
   expect(containsPrivateSignedUrlOrToken(expiredPersistence)).toBe(false);
+  expect(expiredPersistence).toContain(privateReference);
   expect(signingRequests).toBe(0);
   await expect(page.locator('#supabase-auth-status')).toHaveText(fallbackCopy);
   await page.waitForFunction(() => document.querySelector('#playlist-layer video')?.currentSrc.startsWith('blob:'));

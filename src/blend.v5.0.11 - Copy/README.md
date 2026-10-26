@@ -710,7 +710,7 @@ Stores:
 - `aliases`
 - `aliasMeta`
 
-When the stored database version is newer than this app's requested version, Blend opens it without requesting a downgrade and checks the required object stores and key paths before startup. Compatible additive schemas remain usable; an incompatible schema stops startup and leaves the saved database unchanged.
+When the stored database version is newer than this app's requested version, Blend opens it without requesting a downgrade and checks the required object stores and key paths before startup. Versionless compatibility opens never run migrations. Store creation runs through the shared initializer only for a versioned IndexedDB upgrade request. Compatible additive schemas remain usable; an incompatible schema stops startup and leaves the saved database unchanged.
 
 ### LocalStorage keys used
 
@@ -1060,6 +1060,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 - `git-playlist-storage.js`: fixed-origin BYOT provider requests, credential lifecycle, playlist validation, and conflict-aware publication
 - `GIT_PLAYLIST_STORAGE_DESIGN.md`: public catalog and BYOT publishing contracts, threat model, provider basis, and concurrency limits
 - `pwa-config.js`: app/cache/database version constants, precache assets, and cache policy metadata
+- `indexeddb-open.js`: canonical database store/key-path map, shared upgrade initializer, and validated versionless compatibility opens
 - `pwa-client.js`: service worker registration, update prompts, cache messages, and alias snapshot sync
 - `alias-router.js`: pure alias validation and route resolution logic
 - `alias-store.js`: IndexedDB-backed alias persistence and manifest guards

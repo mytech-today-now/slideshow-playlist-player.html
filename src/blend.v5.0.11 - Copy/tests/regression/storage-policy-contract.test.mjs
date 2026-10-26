@@ -86,6 +86,26 @@ test('release evidence records the named owner, policy revision, rollback, and a
   assert.match(staging, /failCell\(cell, 'A staging Storage request failed before returning an HTTP response\.'/);
 });
 
+test('policy provenance inventory separates app behavior from placeholders and provider evidence', async () => {
+  const verification = await readFile(new URL('../../STORAGE_POLICY_VERIFICATION.md', import.meta.url), 'utf8');
+
+  assert.match(verification, /## Finding assessment[\s\S]*?Private-reference URL sharing remains blocked by the app\./);
+  assert.match(verification, /No provider policy defect or exposure was observed; the actual provider policy and authorization behavior remain unknown\./);
+  assert.match(verification, /a testable assumption, not an observed incident or a claim that the policy is safe/);
+  assert.match(verification, /## Claim provenance inventory/);
+  assert.match(verification, /\| Compressed Share URL creation stops before compression[\s\S]*?\| Active code \|/);
+  assert.match(verification, /\| The settings note and blocked-share message[\s\S]*?\| Active code \|/);
+  assert.match(verification, /\| `SUPABASE_PUBLIC_BUCKETS` defaults to `public`[\s\S]*?\| Placeholder config and active config resolution \|/);
+  assert.match(verification, /\| The staging runner's six-cell checks[\s\S]*?\| Active code and synthetic skip-path regression \|/);
+  assert.match(verification, /\| Generic statements about private\/public bucket access[\s\S]*?\| External vendor documentation, generic only \|/);
+  assert.match(verification, /\| Actual bucket IDs and visibility[\s\S]*?\| Owner-approved redacted export: NOT PROVIDED \|/);
+  assert.match(verification, /\| Anonymous, Owner A, and unrelated User B outcomes[\s\S]*?\| Disposable-stage result: NOT RUN \|/);
+  assert.match(verification, /\| Pre-change policy state[\s\S]*?\| Owner-approved redacted export: NOT PROVIDED \|/);
+  assert.match(verification, /hypothetical test-model assumptions only/);
+  assert.match(verification, /Expected requirements, not evidence/);
+  assert.match(verification, /Keep the gate \*\*not passed\*\* and private-reference URL sharing blocked/);
+});
+
 test('anonymous private resolution fails closed without a provider request or URL', async () => {
   let requestCount = 0;
   const resolver = resolverFor({

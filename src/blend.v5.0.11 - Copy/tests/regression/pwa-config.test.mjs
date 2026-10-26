@@ -14,6 +14,21 @@ test('PWA config version matches package metadata', async () => {
   assert.equal(config.DB_VERSION, 5);
 });
 
+test('active database openers use the configured version and shared migration helper', async () => {
+  const [app, aliasStore] = await Promise.all([
+    readFile(new URL('app.js', root), 'utf8'),
+    readFile(new URL('alias-store.js', root), 'utf8')
+  ]);
+
+  assert.match(app, /const DB_VERSION = PWA_CONFIG\.DB_VERSION;/);
+  assert.match(aliasStore, /const DB_VERSION = config\?\.DB_VERSION;/);
+  assert.doesNotMatch(app, /DB_VERSION\s*=\s*[^;\r\n]*(?:\|\||\?\?)\s*\d+/);
+  assert.doesNotMatch(aliasStore, /DB_VERSION\s*=\s*[^;\r\n]*(?:\|\||\?\?)\s*\d+/);
+  assert.match(app, /onUpgrade:\s*event\s*=>\s*ensureBlendDatabaseStores\(event\.target\.result\)/);
+  assert.match(aliasStore, /onUpgrade:\s*event\s*=>\s*ensureBlendDatabaseStores\(event\.target\.result\)/);
+  assert.ok(aliasStore.includes(`./indexeddb-open.js?v=${config.ASSET_VERSION}`));
+});
+
 test('cache names are split and include the shared cache version', () => {
   assert.notEqual(config.CACHE_NAMES.shell, config.CACHE_NAMES.static);
   assert.notEqual(config.CACHE_NAMES.static, config.CACHE_NAMES.docs);
