@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261019-v5.0.11-session-and-recovery';
+} from './indexeddb-open.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261019-v5.0.11-session-and-recovery';
+} from './experience-persistence.js?v=20261028-v5.0.11-storage-share-scope';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261019-v5.0.11-session-and-recovery';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261019-v5.0.11-session-and-recovery';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261019-v5.0.11-session-and-recovery';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261019-v5.0.11-session-and-recovery';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261028-v5.0.11-storage-share-scope';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261028-v5.0.11-storage-share-scope';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261028-v5.0.11-storage-share-scope';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261019-v5.0.11-session-and-recovery';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261019-v5.0.11-session-and-recovery';
+} from './supabase-config.js?v=20261028-v5.0.11-storage-share-scope';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,39 +33,40 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261019-v5.0.11-session-and-recovery';
+} from './storage-url-resolver.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261019-v5.0.11-session-and-recovery';
+} from './signed-url-cleanup.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261019-v5.0.11-session-and-recovery';
+} from './transition-manager.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261019-v5.0.11-session-and-recovery';
+} from './playback-clock.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261019-v5.0.11-session-and-recovery';
-import { fetchReadme } from './readme-fetcher.js?v=20261019-v5.0.11-session-and-recovery';
+import { renderMarkdown } from './markdown.js?v=20261028-v5.0.11-storage-share-scope';
+import { fetchReadme } from './readme-fetcher.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
   decompressExperience,
-  hasNonPublicSupabaseStorageReference,
+  hasUnverifiedSupabaseStorageReference,
+  TRUSTED_STORAGE_SHARE_SCOPE,
   isBearerUrlForExport,
   sanitizeMediaRecordForExport,
   estimateShareUrlSize,
@@ -75,28 +76,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261019-v5.0.11-session-and-recovery';
+} from './url-share.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261019-v5.0.11-session-and-recovery';
+} from './url-share-diagnostics.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261019-v5.0.11-session-and-recovery';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261019-v5.0.11-session-and-recovery';
+} from './timeline-analysis.js?v=20261028-v5.0.11-storage-share-scope';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261019-v5.0.11-session-and-recovery';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261019-v5.0.11-session-and-recovery';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261019-v5.0.11-session-and-recovery';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261019-v5.0.11-session-and-recovery';
+} from './shared-experience-download.js?v=20261028-v5.0.11-storage-share-scope';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261028-v5.0.11-storage-share-scope';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261028-v5.0.11-storage-share-scope';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -107,7 +108,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261019-v5.0.11-session-and-recovery';
+} from './git-playlist-catalog.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -118,7 +119,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261019-v5.0.11-session-and-recovery';
+} from './git-playlist-storage.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -131,17 +132,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261019-v5.0.11-session-and-recovery';
+} from './local-import-limits.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261019-v5.0.11-session-and-recovery';
+} from './directory-scan-yield.js?v=20261028-v5.0.11-storage-share-scope';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261019-v5.0.11-session-and-recovery';
+} from './resume-on-load.js?v=20261028-v5.0.11-storage-share-scope';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -236,7 +237,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261019-v5.0.11-session-and-recovery';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261028-v5.0.11-storage-share-scope';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -2886,8 +2887,12 @@ async function shareExperienceViaUrl() {
       referencedOnly: true,
       onMetadataPathOmitted: privacyTracker.onMetadataPathOmitted
     });
-    if (hasNonPublicSupabaseStorageReference(payload, RUNTIME_CONFIG.publicBucketAllowList)) {
-      showToast('Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.', {
+    if (hasUnverifiedSupabaseStorageReference(payload, {
+      trustedScope: TRUSTED_STORAGE_SHARE_SCOPE,
+      projectUrl: RUNTIME_CONFIG.supabaseUrl,
+      policyRevision: null
+    })) {
+      showToast('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.', {
         timeout: 6000,
         role: 'alert'
       });

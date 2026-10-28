@@ -32,5 +32,6 @@ None.
 
 ## Tracking
 
-- Source report: `Pasted text.txt`, Issue 09, “The 50 MiB share decompression ceiling can still create multiple large memory copies”.
+- Current report finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-04`, stable article ID `issue-04`, “An 8 MiB shared experience lacks low-memory peak measurements”.
+- Original implementation source: `Pasted text.txt`, Issue 09, “The 50 MiB share decompression ceiling can still create multiple large memory copies”.
 - Beads issue: `blend-lmg`.

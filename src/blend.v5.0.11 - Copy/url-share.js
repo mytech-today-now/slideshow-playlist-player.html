@@ -26,6 +26,10 @@ import {
 export const URL_SHARE_PARAM = 'experience';
 export const URL_SHARE_PARAM_ALIAS = 'data';
 
+// This build has no owner-reviewed project and policy revision. Keep the
+// release scope null so runtime configuration cannot approve Storage sharing.
+export const TRUSTED_STORAGE_SHARE_SCOPE = null;
+
 // Warn (but don't block) if the Base64URL payload exceeds this many bytes.
 // Most experiences compress to well under 100 KB; 500 KB is a generous ceiling
 // that still fits in any modern browser URL.
@@ -61,36 +65,109 @@ export function buildExperienceLibraryPayload(entries, {
   return { order: items.map(item => item.id), items };
 }
 
-/** Return true when a referenced share record points at a non-public Supabase bucket. */
-export function hasNonPublicSupabaseStorageReference(payload, publicBucketAllowList = []) {
-  const publicBuckets = new Set(
-    (Array.isArray(publicBucketAllowList) ? publicBucketAllowList : [])
+/**
+ * Check that a source-controlled share scope exactly matches the current
+ * project and policy revision. Callers must not source either the scope or
+ * current revision from user-editable runtime configuration.
+ */
+export function hasVerifiedStorageShareScope(scope, { projectUrl = '', policyRevision = '' } = {}) {
+  if (!isRecord(scope) || !Array.isArray(scope.shareableBuckets)) return false;
+  const approvedProject = normalizeShareScopeProjectUrl(scope.projectUrl);
+  const currentProject = normalizeShareScopeProjectUrl(projectUrl);
+  const approvedRevision = typeof scope.policyRevision === 'string' ? scope.policyRevision.trim() : '';
+  const currentRevision = typeof policyRevision === 'string' ? policyRevision.trim() : '';
+  const buckets = scope.shareableBuckets.map(bucket => String(bucket || '').trim().toLowerCase());
+  return !!approvedProject && approvedProject === currentProject
+    && !!approvedRevision && approvedRevision === currentRevision
+    && buckets.length > 0
+    && buckets.every(bucket => /^[a-z0-9][a-z0-9._-]{1,62}$/.test(bucket));
+}
+
+/**
+ * Return true for malformed or unverified Supabase references in a share
+ * payload. Runtime public-bucket configuration is deliberately not consulted.
+ */
+export function hasUnverifiedSupabaseStorageReference(payload, {
+  trustedScope = TRUSTED_STORAGE_SHARE_SCOPE,
+  projectUrl = '',
+  policyRevision = ''
+} = {}) {
+  const references = collectSupabaseShareReferences(payload);
+  if (!references.hasReference) return false;
+  if (references.malformed || !hasVerifiedStorageShareScope(trustedScope, { projectUrl, policyRevision })) return true;
+
+  const shareableBuckets = new Set(
+    trustedScope.shareableBuckets
       .map(bucket => String(bucket || '').trim().toLowerCase())
       .filter(Boolean)
   );
-  const items = Array.isArray(payload?.library?.items) ? payload.library.items : [];
+  return references.buckets.some(bucket => !shareableBuckets.has(bucket));
+}
 
-  return items.some(item => {
+function normalizeShareScopeProjectUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return '';
+    const path = url.pathname.replace(/\/+$/, '');
+    return `${url.origin.toLowerCase()}${path}`;
+  } catch (_) {
+    return '';
+  }
+}
+
+function collectSupabaseShareReferences(payload) {
+  const items = ['library', 'playlist', 'slideshow']
+    .flatMap(section => Array.isArray(payload?.[section]?.items) ? payload[section].items : []);
+  const result = { hasReference: false, malformed: false, buckets: [] };
+
+  for (const item of items) {
     const metadata = isRecord(item?.metadata) ? item.metadata : {};
     const bucket = metadata.storageBucket || metadata.bucket || item?.storageBucket || item?.bucket;
     const path = metadata.storagePath || metadata.objectPath || item?.storagePath || item?.objectPath;
+    const recordBucket = item?.storageBucket || item?.bucket;
+    const recordPath = item?.storagePath || item?.objectPath;
     const candidates = [
-      metadata.storageReference,
-      item?.storageReference,
-      bucket && path ? `${bucket}/${path}` : '',
-      item?.path,
-      item?.fullPath,
-      item?.sourceUrl,
-      metadata.sourceUrl
+      { value: metadata.storageReference, explicit: true, allowBareReference: true },
+      { value: item?.storageReference, explicit: true, allowBareReference: true },
+      {
+        value: bucket && path ? `${bucket}/${path}` : '',
+        explicit: !!(bucket || path),
+        malformedIfEmpty: !!(bucket || path) && !(bucket && path),
+        allowBareReference: true
+      },
+      {
+        value: recordBucket && recordPath ? `${recordBucket}/${recordPath}` : '',
+        explicit: !!(recordBucket || recordPath),
+        malformedIfEmpty: !!(recordBucket || recordPath) && !(recordBucket && recordPath),
+        allowBareReference: true
+      },
+      { value: item?.path, explicit: false, allowBareReference: item?.pathKind === 'remote' },
+      { value: item?.fullPath, explicit: false, allowBareReference: item?.pathKind === 'remote' },
+      { value: item?.sourceUrl, explicit: false, allowBareReference: item?.pathKind === 'remote' },
+      { value: metadata.sourceUrl, explicit: false, allowBareReference: item?.pathKind === 'remote' }
     ];
 
-    return candidates.some(candidate => {
-      const reference = sanitizeSupabaseStorageReference(candidate || '');
-      if (!reference) return false;
-      const referenceBucket = reference.slice('supabase://'.length).split('/', 1)[0];
-      return !publicBuckets.has(referenceBucket);
-    });
-  });
+    for (const { value, explicit, malformedIfEmpty, allowBareReference } of candidates) {
+      const raw = String(value || '').trim();
+      const hasStorageScheme = /^(?:supabase|storage):/i.test(raw);
+      const reference = sanitizeSupabaseStorageReference(raw);
+      if (!reference) {
+        if (hasStorageScheme || (explicit && raw)) {
+          result.hasReference = true;
+          result.malformed = true;
+        } else if (malformedIfEmpty) {
+          result.hasReference = true;
+          result.malformed = true;
+        }
+        continue;
+      }
+      if (!allowBareReference && !hasStorageScheme) continue;
+      result.hasReference = true;
+      result.buckets.push(reference.slice('supabase://'.length).split('/', 1)[0].toLowerCase());
+    }
+  }
+
+  return result;
 }
 
 // Compact transport schema. The magic/version pair is intentionally an array

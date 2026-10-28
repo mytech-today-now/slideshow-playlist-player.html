@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261019-v5.0.11-session-and-recovery`
+- **Cache/app shell version key:** `20261028-v5.0.11-storage-share-scope`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -1012,7 +1012,7 @@ Yes. Deep links include `exp`, optional `layer`, optional `item`, and optional `
 
 ### Can I use private Supabase media?
 
-Blend requests signed URLs with the signed-in user's access token. Whether that user may read an object is controlled by the Supabase project's Storage policies, which this app does not configure or verify. While the provider release gate is unverified, **Share URL is blocked for experiences that reference a non-allowlisted private bucket**; public-only sharing and normal playback remain available. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md), have the policy owner review the redacted policy and rollback exports, and record all six principal/object outcomes before authorizing a later release change for private-reference sharing.
+Blend requests signed URLs with the signed-in user's access token. Whether that user may read an object is controlled by the Supabase project's Storage policies, which this app does not configure or verify. This build has no trusted scope bound to an exact project and current policy revision, so **Share URL is blocked for every portable Supabase Storage reference**; changing the LocalStorage public-bucket allowlist cannot enable it. Direct public HTTP media URLs, normal playback, and portable JSON references remain available. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md), have the policy owner review the redacted current and rollback exports, and record all six principal/object outcomes before authorizing a later release change for storage-reference sharing.
 
 ### Are IPFS features still active?
 

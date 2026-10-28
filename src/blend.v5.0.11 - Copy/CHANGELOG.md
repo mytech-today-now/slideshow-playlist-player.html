@@ -8,6 +8,7 @@ These changes are present in the current review checkout. The app version remain
 
 ### Added
 
+- Compressed Share URLs now require a trusted scope bound to the exact Supabase project and policy revision. This build has no verified scope, so Supabase Storage references remain blocked while direct public URLs and portable JSON exports remain available.
 - Added a shared 250-file ceiling for direct Add Files selections, with accessible selected/accepted/remaining counts for oversized batches and retry for unreadable selected files.
 - Added deterministic save-performance fixtures and Node/browser benchmarks for large experiences, plus regression and browser coverage for changed-row writes and save recovery.
 - Added focused Firefox and WebKit compatibility coverage and CI reporting that records engine versions without implying branded-browser or mobile-device certification.

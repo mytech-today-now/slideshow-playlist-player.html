@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en" data-report-style="basic" data-color-mode="system">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Kyle Rode, myTech.Today">
+<meta name="generator" content="myTech.Today prompt-refined report workflow">
+<meta name="report-repository" content="slideshow-playlist-player.html">
+<meta name="report-repository-url" content="https://github.com/mytech-today-now/slideshow-playlist-player.html.git">
+<meta name="report-repository-author" content="Not identified from available repository evidence">
+<meta name="description" content="Evidence-based comparison of Blend Player source report issue-01 with the current working tree.">
+<title>Blend Player issue comparison, 2026-10-28 11:41:19 -05:00</title>
+<link rel="stylesheet" href="https://raw.githubusercontent.com/mytech-today-now/prompt-refined/refs/heads/main/css/style.css">
+<script defer src="https://raw.githubusercontent.com/mytech-today-now/prompt-refined/refs/heads/main/js/code.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="report-header">
+  <p class="report-kicker">Evidence-based repository report comparison</p>
+  <h1 class="report-title">Blend Player v5.0.11: source report comparison and current findings</h1>
+  <div class="report-meta">
+    <p><strong>Generated:</strong> 2026-10-28 11:41:19 -05:00 Central Daylight Time</p>
+    <p><strong>Output:</strong> ai-prompts/pre-mortem-refactored-2026-10-28-11-41-19.html</p>
+    <p><strong>Reviewed project:</strong> Blend Player v5.0.11, self-contained project at <code>src/blend.v5.0.11 - Copy</code> inside the enclosing slideshow-playlist-player.html Git repository.</p>
+    <p><strong>Repository URL:</strong> https://github.com/mytech-today-now/slideshow-playlist-player.html.git, recorded as the local Git origin.</p>
+    <p><strong>Branch and revision:</strong> <code>main</code>, <code>4793a184b198b22ca7c6773141a5a843297db7bc</code>. The reviewed working tree also had pre-existing modifications in two Issue 09 OpenSpec files.</p>
+    <p><strong>Project author or maintainer:</strong> Not identified from available repository evidence.</p>
+    <p><strong>Attribution evidence:</strong> Local Git origin, root <code>AGENTS.md</code>, <code>README.md</code>, <code>CLAUDE.md</code>, and <code>package.json</code> identify the project and repository but do not establish a project author or maintainer. The repository owner is not treated as proof of authorship.</p>
+    <p><strong>Report author:</strong> Kyle Rode, using the myTech.Today prompt-refined report workflow.</p>
+  </div>
+  <section class="report-attribution" aria-labelledby="attribution-title">
+    <h2 id="attribution-title">Project and report attribution</h2>
+    <p><strong>Reviewed repository:</strong> slideshow-playlist-player.html, standalone Blend Player v5.0.11 project. <strong>Project author or maintainer:</strong> Not identified from available repository evidence. The configured origin identifies the repository owner, not project authorship.</p>
+    <p><strong>Report author:</strong> Kyle Rode, using the myTech.Today prompt-refined workflow.</p>
+  </section>
+  <section class="company-profile" aria-labelledby="company-title">
+    <h2 id="company-title">myTech.Today</h2>
+    <p>myTech.Today is a Midwestern technology company.</p>
+    <ul>
+      <li>Managed IT and remote support</li>
+      <li>Computer and network support</li>
+      <li>Backup and recovery</li>
+      <li>Web development and software services</li>
+    </ul>
+    <p><a href="https://mytech.today">myTech.Today</a> | <a href="mailto:support@mytech.today">support@mytech.today</a></p>
+  </section>
+  <fieldset class="report-preferences" data-report-preferences disabled>
+    <legend>Appearance</legend>
+    <label for="report-style">Report style</label>
+    <select id="report-style" data-report-style-control disabled>
+      <option value="basic" selected>Basic</option>
+      <option value="minimal">Minimal</option>
+      <option value="full">Full &amp; complete style</option>
+    </select>
+    <label for="color-mode">Color mode</label>
+    <select id="color-mode" data-color-mode-control disabled>
+      <option value="system" selected>System</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+    <p class="preferences-status" data-preferences-status role="status" aria-live="polite">JavaScript has not initialized appearance controls. If this message remains, check that the shared script loaded and completed initialization.</p>
+    <p class="issue-progress-storage-status" data-issue-progress-status role="status" aria-live="polite">JavaScript has not initialized issue progress controls. If this message remains, check that the shared script loaded and completed initialization.</p>
+    <noscript>This report uses Basic styling and follows the system color preference. Copy and progress controls require JavaScript. The issue text and implementation prompt remain available for selection and manual copying.</noscript>
+  </fieldset>
+</header>
+<main id="main-content" class="report-main">
+  <section class="report-summary" aria-labelledby="summary-title">
+    <h2 id="summary-title">Executive summary</h2>
+    <p>The supplied source report, <code>ai-prompts/pre-mortem_2026-10-25_20-11-08.html</code>, contains one incomplete feature request: enable private-reference sharing only after authorization has been verified. It links that work to the earlier Core finding <code>issue-01</code>, “Private Storage authorization remains an unpassed release gate.” Current repository evidence confirms the gate remains open. No source issue is verified complete, and no separate Additional finding is needed to represent the same project-scope authorization gap.</p>
+    <p>The app currently blocks compressed URL sharing when a referenced Supabase bucket is not in the configured public bucket allowlist. The current verification record still lacks owner-reviewed policy and rollback evidence, marks all six provider cases NOT RUN, and says no trusted approval is bound to the exact provider project and policy revision. These facts establish an unresolved release prerequisite, not an observed provider defect, exposure, or unauthorized access.</p>
+    <p>This comparison ran <code>npm run check</code> successfully and passed 70 of 70 focused Node regression tests across the storage policy, URL sharing, and storage resolver modules. Those checks support local code behavior only. No browser test, provider request, staging matrix, or deployed policy check was run for this report.</p>
+    <p>The source report labels its item Priority P1 and Severity 1. This report assesses the current evidence independently: Priority P2 and Severity 3 (Medium), because the requested private-reference capability remains unavailable while the existing public-only and local workflows are preserved, and no provider failure or exposure was observed. The hypothetical result of enabling an unverified scope is labeled as a Testable assumption in the finding.</p>
+    <p>The shared stylesheet and script endpoints and their browser behavior could not be verified in this review. Their required URLs are present once in the document head, but their availability and execution remain unverified release conditions. Static content remains available if JavaScript does not initialize.</p>
+  </section>
+  <section class="input-resolution" aria-labelledby="input-resolution-title">
+    <h2 id="input-resolution-title">Source input and resolution</h2>
+    <p>The supplied path was resolved to <code>ai-prompts/pre-mortem_2026-10-25_20-11-08.html</code>; the trailing quote in the request was treated as a path delimiter. The file exists and contains one identifiable issue article. Its own status selector is set to Not Complete and its prompt links the issue to <code>ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-01</code>. The status selector and previous report are context only; current code, verification records, and this review's checks determine the classification here.</p>
+  </section>
+  <section class="completed-source-issues" aria-labelledby="completed-source-title">
+    <h2 id="completed-source-title">Completed source issues</h2>
+    <p>None verified complete. The sole source item, issue-01, remains unresolved because required owner evidence and the exact-scope authorization design are not recorded, and the provider matrix remains unrun.</p>
+  </section>
+  <nav class="issue-toc" aria-label="Table of contents">
+    <h2>Actionable findings</h2>
+    <ol>
+      <li>
+        <a class="issue-toc-link" href="#issue-01">
+          <span class="issue-toc-number">01</span>
+          <span>Private-reference sharing remains blocked pending owner-reviewed, project-scoped authorization evidence</span>
+          <span class="issue-toc-kind">Core</span>
+          <span class="issue-toc-status" data-issue-progress-indicator="issue-01" data-progress="incomplete">Incomplete</span>
+        </a>
+      </li>
+    </ol>
+  </nav>
+  <section class="scope-notes" aria-labelledby="scope-title">
+    <h2 id="scope-title">Review scope, method, and evidence limits</h2>
+    <ul>
+      <li><strong>Working tree:</strong> The active target is the self-contained Blend Player v5.0.11 directory, not a sibling version. The enclosing Git root is <code>slideshow-playlist-player.html</code>. Before this report was created, <code>git status --short</code> showed pre-existing changes in <code>openspec/changes/issue-09-share-decompression-memory/proposal.md</code> and <code>openspec/changes/issue-09-share-decompression-memory/tasks.md</code>. They are unrelated to this finding and were preserved.</li>
+      <li><strong>Application shape:</strong> The project guidance describes a static, local-first browser app using HTML, CSS, ES modules, IndexedDB, LocalStorage, and service workers. <code>index.html</code> is the entry point; <code>app.js</code> orchestrates browser workflows. Normal playback has no build step or runtime package dependency.</li>
+      <li><strong>Share gate:</strong> <code>app.js</code> builds a referenced-only experience payload and calls <code>hasNonPublicSupabaseStorageReference</code> before compression. If a referenced bucket is outside the configured public allowlist, it shows the policy warning and returns without creating the compressed private-reference share. <code>url-share.js</code> contains the pure gate helper. <code>index.html</code> presents the warning that private URL sharing is blocked pending owner verification.</li>
+      <li><strong>Authorization boundary:</strong> <code>storage-url-resolver.js</code>, <code>supabase-auth.js</code>, and <code>supabase-config.js</code> implement client-side reference resolution, caller authentication, and runtime configuration. Passing local tests does not establish provider policy behavior. <code>STORAGE_POLICY_VERIFICATION.md</code> states that the runtime project and public bucket allowlist can be changed, including through LocalStorage, and that the current gate does not bind approval to an exact project and policy revision.</li>
+      <li><strong>Provider evidence:</strong> The latest local verification record says owner identity and authority, project identity, current and rollback policy exports, rollback owner and procedure, reviewed fixtures, six principal/object outcomes, and final owner decision remain NOT RECORDED or NOT RUN. No provider policy defect or exposure was observed. Actual provider authorization remains unknown.</li>
+      <li><strong>Test results from this review:</strong> <code>npm run check</code> passed. <code>node --test --test-isolation=none tests/regression/storage-policy-contract.test.mjs tests/regression/url-share.test.mjs tests/regression/storage-url-resolver.test.mjs</code> passed 70/70. The regression tests use local test boundaries and do not request or prove provider authorization.</li>
+      <li><strong>Not run:</strong> Browser E2E, <code>npm run sanity</code>, the staging policy command, and any live provider check were not run for this report. No staging credentials were read and no Supabase request was made. The provider matrix remains NOT RUN.</li>
+      <li><strong>Report format and external assets:</strong> The repository does not contain the referenced <code>pre-mortem-with-prompts.md</code>. The installed local pre-mortem authoring skill and the latest complete report in <code>ai-prompts/</code> supplied the non-count format and selector contract. The requested remote review Markdown and the shared raw asset URLs returned a web retrieval cache miss, so remote availability and browser behavior are unverified. The comparison workflow's evidence-based rules determine the finding count.</li>
+      <li><strong>Attribution:</strong> The local origin identifies the <code>mytech-today-now</code> repository owner. The inspected instructions and project documents do not identify a project author or maintainer. A commit author or repository owner was not substituted for project authorship.</li>
+    </ul>
+  </section>
+  <section class="risk-register" aria-labelledby="risk-title">
+    <h2 id="risk-title">Prioritized risk register</h2>
+    <div class="risk-table-wrap" role="region" aria-label="Risk register" tabindex="0">
+      <table class="risk-table">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Finding</th>
+            <th scope="col">Source reference</th>
+            <th scope="col">Kind</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Severity</th>
+            <th scope="col">Likelihood</th>
+            <th scope="col">Impacted area</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-risk-id="issue-01">
+            <td><a href="#issue-01">issue-01</a></td>
+            <td>Private-reference sharing remains blocked pending owner-reviewed, project-scoped authorization evidence</td>
+            <td>Source report issue-01; linked earlier Core issue-01</td>
+            <td>Core</td>
+            <td><span class="priority-label" data-priority="p2">Priority P2</span></td>
+            <td><span class="severity-label" data-severity="3">Severity 3 (Medium)</span></td>
+            <td>Possible only if an unverified scope is enabled; see Testable assumption</td>
+            <td>Private media sharing, confidentiality, release readiness, and policy traceability</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="issue-list" aria-labelledby="findings-title">
+    <h2 id="findings-title">Findings</h2>
+    <article class="issue" id="issue-01" data-issue-kind="core" data-progress="incomplete" data-issue-title="Private-reference sharing remains blocked pending owner-reviewed, project-scoped authorization evidence">
+      <header class="issue-header">
+        <p class="issue-number">Issue 01</p>
+        <h2 class="issue-title">Private-reference sharing remains blocked pending owner-reviewed, project-scoped authorization evidence</h2>
+        <p class="issue-kind">Core source issue-01, unresolved</p>
+      </header>
+      <dl class="issue-fields">
+        <div><dt>Title</dt><dd>Private-reference sharing remains blocked pending owner-reviewed, project-scoped authorization evidence</dd></div>
+        <div><dt>Kind</dt><dd><span class="issue-kind">Core</span>, source issue-01 from the supplied report.</dd></div>
+        <div><dt>Priority</dt><dd><span class="priority-label" data-priority="p2">Priority P2</span>. The requested private-reference capability cannot be released until owner evidence and a safe scope binding are available. Existing public-only sharing and local playback remain available.</dd></div>
+        <div><dt>Severity</dt><dd><span class="severity-label" data-severity="3">Severity 3 (Medium)</span>. The verified current consequence is that compressed sharing of private references is unavailable. No provider defect or exposure was observed.</dd></div>
+        <div><dt>Likelihood</dt><dd>Possible for an unsafe authorization result only if private sharing were enabled without verified project and policy scope. The current app gate blocks that path. Provider behavior is unknown.</dd></div>
+        <div><dt>Impacted area</dt><dd>Private media authorization, compressed share links, confidentiality, release readiness, and evidence traceability.</dd></div>
+      </dl>
+      <section class="issue-detail">
+        <h3>Failure mode</h3>
+        <p>The requested feature could be enabled for a runtime Supabase project or policy revision that was not covered by owner-reviewed evidence. A provider policy might then deny the owner or allow an unintended principal. The latter outcomes are not observed facts. In the current checkout, the app blocks compressed sharing for referenced non-allowlisted buckets, so the immediate verified effect is that private-reference URL sharing remains unavailable.</p>
+      </section>
+      <section class="issue-detail">
+        <h3>Evidence or rationale</h3>
+        <ul>
+          <li>The supplied source report marks its single issue, “Enable private-reference sharing only after verification,” Not Complete and links it to the earlier report's <code>issue-01</code>, “Private Storage authorization remains an unpassed release gate.” The source report itself states that no provider policy defect or exposure was observed.</li>
+          <li><code>app.js</code> builds a referenced-only payload and checks <code>hasNonPublicSupabaseStorageReference</code> against <code>RUNTIME_CONFIG.publicBucketAllowList</code> before compressed URL creation. A non-allowlisted referenced bucket triggers the existing warning and early return.</li>
+          <li><code>STORAGE_POLICY_VERIFICATION.md</code> records that owner approval, current and rollback exports, rollback ownership, and all six staging outcomes are not recorded or not run. Its latest scope note says the runtime project and allowlist are changeable and are not bound to an exact project and policy revision.</li>
+          <li>This review's focused tests passed 70/70 and the package syntax check passed. These support local behavior only. They do not exercise provider policies.</li>
+        </ul>
+        <p><strong>Testable assumption:</strong> If a future change removes the current guard or treats a user-editable allowlist as owner approval, an unverified project or policy revision could be enabled. Confirm or disprove this by inspecting the proposed scope binding and testing that missing, changed, or mismatched project and policy identifiers fail closed; then obtain owner-reviewed results for all six disposable-staging cases.</p>
+      </section>
+      <section class="issue-detail">
+        <h3>Why this matters</h3>
+        <p>Sharing a portable storage reference is safe only when the recipient's access is governed by the intended provider policy. The client cannot prove that policy from local configuration or mocks. Enabling a feature without owner evidence could create a confidentiality or availability failure, while leaving the current gate closed preserves public-only sharing and local playback but leaves the requested private-reference feature incomplete.</p>
+      </section>
+      <section class="issue-detail">
+        <h3>Recommended mitigation</h3>
+        <p>Keep the current fail-closed guard until an authorized owner supplies reviewed evidence for a confirmed disposable staging project. Bind any future enablement to the exact verified provider project and policy revision through a trusted, non-user-editable release scope. Define how a policy revision change invalidates that scope. Require all six owner-reviewed principal/object outcomes before enabling the feature. Preserve public-only compressed sharing, local playback, portable JSON export, referenced-only serialization, caller-token resolver behavior, and safe error messages. Do not change provider policy from this checkout or treat a passing local test as provider authorization evidence.</p>
+      </section>
+      <section class="issue-detail">
+        <h3>Implementation prompt</h3>
+        <p>Copy-ready task for a future coding agent:</p>
+        <pre class="implementation-prompt" data-copy-target><code>You are implementing the unresolved private-reference sharing release gate in the self-contained Blend Player v5.0.11 project. Work only in the active project directory. Treat the current working tree as authoritative and preserve every existing staged, unstaged, and untracked change.
+
+Source trace: the supplied source item is ai-prompts/pre-mortem_2026-10-25_20-11-08.html, issue-01, “Enable private-reference sharing only after verification.” It links to ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-01, “Private Storage authorization remains an unpassed release gate.” The current repository evidence is in STORAGE_POLICY_VERIFICATION.md, app.js, url-share.js, index.html, and the related storage policy and share tests. Recheck all evidence before changing code.
+
+Verified current behavior and limitation:
+- app.js builds a referenced-only experience payload and checks hasNonPublicSupabaseStorageReference(payload, RUNTIME_CONFIG.publicBucketAllowList) before compression. A referenced non-allowlisted Supabase bucket causes a warning and early return.
+- url-share.js contains the pure public-allowlist gate. storage-url-resolver.js resolves private media using the signed-in caller's user token and the configured anon key.
+- STORAGE_POLICY_VERIFICATION.md says the owner, confirmed disposable project, reviewed current policy export, reviewed rollback export, rollback owner and procedure, and all six provider outcomes are not recorded or not run. It also states that runtime project and allowlist values can be changed and are not bound to a trusted approval for an exact project and policy revision.
+- No provider policy defect or exposure was observed. Provider authorization behavior is unknown. Do not represent the testable possibility of over-permission or owner denial as an incident.
+
+First inspect AGENTS.md, README.md, CLAUDE.md, package.json, the exact current git status and focused diffs, openspec/config.yaml, .beads/config.yaml, and the relevant Issue 01 OpenSpec artifacts. Confirm the active project root and available tracking workflows. The prior review observed unrelated edits in openspec/changes/issue-09-share-decompression-memory/proposal.md and tasks.md; preserve them if they remain. The source prompt names Beads issue blend-5qc and OpenSpec change issue-01-private-storage-authorization-gate, but verify each record and status before using it. Do not install, initialize, upgrade, archive, or reconfigure Beads or OpenSpec. Do not create duplicate tracking records. Keep matching work open while required owner evidence is absent.
+
+Safety boundary:
+- Do not inspect or test production. Do not use production media, private object paths, bearer tokens, signed URLs, provider response bodies, or service-role credentials.
+- Before any provider request, require explicit owner authorization for a disposable staging project, owner-reviewed redacted current and rollback policy exports, a confirmed project identity and policy revision, synthetic fixtures, a rollback owner and procedure, and all other prerequisites in STORAGE_POLICY_VERIFICATION.md.
+- The exact staging confirmation string is BLEND_STORAGE_STAGING_CONFIRM=I_CONFIRM_DISPOSABLE_STAGING_ONLY. It is a second safeguard, not permission by itself. If any prerequisite is missing, do not read staging credentials or run npm run test:storage-policy-staging. Keep the client gate closed and report the missing evidence.
+- Never derive, write, deploy, or recommend provider policy SQL from this checkout. Do not add a private bucket to the public allowlist. Do not add a user-editable switch that self-certifies authorization.
+
+Implement the smallest repository-consistent change that keeps private references blocked until a trusted authorization scope is verified. If the exact-project and policy-revision binding cannot be established safely, leave sharing blocked and do not claim feature completion. A scope must cease to authorize sharing when its project identity or policy revision differs or cannot be checked. Do not rely on LocalStorage or other user-editable runtime values as proof of owner approval.
+
+Preserve normal local playback, public-only compressed URL sharing, portable JSON import and export, referenced-only serialization, the current 8 MiB decompressed-output limit, caller-token private resolution, authentication behavior, and safe generic failures. Shared compressed data may contain portable supabase://bucket/path references only; it must not contain access tokens, service-role keys, signed URLs, or provider bodies. Do not log bucket or object paths. If app shell or module assets change, follow the existing cache and version conventions in pwa-config.js, service-worker.js, sw.js, index.html, and the manifest files. Keep the static no-build app and avoid runtime dependencies.
+
+Add focused coverage using the repository's Node regression and Playwright conventions:
+1. Regression and decision table: set up public-only, private, mixed, malformed, and unused private library records. Exercise the referenced payload gate before compression or share-dialog opening. Assert that a verified public-only payload can still be shared; private, unknown, and mismatched scopes remain blocked; unused private library records do not block an unrelated public-only reference; JSON export and local playback remain available.
+2. Exact-scope invalidation: set up an approved synthetic project and policy revision, then vary the project ID, policy revision, or missing values. Assert that only an exact, currently approved scope can pass. Assert that user-editable configuration cannot create or broaden approval.
+3. Credential-safe skip path: with absent and inexact staging confirmation, use an environment-read proxy and fetch spy. Assert SKIP, one confirmation read, zero credential reads, zero requests, and output without credential values.
+4. Authorized staging integration, only after every owner prerequisite passes: use separate authenticated Owner A and unrelated User B identities plus anonymous access, synthetic objects in one private and one public bucket under codex-policy-check/. Exercise all six principal/object combinations. Assert the approved matrix, record sanitized outcomes only, and leave provider behavior unclaimed before this gate passes.
+5. Browser E2E using the existing local fixture server: verify that a referenced private item is blocked before compressed serialization or dialog creation, public-only sharing still works, portable JSON export remains available, and the failure message is accessible. State explicitly that local mocks do not prove provider authorization.
+
+Use these existing files and tests as applicable: url-share.js; app.js; storage-url-resolver.js; supabase-config.js; supabase-auth.js; index.html; pwa-config.js; service-worker.js; sw.js; STORAGE_POLICY_VERIFICATION.md; tests/regression/url-share.test.mjs; tests/regression/storage-policy-contract.test.mjs; tests/regression/storage-url-resolver.test.mjs; tests/e2e/private-media-export.e2e.spec.mjs; tests/e2e/sharing.e2e.spec.mjs; tests/e2e/supabase-auth.e2e.spec.mjs; tests/integration/storage-policy-staging.mjs. Inspect existing symbols and patterns before editing. Do not widen scope into unrelated share decompression memory profiling or Issue 09.
+
+Run relevant available checks from package.json. A suitable local baseline is npm run check and node --test --test-isolation=none tests/regression/storage-policy-contract.test.mjs tests/regression/url-share.test.mjs tests/regression/storage-url-resolver.test.mjs. Run Playwright coverage when browser execution is available and report launch failure before discovery as zero assertions. Run npm run test:storage-policy-staging only after the complete authorization gate above passes, including owner approval and the exact confirmation. Do not call a provider as part of ordinary local validation.
+
+Acceptance criteria:
+- Without owner approval and reviewed evidence, the release gate remains NOT PASSED, the provider matrix stays NOT RUN, and private-reference compressed sharing remains blocked.
+- Any enabled scope is bound to the exact provider project and policy revision through a trusted, non-user-editable mechanism. Missing, changed, or unverified scope fails closed.
+- With authorized staging evidence, all six principal/object outcomes match the approved matrix and have an owner review. Evidence is sanitized and tied to the exact project and revision.
+- Public-only sharing, local playback, portable JSON exports, referenced-only serialization, caller-token resolution, and current size limits remain intact.
+- Shared links contain portable storage references only and never contain credentials, bearer tokens, signed URLs, or provider bodies.
+- Regression tests cover scope decisions, invalidation, skip paths, and the behaviors preserved above. Browser tests cover the local UI flow. Provider behavior is claimed only for the exact authorized staging project and revision actually tested.
+- STORAGE_POLICY_VERIFICATION.md, the existing report-linked trackers, and relevant app documentation match actual evidence. No source report progress selector is presented as tracker synchronization.
+- The implementation report lists changed files, exact commands and outcomes, owner evidence status, provider outcomes, remaining limitations, and recovery. If prerequisites remain absent, report the feature as blocked and incomplete.
+
+When this report is created, the focused local baseline passed 70/70 and npm run check passed. Re-run checks after any implementation; do not reuse these results as proof of a later change. Do not claim browser, provider, deployment, raw-asset, or mobile verification unless performed in that future task. End with actual changed files, tests and results, unrun checks, evidence limits, and open work. Do not expose private chain-of-thought.</code></pre>
+      </section>
+      <section class="issue-detail">
+        <h3>Regression tests</h3>
+        <ol>
+          <li><strong>Share gate decision table:</strong> Use synthetic public, private, mixed, malformed, and unused-private records in <code>tests/regression/url-share.test.mjs</code> and related share code. Call the referenced-payload gate, then exercise the app flow. Assert a referenced private record blocks before compression or share-dialog creation; a public-only reference remains shareable; an unused private library item does not block it; JSON export and local playback remain unchanged.</li>
+          <li><strong>Exact-scope invalidation:</strong> In the focused storage policy contract tests, set up synthetic approved project and policy identifiers, then remove or change each identifier. Assert that absent, stale, or mismatched scope fails closed and a LocalStorage or runtime allowlist edit cannot create approval.</li>
+          <li><strong>Skip path:</strong> With absent and inexact <code>BLEND_STORAGE_STAGING_CONFIRM</code>, use the existing environment read proxy and fetch spy. Assert <code>SKIP</code>, exactly one confirmation read, zero credential reads, zero requests, and output without credential values.</li>
+          <li><strong>Authorized integration only:</strong> After written owner approval, reviewed redacted current and rollback exports, a confirmed disposable project, synthetic fixture objects, and exact confirmation, run the six anonymous, Owner A, and User B cases against private and public objects. Assert the approved matrix, record sanitized outcomes only, and leave provider behavior unclaimed before this gate passes.</li>
+          <li><strong>Browser flow:</strong> With the local fixture server, assert a private reference is blocked before compressed serialization or dialog creation, public-only sharing and JSON export remain available, and the warning is accessible. Keep mocked browser outcomes separate from provider evidence.</li>
+        </ol>
+      </section>
+      <section class="issue-detail">
+        <h3>Additional baseline tests</h3>
+        <ul>
+          <li>This review ran <code>npm run check</code>; it passed.</li>
+          <li>This review ran <code>node --test --test-isolation=none tests/regression/storage-policy-contract.test.mjs tests/regression/url-share.test.mjs tests/regression/storage-url-resolver.test.mjs</code>; all 70 tests passed.</li>
+          <li><code>STORAGE_POLICY_VERIFICATION.md</code> records a prior focused Chromium run with 7 passing E2E cases on 2026-10-25. That historical run is not a current browser result and does not test provider authorization.</li>
+          <li>Browser E2E, the full regression suite, and provider staging were not run for this report. No provider request was made.</li>
+        </ul>
+      </section>
+      <section class="issue-detail">
+        <h3>Acceptance criteria</h3>
+        <ol>
+          <li>Until all owner evidence and the exact-scope design are reviewed, the release gate remains NOT PASSED, all provider cells remain NOT RUN, and private-reference compressed sharing remains blocked.</li>
+          <li>Any enabled authorization scope is bound to the exact provider project and policy revision by a trusted, non-user-editable mechanism. Missing, changed, stale, or unverified values fail closed.</li>
+          <li>After authorization, all six owner-reviewed staging cases match the documented matrix for anonymous, Owner A, and unrelated User B against private and public fixtures. Record only sanitized results tied to project and policy revision.</li>
+          <li>Public-only sharing, local playback, portable JSON export, referenced-only serialization, caller-token private resolution, and current size limits remain intact.</li>
+          <li>Compressed payloads contain portable storage references only and never contain access tokens, service-role credentials, signed URLs, provider bodies, or private paths in diagnostics.</li>
+          <li>Regression coverage proves decision, invalidation, skip-path, and preserved behaviors. Browser coverage proves only the local UI flow. No report claims provider, deployment, or remote-browser proof beyond checks actually run.</li>
+          <li>Documentation and the exact matching tracker records reflect the evidence. Work remains open while the owner gate is incomplete. The final implementation report lists changed files, commands and real outcomes, unavailable checks, evidence limits, and recovery steps.</li>
+        </ol>
+      </section>
+      <section class="issue-detail">
+        <h3>Confidence</h3>
+        <p>High confidence that this checkout blocks private-reference compressed sharing and that the documented owner gate remains unpassed. Low confidence about actual provider policy behavior because no provider policy or outcome was observed. The possibility of over-permission or owner denial is a Testable assumption, not a verified defect.</p>
+      </section>
+      <div class="issue-actions">
+        <label for="progress-issue-01">Progress for issue 01</label>
+        <select id="progress-issue-01" data-issue-progress-control disabled aria-describedby="issue-progress-state-01">
+          <option value="incomplete" selected>Incomplete</option>
+          <option value="in-progress">In progress</option>
+          <option value="complete">Complete</option>
+        </select>
+        <span id="issue-progress-state-01" class="issue-progress-state" data-issue-progress-state data-progress="incomplete">Incomplete</span>
+      </div>
+    </article>
+  </section>
+</main>
+<footer class="report-footer">
+  <p>Generated 2026-10-28 11:41:19 -05:00 Central Daylight Time for the current Blend Player v5.0.11 working tree. This report's progress control is local report state and is not synchronized with Beads, OpenSpec, or provider records.</p>
+  <p>Source report: <code>ai-prompts/pre-mortem_2026-10-25_20-11-08.html</code>. Current provider authorization remains unverified.</p>
+</footer>
+</body>
+</html>
+

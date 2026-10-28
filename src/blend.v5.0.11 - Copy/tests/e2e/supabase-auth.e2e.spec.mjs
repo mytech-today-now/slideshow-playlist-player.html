@@ -24,7 +24,7 @@ function containsPrivateSignedUrlOrToken(value) {
 async function openAuthDialog(app) {
   await app.openConfig();
   await expect(app.page.locator('#private-media-policy-warning'))
-    .toHaveText('Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.');
+    .toHaveText('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.');
   await expect(app.page.locator('#supabase-signed-url-ttl')).toHaveValue('3600');
   await app.page.locator('#supabase-sign-in').click();
   await expect(app.page.locator('#supabase-auth-modal')).toBeVisible();

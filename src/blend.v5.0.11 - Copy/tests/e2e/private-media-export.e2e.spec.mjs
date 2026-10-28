@@ -7,9 +7,8 @@ const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 const BEARER_MARKER = 'issue01-e2e-synthetic-bearer-94a7';
 const PORTABLE_REFERENCE = 'supabase://private-media/private/video.mp4';
 const PUBLIC_URL = 'https://cdn.example.test/media/public.mp4?version=3';
-const PUBLIC_STORAGE_REFERENCE = 'supabase://public/codex-policy-check/public-video.mp4';
 const UNUSED_PRIVATE_STORAGE_REFERENCE = 'supabase://private-media/codex-policy-check/unused-private-video.mp4';
-const PRIVATE_POLICY_WARNING = 'Private URL sharing is blocked until the project owner verifies Storage access. You can share a public-only experience or continue local playback.';
+const PRIVATE_POLICY_WARNING = 'Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.';
 const PATH_OMISSION_NOTICE = 'Local file path details were omitted from this export for privacy. Media references and the saved library were not changed.';
 const PATH_CREDENTIAL_MARKER = 'issue05-e2e-synthetic-credential-marker';
 const ABSOLUTE_PATH_SENTINELS = [
@@ -20,8 +19,8 @@ const ABSOLUTE_PATH_SENTINELS = [
 ];
 const SIGNED_URL = `https://fixture.invalid/storage/v1/object/sign/private-media/private/video.mp4?token=${BEARER_MARKER}&expires=4102444800`;
 
-async function boot(page) {
-  await page.addInitScript(({ fixtureOrigin }) => {
+async function boot(page, { publicBuckets = 'public' } = {}) {
+  await page.addInitScript(({ fixtureOrigin, publicBuckets }) => {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     localStorage.setItem('blend-analytics-consent-v1', '0');
@@ -32,10 +31,10 @@ async function boot(page) {
         ...existing,
         SUPABASE_URL: fixtureOrigin,
         SUPABASE_MEDIA_BUCKET: 'media',
-        SUPABASE_PUBLIC_BUCKETS: 'public'
+        SUPABASE_PUBLIC_BUCKETS: publicBuckets
       }));
     } catch (_) {}
-  }, { fixtureOrigin: FIXTURE_ORIGIN });
+  }, { fixtureOrigin: FIXTURE_ORIGIN, publicBuckets });
   await page.goto('/index.html');
   await page.waitForFunction(() => !!window.Blend?.state);
 }
@@ -123,20 +122,18 @@ async function seedPrivateAndPublicRecords(page, {
   });
 }
 
-async function seedPublicSupabaseOnly(page) {
-  await page.evaluate(({ publicReference, unusedPrivateReference, pathSentinels, pathCredentialMarker }) => {
+async function seedPublicUrlOnly(page) {
+  await page.evaluate(({ publicUrl, unusedPrivateReference, pathSentinels, pathCredentialMarker }) => {
     const blend = window.Blend;
     const state = blend.state;
     state.library.clear();
     state.library.set('public-video', {
       id: 'public-video', name: 'Public video.mp4', type: 'video', size: 2400,
       duration: 24, addedAt: '2026-09-27T00:00:00.000Z', stale: false,
-      pathHint: publicReference,
-      sourceUrl: publicReference,
+      pathHint: publicUrl,
+      sourceUrl: publicUrl,
       metadata: {
-        storageReference: publicReference,
-        storageBucket: 'public',
-        storagePath: 'codex-policy-check/public-video.mp4',
+        sourceUrl: publicUrl,
         safeLabel: 'Public project label',
         relativePath: 'media/public-video.mp4',
         importedDetails: {
@@ -159,19 +156,19 @@ async function seedPublicSupabaseOnly(page) {
       }
     });
     state.playlist = [{
-      id: 'public-video', path: publicReference, sourceUrl: publicReference,
-      metadata: { storageReference: publicReference, storageBucket: 'public', storagePath: 'codex-policy-check/public-video.mp4' },
+      id: 'public-video', path: publicUrl, sourceUrl: publicUrl,
+      metadata: { sourceUrl: publicUrl },
       available: true
     }];
     state.slideshow = [];
-    state.projectName = 'Public Supabase Share E2E';
-    state.activeExperienceId = 'exp-public-supabase-share-e2e';
+    state.projectName = 'Public URL Share E2E';
+    state.activeExperienceId = 'exp-public-url-share-e2e';
     localStorage.setItem('blend-active-experience-id', state.activeExperienceId);
     state.ui.activeList = 'playlist';
     blend.renderLibrary();
     blend.renderListEditor();
   }, {
-    publicReference: PUBLIC_STORAGE_REFERENCE,
+    publicUrl: PUBLIC_URL,
     unusedPrivateReference: UNUSED_PRIVATE_STORAGE_REFERENCE,
     pathSentinels: ABSOLUTE_PATH_SENTINELS,
     pathCredentialMarker: PATH_CREDENTIAL_MARKER
@@ -227,7 +224,7 @@ function assertNoPathSentinels(value) {
 test('JSON export preserves private references while compressed sharing blocks them until provider verification', async ({ page }, testInfo) => {
   const consoleMessages = [];
   page.on('console', message => consoleMessages.push(message.text()));
-  await boot(page);
+  await boot(page, { publicBuckets: 'private-media' });
   await seedPrivateAndPublicRecords(page, { includeUnused: true });
 
   const config = page.locator('#config-panel');
@@ -283,6 +280,16 @@ test('JSON export preserves private references while compressed sharing blocks t
   await page.evaluate(() => navigator.clipboard.writeText(''));
   const shareTrigger = page.locator('#experience-share-url');
   const beforeShare = await snapshotUserState(page);
+  await page.evaluate(() => {
+    const NativeCompressionStream = window.CompressionStream;
+    window.__issue01CompressionStarts = 0;
+    window.CompressionStream = class extends NativeCompressionStream {
+      constructor(...args) {
+        super(...args);
+        window.__issue01CompressionStarts += 1;
+      }
+    };
+  });
   await shareTrigger.click();
   const toast = page.locator('#toast-container .toast[role="alert"]');
   await expect(toast).toHaveText(PRIVATE_POLICY_WARNING, { timeout: 7000 });
@@ -291,6 +298,7 @@ test('JSON export preserves private references while compressed sharing blocks t
   await expect(page.locator('#url-share-modal')).not.toBeVisible();
   await expect(shareInput).toHaveValue('');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('');
+  expect(await page.evaluate(() => window.__issue01CompressionStarts)).toBe(0);
   expect(await snapshotUserState(page)).toEqual(beforeShare);
   await expect(shareTrigger).toBeEnabled();
   expect(consoleMessages.join('\n')).not.toContain(BEARER_MARKER);
@@ -302,11 +310,11 @@ test('JSON export preserves private references while compressed sharing blocks t
   expect(consoleMessages.join('\n')).not.toContain('private/video.mp4');
 });
 
-test('share disclosure stays readable across viewports and clipboard failure preserves the link', async ({ page }) => {
+test('public URL sharing stays readable across viewports and clipboard failure preserves the link', async ({ page }) => {
   const consoleMessages = [];
   page.on('console', message => consoleMessages.push(message.text()));
   await boot(page);
-  await seedPublicSupabaseOnly(page);
+  await seedPublicUrlOnly(page);
   const config = page.locator('#config-panel');
   if (!(await config.evaluate(node => node.classList.contains('open')))) {
     await page.locator('#config-gear').click();
@@ -339,7 +347,7 @@ test('share disclosure stays readable across viewports and clipboard failure pre
       const sharedValue = new URL(await page.locator('#url-share-url-input').inputValue());
       const shared = await decompressExperience(sharedValue.searchParams.get('experience'));
       expect(shared.library.items.map(item => item.id)).toEqual(['public-video']);
-      expect(shared.library.items[0].metadata.storageReference).toBe(PUBLIC_STORAGE_REFERENCE);
+      expect(shared.library.items[0].sourceUrl).toBe(PUBLIC_URL);
       expect(shared.library.items[0].metadata.safeLabel).toBe('Public project label');
       expect(shared.library.items[0].metadata.relativePath).toBe('media/public-video.mp4');
       assertNoPathSentinels(shared);

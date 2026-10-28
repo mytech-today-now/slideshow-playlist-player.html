@@ -63,3 +63,9 @@ Finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-01`: **Private St
 
 - The policy owner must review the redacted policy and rollback exports and all six disposable-staging outcomes before authorizing a later release change that opens private-reference URL sharing.
 - Keep the Beads issue open until the provider owner records that evidence; do not archive this OpenSpec change before implementation review.
+
+## 4. Trusted project and policy scope follow-up
+
+- [x] 4.1 Require a source-controlled scope to match the exact runtime project and current policy revision; keep the release scope null and ignore user-editable allowlist values for share authorization.
+- [x] 4.2 Add decision-table, invalidation, malformed-input, referenced-only, JSON/playback, and local browser coverage; preserve direct public HTTP URL sharing.
+- [ ] 4.3 Obtain owner-reviewed current and rollback policy evidence and all six disposable-staging outcomes for the exact project/revision before enabling any Storage reference share scope.

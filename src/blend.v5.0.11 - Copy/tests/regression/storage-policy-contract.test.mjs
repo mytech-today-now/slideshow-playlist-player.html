@@ -50,8 +50,19 @@ test('settings surface the required private-policy verification fallback as a no
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(
     html,
-    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Private URL sharing is blocked until the project owner verifies Storage access\. You can share a public-only experience or continue local playback\.<\/p>/
+    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision\. You can share direct public URLs or continue local playback\.<\/p>/
   );
+});
+
+test('app share flow uses the source-controlled scope and blocks before compression', async () => {
+  const app = await readFile(new URL('../../app.js', import.meta.url), 'utf8');
+  const shareFlow = app.slice(app.indexOf('async function shareExperienceViaUrl()'), app.indexOf('function buildExperienceExportPayload('));
+
+  assert.match(shareFlow, /hasUnverifiedSupabaseStorageReference\(payload,\s*\{\s*trustedScope:\s*TRUSTED_STORAGE_SHARE_SCOPE/);
+  assert.match(shareFlow, /policyRevision:\s*null/);
+  assert.ok(shareFlow.indexOf('hasUnverifiedSupabaseStorageReference') < shareFlow.indexOf('compressExperience(payload)'));
+  assert.ok(shareFlow.indexOf('hasUnverifiedSupabaseStorageReference') < shareFlow.indexOf('showUrlShareModal('));
+  assert.doesNotMatch(shareFlow, /publicBucketAllowList/);
 });
 
 test('release evidence records the named owner, policy revision, rollback, and all six matrix cells', async () => {
@@ -93,7 +104,7 @@ test('policy provenance inventory separates app behavior from placeholders and p
   assert.match(verification, /No provider policy defect or exposure was observed; the actual provider policy and authorization behavior remain unknown\./);
   assert.match(verification, /a testable assumption, not an observed incident or a claim that the policy is safe/);
   assert.match(verification, /## Claim provenance inventory/);
-  assert.match(verification, /\| Compressed Share URL creation stops before compression[\s\S]*?\| Active code \|/);
+  assert.match(verification, /\| Compressed Share URL creation requires an exact trusted project and policy scope[\s\S]*?\| Active code \|/);
   assert.match(verification, /\| The settings note and blocked-share message[\s\S]*?\| Active code \|/);
   assert.match(verification, /\| `SUPABASE_PUBLIC_BUCKETS` defaults to `public`[\s\S]*?\| Placeholder config and active config resolution \|/);
   assert.match(verification, /\| The staging runner's six-cell checks[\s\S]*?\| Active code and synthetic skip-path regression \|/);

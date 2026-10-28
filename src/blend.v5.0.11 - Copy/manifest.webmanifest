@@ -9,13 +9,13 @@
   "theme_color": "#0a0a0a",
   "icons": [
     {
-      "src": "./icon.svg?v=20261019-v5.0.11-session-and-recovery",
+      "src": "./icon.svg?v=20261028-v5.0.11-storage-share-scope",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./icon-maskable.svg?v=20261019-v5.0.11-session-and-recovery",
+      "src": "./icon-maskable.svg?v=20261028-v5.0.11-storage-share-scope",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

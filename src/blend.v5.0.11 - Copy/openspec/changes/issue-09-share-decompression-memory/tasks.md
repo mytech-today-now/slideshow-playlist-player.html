@@ -21,7 +21,8 @@
 
 ## Tracking
 
-- Source report: `Pasted text.txt`, Issue 09, “The 50 MiB share decompression ceiling can still create multiple large memory copies”.
+- Current report finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-04`, stable article ID `issue-04`, “An 8 MiB shared experience lacks low-memory peak measurements”.
+- Original implementation source: `Pasted text.txt`, Issue 09, “The 50 MiB share decompression ceiling can still create multiple large memory copies”.
 - Beads issue: `blend-lmg`.
 
 ## Verification record (2026-10-12)
@@ -75,3 +76,28 @@ All nine requested trials are explicitly Not run:
 | Over-limit 10 MiB | 3 | Not run | ADB and emulator CLI unavailable; configured AVD and guest Chrome cannot be inspected. |
 
 No trial duration, idle baseline, peak anonymous renderer RSS, responsiveness, or device-side URL/state recovery result was collected. The requested Chrome for Android 155.0.8059.39 build and exact active AVD image/configuration remain unverified in this session. Task 3.4 remains open at 9/10, the 8 MiB cap is unchanged, and Beads `blend-lmg` remains in progress.
+
+## Issue 04 report finding follow-up (2026-10-26)
+
+- Current report finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-04`, stable article ID `issue-04`, “An 8 MiB shared experience lacks low-memory peak measurements”.
+- `npm run sanity` passed: syntax checks and all 383 Node regression tests.
+- `npm run test:e2e -- tests/e2e/url-share-output-limit.e2e.spec.mjs tests/e2e/experience-share-import-playback.e2e.spec.mjs` passed 4/4 in Chromium in the process-enabled runner. The default runner attempt stopped before discovery with `spawn EPERM` and ran zero assertions.
+- The E2E browser heap observation was `10,000,000` bytes before and after rejection; it is informational and is not peak renderer RSS. The runs used local synthetic fixtures, with no user data, credentials, or live provider.
+- Android 13 API 33 AVD measurement is Not run (0/9). `adb` and `emulator` are unavailable and `ANDROID_HOME`/`ANDROID_SDK_ROOT` are unset. The active AVD, installed Chrome build, RSS, duration, responsiveness, and device-side URL/state recovery were not measured.
+- The 8 MiB cap remains unchanged. OpenSpec task 3.4 remains open at 9/10; Beads `blend-lmg` remains `in_progress`.
+
+## Android measurement retry (2026-10-26)
+
+- Report finding: `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-04`, stable article ID `issue-04`, “An 8 MiB shared experience lacks low-memory peak measurements”. The matching OpenSpec change remains `issue-09-share-decompression-memory`; the existing Beads issue remains `blend-lmg` (`in_progress`).
+- Located the task-local Android tools and AVD under the temporary Android SDK directory. The AVD configuration identifies `blend-issue05-api33-lowmem`, Android 13 / API 33, x86_64 Google Play image, 2,048 MiB guest RAM, and 720 by 1,600 display. Emulator 37.2.12 and ADB 37.0.1 are present. These are configuration-file values; the active guest image and installed browser could not be inspected.
+- `adb devices -l` reports `emulator-5554 unauthorized`. The emulator log says to check the device for its USB debugging authorization dialog. The available computer-use surface listed no app or browser window, so no authorization was accepted. Chrome for Android 155.0.8059.39 remains unverified. No ADB authorization keys were changed and no package was installed or upgraded.
+- Prepared synthetic v2 experience payloads only. Their decompressed JSON sizes are 1,048,576, 8,388,608, and 10,485,760 bytes; gzip sizes are 39,685, 374,467, and 376,943 bytes; Base64URL field lengths are 52,914, 499,290, and 502,591 characters, respectively. The local fixture server at `127.0.0.1:4297` returned HTTP 200 for the app entry point. Preparation and host-side availability are not Android trials.
+- All nine required Android trials remain Not run (0/9). No five-second device baseline, renderer anonymous RSS, trial duration, responsiveness observation, or device-side URL/state recovery result was collected. The prior supported-runner Chromium checks and `performance.memory` observation remain as recorded above; they do not substitute for Android RSS.
+- Keep the 8 MiB cap unchanged and task 3.4 open at 9/10. Resume after the emulator's USB debugging prompt is approved by the device owner: verify boot, API/image, display and Chrome build first, then record three trials for each size against the 64 MiB incremental renderer RSS budget. Preserve the existing experience and URL on over-limit failure.
+
+## One-time authorization continuation (2026-10-26)
+
+- This work remains linked to `ai-prompts/pre-mortem-2026-10-25-17-31-42.html#issue-04`, stable article ID `issue-04`. The device owner selected one-time USB debugging approval with “Always allow” unchecked.
+- The earlier emulator process had exited before approval could be confirmed. Relaunched the same AVD visibly with software graphics and audio disabled, without wiping its data. The computer-use inventory still exposes no app or browser window to target. ADB then moved from no device entry to `offline` and finally back to `unauthorized`; the USB debugging prompt has not been accepted.
+- The AVD remains running. No ADB key or security setting was changed. Chrome version and active guest build remain unverified, and Android trials remain Not run (0/9), with no RSS, duration, responsiveness, or URL/state results.
+- Task 3.4 remains open at 9/10 and the 8 MiB cap remains unchanged. The device owner must accept the visible one-time prompt because the emulator window is not available to the computer-use surface; continue with build verification and all nine trials only after ADB reports `device`.

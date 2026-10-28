@@ -2,39 +2,51 @@
 
 ## Purpose
 
-This capability prevents compressed experience links from distributing private Supabase Storage references while provider authorization remains unverified, while preserving sharing for public media.
+This capability prevents compressed experience links from distributing unverified Supabase Storage references while preserving direct public URL sharing, local playback, and portable JSON export.
 
 ## ADDED Requirements
 
-### Requirement: Unverified private references cannot be shared by URL
-The app MUST block compressed experience URL sharing whenever the referenced payload contains a Supabase object in a bucket outside the configured public bucket allowlist and provider authorization remains unverified.
+### Requirement: Supabase references require a trusted exact share scope
+The app MUST block compressed experience URL sharing whenever a referenced Supabase Storage object is malformed, lacks a trusted scope, or the trusted scope does not match the exact current project and policy revision. The app MUST NOT use a user-editable public-bucket allowlist as owner authorization evidence.
 
-#### Scenario: A referenced private object blocks URL sharing
-- **WHEN** a user starts compressed URL sharing for an experience with a referenced private Supabase object
-- **THEN** the app MUST create or present no compressed share URL, MUST explain that private URL sharing is blocked until the project owner verifies Storage access and offer public-only sharing or continued local playback, and MUST preserve the user's active media and experience state
+#### Scenario: A referenced unverified Storage object blocks URL sharing
+- **WHEN** a user starts compressed URL sharing for an experience containing a Supabase Storage reference and no current trusted scope covers it
+- **THEN** the app MUST create or present no compressed share URL, MUST explain that Storage reference sharing is blocked until the project owner verifies the exact project and policy revision, and MUST preserve the user's active media and experience state
 
-#### Scenario: Unreferenced private library entries do not block URL sharing
-- **WHEN** an experience references only public or non-Supabase media but its unused library contains a private Supabase object
+#### Scenario: A current trusted scope permits its listed references
+- **WHEN** every referenced Supabase Storage object is well-formed, its bucket is listed in the source-controlled scope, and the current project and policy revision exactly match that scope
+- **THEN** the app MAY include those references in a compressed URL without requiring a private-media session
+
+#### Scenario: Missing, changed, or mismatched scope fails closed
+- **WHEN** the scope, project identity, or current policy revision is missing, changed, stale, or mismatched
+- **THEN** the app MUST block every referenced Supabase Storage object before compression, even if runtime configuration lists its bucket as public
+
+#### Scenario: Malformed Storage references fail closed
+- **WHEN** a referenced record declares an invalid Supabase Storage reference or incomplete bucket/path metadata
+- **THEN** the app MUST block compressed URL creation before compression or dialog creation
+
+#### Scenario: Unreferenced private library entries do not block direct public URL sharing
+- **WHEN** an experience references only direct public HTTP media URLs but its unused library contains a Supabase Storage object
 - **THEN** the app MUST share only the referenced payload under the existing URL-sharing contract
 
-### Requirement: Public bucket sharing remains separate from private storage
-The app MUST classify Supabase references as public only when their bucket is in the configured public bucket allowlist; no private bucket may be treated as public by the verification gate.
+### Requirement: Public HTTP URL sharing and portable export remain available
+The app MUST preserve direct public HTTP URL sharing, normal local and private-media playback, and portable Supabase references in JSON export while the compressed-reference scope is unavailable.
 
-#### Scenario: An allowlisted public object remains shareable
-- **WHEN** every referenced Supabase object belongs to an allowlisted public bucket
-- **THEN** the app MUST permit compressed URL sharing without requiring a private-media session
+#### Scenario: A direct public URL remains shareable
+- **WHEN** every referenced remote item is a direct public HTTP URL and no Supabase Storage reference is present in the referenced payload
+- **THEN** the app MUST permit compressed URL sharing
 
-#### Scenario: A private bucket is absent from the public allowlist
-- **WHEN** a reference belongs to a bucket outside the configured public bucket allowlist
-- **THEN** the app MUST treat it as private and block compressed URL sharing while authorization remains unverified
+#### Scenario: JSON export preserves portable Storage references
+- **WHEN** an experience containing Supabase Storage references is exported as JSON
+- **THEN** the app MUST preserve portable references and omit bearer tokens, signed URLs, and provider response bodies according to the existing export contract
 
 ### Requirement: Provider authorization remains an external release gate
-Private Storage authorization MUST remain unverified until the policy owner reviews a redacted policy export and all required principal and object outcomes pass in disposable staging.
+Storage authorization MUST remain unverified until the policy owner reviews a redacted policy export, a reviewed rollback export, and all required principal/object outcomes pass in disposable staging.
 
 #### Scenario: Missing or failing owner evidence keeps the release gate closed
-- **WHEN** the redacted provider policy export, reviewed rollback copy, or any required staging outcome is missing or fails
-- **THEN** the release record MUST remain not passed and compressed sharing of private Supabase references MUST remain blocked
+- **WHEN** owner approval, current or rollback policy evidence, exact project/revision identity, rollback ownership/procedure, or any required staging outcome is missing or fails
+- **THEN** the release record MUST remain not passed and compressed sharing of Supabase Storage references MUST remain blocked
 
 #### Scenario: The complete disposable staging matrix is reviewed
-- **WHEN** the owner reviews the redacted policy and rollback exports and all six principal/object outcomes pass in a disposable project
+- **WHEN** the owner reviews the current and rollback policy exports and all six principal/object outcomes pass for the exact disposable project and policy revision
 - **THEN** the owner MAY record the release gate as passed for that project and point in time

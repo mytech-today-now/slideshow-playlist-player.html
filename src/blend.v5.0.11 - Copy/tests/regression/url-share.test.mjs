@@ -10,7 +10,9 @@ import {
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH,
   buildExperienceLibraryPayload,
-  hasNonPublicSupabaseStorageReference,
+  hasUnverifiedSupabaseStorageReference,
+  hasVerifiedStorageShareScope,
+  TRUSTED_STORAGE_SHARE_SCOPE,
   compressExperience,
   decompressExperience,
   estimateShareUrlSize,
@@ -24,7 +26,7 @@ import {
   sanitizeBase64UrlInput
 } from '../../url-share.js';
 
-test('private storage share gate follows only the configured public bucket allowlist', () => {
+test('Storage reference sharing requires an exact trusted project and policy scope', () => {
   const privatePayload = {
     library: {
       items: [{
@@ -42,16 +44,80 @@ test('private storage share gate follows only the configured public bucket allow
       }]
     }
   };
+  const mixedPayload = {
+    library: { items: [...publicPayload.library.items, ...privatePayload.library.items] }
+  };
   const directUrlPayload = {
     library: { items: [{ id: 'direct-url', path: 'https://media.example.test/public.mp4' }] }
   };
+  const malformedPayload = {
+    library: { items: [{ id: 'malformed', path: 'supabase://private-media' }] }
+  };
+  const incompleteMetadataPayload = {
+    library: { items: [{ id: 'incomplete', metadata: { storageBucket: 'public-media' } }] }
+  };
+  const listOnlyPrivatePayload = {
+    library: { items: [] },
+    playlist: {
+      items: [{ id: 'list-only-private', metadata: { storageReference: 'supabase://private-media/codex-policy-check/list-only.mp4' } }]
+    },
+    slideshow: { items: [] }
+  };
+  const trustedScope = Object.freeze({
+    projectUrl: 'https://example.supabase.co',
+    policyRevision: 'policy-revision-42',
+    shareableBuckets: Object.freeze(['public-media'])
+  });
+  const matchingContext = {
+    trustedScope,
+    projectUrl: 'https://example.supabase.co/',
+    policyRevision: 'policy-revision-42'
+  };
 
-  assert.equal(hasNonPublicSupabaseStorageReference(privatePayload, ['public-media']), true);
-  assert.equal(hasNonPublicSupabaseStorageReference(privatePayload, ['private-media']), false);
-  assert.equal(hasNonPublicSupabaseStorageReference(publicPayload, [' PUBLIC-MEDIA ']), false);
-  assert.equal(hasNonPublicSupabaseStorageReference(publicPayload, []), true);
-  assert.equal(hasNonPublicSupabaseStorageReference(directUrlPayload, ['public-media']), false);
-  assert.equal(hasNonPublicSupabaseStorageReference(null, ['public-media']), false);
+  assert.equal(hasVerifiedStorageShareScope(trustedScope, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(publicPayload, matchingContext), false);
+  assert.equal(hasUnverifiedSupabaseStorageReference(privatePayload, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(mixedPayload, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(malformedPayload, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(incompleteMetadataPayload, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(listOnlyPrivatePayload, matchingContext), true);
+  assert.equal(hasUnverifiedSupabaseStorageReference(directUrlPayload), false);
+  assert.equal(hasUnverifiedSupabaseStorageReference(null), false);
+
+  for (const mismatchedContext of [
+    { ...matchingContext, projectUrl: 'https://other-project.supabase.co' },
+    { ...matchingContext, policyRevision: 'policy-revision-43' },
+    { ...matchingContext, projectUrl: '' },
+    { ...matchingContext, policyRevision: '' },
+    { ...matchingContext, trustedScope: null }
+  ]) {
+    assert.equal(hasVerifiedStorageShareScope(mismatchedContext.trustedScope, mismatchedContext), false);
+    assert.equal(hasUnverifiedSupabaseStorageReference(publicPayload, mismatchedContext), true);
+  }
+
+  assert.equal(TRUSTED_STORAGE_SHARE_SCOPE, null, 'this release contains no owner-reviewed scope');
+  assert.equal(hasUnverifiedSupabaseStorageReference(privatePayload, {
+    trustedScope: TRUSTED_STORAGE_SHARE_SCOPE,
+    projectUrl: 'https://example.supabase.co',
+    policyRevision: 'policy-revision-42',
+    runtimeConfig: {
+      SUPABASE_PUBLIC_BUCKETS: 'private-media',
+      STORAGE_POLICY_REVISION: 'policy-revision-42'
+    }
+  }), true, 'editable runtime config cannot create a trusted scope');
+});
+
+test('unused private storage records do not block a referenced public HTTP URL', () => {
+  const library = buildExperienceLibraryPayload([
+    ['public-video', { id: 'public-video', path: 'https://media.example.test/public.mp4' }],
+    ['unused-private', { id: 'unused-private', path: 'supabase://private-media/secret/object.mp4' }]
+  ], {
+    playlistRefs: [{ id: 'public-video' }],
+    referencedOnly: true
+  });
+
+  assert.deepEqual(library.items.map(item => item.id), ['public-video']);
+  assert.equal(hasUnverifiedSupabaseStorageReference({ library }), false);
 });
 
 test('experience URL library payload includes only referenced records through compressed serialization', async () => {
