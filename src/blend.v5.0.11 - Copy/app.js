@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261028-v5.0.11-storage-share-scope';
+} from './indexeddb-open.js?v=20261101-v5.0.11-experience-end-target';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261028-v5.0.11-storage-share-scope';
+} from './experience-persistence.js?v=20261101-v5.0.11-experience-end-target';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261028-v5.0.11-storage-share-scope';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261028-v5.0.11-storage-share-scope';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261028-v5.0.11-storage-share-scope';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261028-v5.0.11-storage-share-scope';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261101-v5.0.11-experience-end-target';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261101-v5.0.11-experience-end-target';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261101-v5.0.11-experience-end-target';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261101-v5.0.11-experience-end-target';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261028-v5.0.11-storage-share-scope';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261028-v5.0.11-storage-share-scope';
+} from './supabase-config.js?v=20261101-v5.0.11-experience-end-target';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261101-v5.0.11-experience-end-target';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,34 +33,37 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261028-v5.0.11-storage-share-scope';
+} from './storage-url-resolver.js?v=20261101-v5.0.11-experience-end-target';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261028-v5.0.11-storage-share-scope';
+} from './signed-url-cleanup.js?v=20261101-v5.0.11-experience-end-target';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261028-v5.0.11-storage-share-scope';
+} from './transition-manager.js?v=20261101-v5.0.11-experience-end-target';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261028-v5.0.11-storage-share-scope';
+} from './playback-clock.js?v=20261101-v5.0.11-experience-end-target';
 import {
+  DEFAULT_EXPERIENCE_END_TARGET,
+  isExperienceEndSatisfied,
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
+  normalizeExperienceEndTarget,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js';
-import { renderMarkdown } from './markdown.js?v=20261028-v5.0.11-storage-share-scope';
-import { fetchReadme } from './readme-fetcher.js?v=20261028-v5.0.11-storage-share-scope';
+} from './playback-mode.js?v=20261101-v5.0.11-experience-end-target';
+import { renderMarkdown } from './markdown.js?v=20261101-v5.0.11-experience-end-target';
+import { fetchReadme } from './readme-fetcher.js?v=20261101-v5.0.11-experience-end-target';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -76,28 +79,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261028-v5.0.11-storage-share-scope';
+} from './url-share.js?v=20261101-v5.0.11-experience-end-target';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261028-v5.0.11-storage-share-scope';
+} from './url-share-diagnostics.js?v=20261101-v5.0.11-experience-end-target';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261028-v5.0.11-storage-share-scope';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261028-v5.0.11-storage-share-scope';
+} from './timeline-analysis.js?v=20261101-v5.0.11-experience-end-target';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261101-v5.0.11-experience-end-target';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261028-v5.0.11-storage-share-scope';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261028-v5.0.11-storage-share-scope';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261028-v5.0.11-storage-share-scope';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261028-v5.0.11-storage-share-scope';
+} from './shared-experience-download.js?v=20261101-v5.0.11-experience-end-target';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261101-v5.0.11-experience-end-target';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261101-v5.0.11-experience-end-target';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261101-v5.0.11-experience-end-target';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -108,7 +111,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261028-v5.0.11-storage-share-scope';
+} from './git-playlist-catalog.js?v=20261101-v5.0.11-experience-end-target';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -119,7 +122,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261028-v5.0.11-storage-share-scope';
+} from './git-playlist-storage.js?v=20261101-v5.0.11-experience-end-target';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -132,17 +135,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261028-v5.0.11-storage-share-scope';
+} from './local-import-limits.js?v=20261101-v5.0.11-experience-end-target';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261028-v5.0.11-storage-share-scope';
+} from './directory-scan-yield.js?v=20261101-v5.0.11-experience-end-target';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261028-v5.0.11-storage-share-scope';
+} from './resume-on-load.js?v=20261101-v5.0.11-experience-end-target';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -237,7 +240,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261028-v5.0.11-storage-share-scope';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261101-v5.0.11-experience-end-target';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -271,6 +274,7 @@ const DEFAULT_SETTINGS = {
   masterVolume: 1.0,
   playbackModePlaylist: 'sequential',
   playbackModeSlideshow: 'sequential',
+  experienceEndTarget: DEFAULT_EXPERIENCE_END_TARGET,
   experiencePlaybackMode: EXPERIENCE_PLAYBACK_MODE_LOOP,
   loopExperienceCatalog: false,
   opacity: 0.5,
@@ -329,6 +333,7 @@ function createDefaultSettings(overrides = {}) {
   merged.transitionMaxHeavyInRow = normalizedTransitions.transitionMaxHeavyInRow;
   merged.qualityAutoAdjust = normalizedTransitions.qualityAutoAdjust;
   merged.showFps = normalizedTransitions.showFps;
+  merged.experienceEndTarget = normalizeExperienceEndTarget(merged.experienceEndTarget);
   merged.experiencePlaybackMode = normalizeExperiencePlaybackMode(merged.experiencePlaybackMode);
   merged.loopExperienceCatalog = !!merged.loopExperienceCatalog;
   return merged;
@@ -4577,6 +4582,7 @@ function syncExperienceControls() {
   $('#import-behavior').value = state.settings.importBehavior || 'append';
   $('#playlist-order').value = normalizeLayerPlaybackMode(state.settings.playbackModePlaylist);
   $('#slideshow-order').value = normalizeLayerPlaybackMode(state.settings.playbackModeSlideshow);
+  $('#experience-end-target').value = normalizeExperienceEndTarget(state.settings.experienceEndTarget);
   $('#experience-playback-mode').value = normalizeExperiencePlaybackMode(state.settings.experiencePlaybackMode);
   $('#loop-experience-catalog').checked = !!state.settings.loopExperienceCatalog;
   $('#transition-duration').value = String(Math.round(transitionDurationMs()));
@@ -8312,13 +8318,28 @@ function resetLayerCompletionState() {
 }
 
 function markLayerComplete(which, reason = 'ended') {
+  if (reason === 'manual_next') return;
   if (which === 'playlist') layerCompletionState.playlistDone = true;
   if (which === 'slideshow') layerCompletionState.slideshowDone = true;
-  const playlistSatisfied = layerCompletionState.playlistDone || !listHasPlayableItems('playlist');
-  const slideshowSatisfied = layerCompletionState.slideshowDone || !listHasPlayableItems('slideshow');
+  maybeHandleExperienceCompletion(reason);
+}
+
+function maybeHandleExperienceCompletion(reason = 'ended') {
   if (!state.runtime.isPlaying) return;
-  if (!playlistSatisfied || !slideshowSatisfied) return;
+  const endSatisfied = isExperienceEndSatisfied({
+    endTarget: state.settings.experienceEndTarget,
+    playlistDone: layerCompletionState.playlistDone,
+    slideshowDone: layerCompletionState.slideshowDone,
+    playlistHasPlayableItems: listHasPlayableItems('playlist'),
+    slideshowHasPlayableItems: listHasPlayableItems('slideshow')
+  });
+  if (!endSatisfied) return;
   void handleExperienceCompletion(reason);
+}
+
+function markUnavailableLayersComplete() {
+  if (!listHasPlayableItems('playlist')) markLayerComplete('playlist', 'unavailable');
+  if (!listHasPlayableItems('slideshow')) markLayerComplete('slideshow', 'unavailable');
 }
 
 function orderedExperienceRecords() {
@@ -8353,6 +8374,7 @@ async function startPlaybackFromCurrentIndices(opts = {}) {
       strictIndex: !!opts.strictIndex
     })) || started;
   }
+  if (started) markUnavailableLayersComplete();
   return started;
 }
 
@@ -8399,8 +8421,10 @@ async function handleExperienceCompletion(reason = 'ended') {
   if (!state.runtime.isPlaying || layerCompletionState.handlingCompletion) return;
   layerCompletionState.handlingCompletion = true;
   const guardToken = experienceTransitionToken;
-  const mode = normalizeExperiencePlaybackMode(state.settings.experiencePlaybackMode);
   try {
+    await stopPlaybackLayersAtExperienceBoundary();
+    if (guardToken !== experienceTransitionToken || !state.runtime.isPlaying) return;
+    const mode = normalizeExperiencePlaybackMode(state.settings.experiencePlaybackMode);
     if (mode === EXPERIENCE_PLAYBACK_MODE_LOOP) {
       const restarted = await restartExperienceFromBeginning();
       if (!restarted) {
@@ -8415,16 +8439,30 @@ async function handleExperienceCompletion(reason = 'ended') {
 
     if (guardToken !== experienceTransitionToken) return;
     applyTransportMode(TRANSPORT.STOPPED);
-    if (playlistVideoA) playlistVideoA.pause();
-    if (playlistVideoB) playlistVideoB.pause();
-    if (slideshowMedia?.tagName === 'VIDEO') slideshowMedia.pause();
-    slideTimer.cancel();
-    stopKenBurns();
     showToast('Experience finished', { timeout: 2000 });
     saveStateDebounced();
   } finally {
     layerCompletionState.handlingCompletion = false;
   }
+}
+
+async function stopPlaybackLayersAtExperienceBoundary() {
+  cancelPlaybackRequest('playlist');
+  cancelPlaybackRequest('slideshow');
+
+  for (const media of [playlistVideoA, playlistVideoB, slideshowMedia]) {
+    if (!media) continue;
+    clearMediaOverlapBinding(media);
+    if (media.tagName === 'VIDEO') media.pause();
+  }
+
+  slideTimer.cancel();
+  stopKenBurns();
+  resetTimelinePlaybackClock();
+  await transitionManager?.cancelActiveTransitions?.([
+    $('#playlist-layer'),
+    $('#slideshow-layer')
+  ]);
 }
 
 function clearMediaOverlapBinding(media) {
@@ -9051,7 +9089,9 @@ function advancePlaylist(opts = {}) {
     return;
   }
 
-  const next = findPlayableListIndexNoWrap('playlist', state.runtime.playlistIndex + 1, 1);
+  const next = opts.reason === 'manual_next'
+    ? findPlayableListIndex('playlist', state.runtime.playlistIndex + 1, 1)
+    : findPlayableListIndexNoWrap('playlist', state.runtime.playlistIndex + 1, 1);
   if (next < 0) {
     clearPlaylistPlayback();
     markLayerComplete('playlist', opts.reason || 'list_end');
@@ -9097,7 +9137,9 @@ function advanceSlideshow(opts = {}) {
       .finally(() => { slideshowAdvanceInFlight = false; });
     return;
   }
-  const next = findPlayableListIndexNoWrap('slideshow', state.runtime.slideshowIndex + 1, 1);
+  const next = opts.reason === 'manual_next'
+    ? findPlayableListIndex('slideshow', state.runtime.slideshowIndex + 1, 1)
+    : findPlayableListIndexNoWrap('slideshow', state.runtime.slideshowIndex + 1, 1);
   if (next < 0) {
     clearSlideshowPlayback();
     markLayerComplete('slideshow', opts.reason || 'list_end');
@@ -9206,6 +9248,7 @@ async function startPlayback() {
     updateHUD();
     return false;
   }
+  markUnavailableLayersComplete();
   resumeOnLoadPending = false;
   clearResumeOnLoadNotice();
   startTimelinePlaybackClock(runtimeTimelinePosition());
@@ -9859,6 +9902,14 @@ function wireTransport() {
       saveStateDebounced();
     };
   }
+  const experienceEndTargetSelect = $('#experience-end-target');
+  if (experienceEndTargetSelect) {
+    experienceEndTargetSelect.onchange = event => {
+      state.settings.experienceEndTarget = normalizeExperienceEndTarget(event.target.value);
+      saveStateDebounced();
+      maybeHandleExperienceCompletion('end_target_changed');
+    };
+  }
   for (const [id, key] of [
     ['playlist-order', 'playbackModePlaylist'],
     ['slideshow-order', 'playbackModeSlideshow']
@@ -10071,6 +10122,7 @@ function toggleMute() {
 // loaded item actually advances (and the paused/stopped banked state is
 // abandoned in favor of the item the user navigated to).
 function engagePlaybackForNavigation() {
+  resetLayerCompletionState();
   if (transportMode !== TRANSPORT.PLAYING) applyTransportMode(TRANSPORT.PLAYING);
 }
 

@@ -86,3 +86,52 @@ test('TransitionManager low tier fallback stays within enabled transitions', () 
   assert.equal(manager.pickEffectId(), 'displacement-ripple');
   manager.destroy();
 });
+
+test('TransitionManager cancels active transitions and waits for style cleanup', async () => {
+  const animations = [];
+  const createAnimation = () => {
+    let rejectFinished;
+    const animation = {
+      cancelled: false,
+      finished: new Promise((_, reject) => { rejectFinished = reject; }),
+      cancel() {
+        this.cancelled = true;
+        rejectFinished(new Error('Animation cancelled'));
+      }
+    };
+    animations.push(animation);
+    return animation;
+  };
+  const incoming = { style: {}, animate: createAnimation };
+  const outgoing = { style: {}, animate: createAnimation };
+  const overlays = [];
+  const root = {
+    getAnimations: () => animations,
+    querySelectorAll: () => overlays
+  };
+  const manager = new TransitionManager({
+    settings: { enabledTransitionIds: ['crossfade'], transitionRandomizeOrder: false },
+    qualityTier: 'high'
+  });
+
+  const operation = manager.applyTransition({
+    container: root,
+    incoming,
+    outgoing,
+    durationMs: 10000,
+    effectId: 'crossfade'
+  });
+  assert.equal(animations.length, 2);
+
+  await manager.cancelActiveTransitions([root]);
+  const result = await operation;
+
+  assert.equal(result.effectId, 'crossfade');
+  assert.deepEqual(animations.map(animation => animation.cancelled), [true, true]);
+  assert.equal(incoming.style.opacity, '');
+  assert.equal(outgoing.style.opacity, '');
+  assert.equal(incoming.style.willChange, '');
+  assert.equal(outgoing.style.willChange, '');
+  assert.equal(manager.activeTransitionOperations.size, 0);
+  manager.destroy();
+});

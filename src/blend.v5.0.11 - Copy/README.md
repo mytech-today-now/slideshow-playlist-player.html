@@ -87,7 +87,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261028-v5.0.11-storage-share-scope`
+- **Cache/app shell version key:** `20261101-v5.0.11-experience-end-target`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -161,6 +161,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Playback | Blend opacity control | Yes | Live slider + keyboard (`[` / `]`) |
 | Playback | Master + per-layer volume | Yes | Playlist, Slideshow, Master |
 | Playback | Experience playback modes | Yes | Loop, Stop at End, Go to Next Experience |
+| Playback | Experience end target | Yes | Playlist or Slideshow; Playlist is the default for new and legacy experiences |
 | Playback | Playlist order | Yes | Sequential or random; sequential by default |
 | Playback | Slideshow order | Yes | Sequential or random; sequential by default |
 | Playback | Fullscreen | Browser-dependent | `requestFullscreen()` on viewport; playback controls remain available when fullscreen cannot start. Mobile device behavior is unverified. |
@@ -664,6 +665,7 @@ Import behavior rules:
 | Theme | `#theme-mode` | IndexedDB settings | `auto`, `dark`, `light` |
 | Effect intensity | `#effect-intensity` | IndexedDB settings | Ken Burns intensity multiplier |
 | Experience playback mode | `#experience-playback-mode` | IndexedDB settings | `loop`, `stop`, `next-experience` |
+| Experience end target | `#experience-end-target` | IndexedDB experience settings | `playlist` (default, including legacy records) or `slideshow`; if the selected layer has no playable items, the available companion layer defines completion |
 | Playlist order | `#playlist-order` | IndexedDB experience settings | `sequential` (default) or `random`; Previous follows random history |
 | Slideshow order | `#slideshow-order` | IndexedDB experience settings | `sequential` (default) or `random`; Previous follows random history |
 | Loop experience catalog | `#loop-experience-catalog` | IndexedDB settings | Wrap to first experience |

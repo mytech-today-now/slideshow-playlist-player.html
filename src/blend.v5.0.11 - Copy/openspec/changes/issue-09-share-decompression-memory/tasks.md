@@ -101,3 +101,9 @@ No trial duration, idle baseline, peak anonymous renderer RSS, responsiveness, o
 - The earlier emulator process had exited before approval could be confirmed. Relaunched the same AVD visibly with software graphics and audio disabled, without wiping its data. The computer-use inventory still exposes no app or browser window to target. ADB then moved from no device entry to `offline` and finally back to `unauthorized`; the USB debugging prompt has not been accepted.
 - The AVD remains running. No ADB key or security setting was changed. Chrome version and active guest build remain unverified, and Android trials remain Not run (0/9), with no RSS, duration, responsiveness, or URL/state results.
 - Task 3.4 remains open at 9/10 and the 8 MiB cap remains unchanged. The device owner must accept the visible one-time prompt because the emulator window is not available to the computer-use surface; continue with build verification and all nine trials only after ADB reports `device`.
+
+## ADB recheck (2026-10-28)
+
+- Ran the task-local `adb.exe devices -l`. The command returned `List of devices attached` with no device entries, so no Android device or emulator is currently available to this runner.
+- No Android trials were run (0/9). Guest API/image, installed Chrome build, idle baseline, renderer RSS, trial duration, responsiveness, and device-side URL/state recovery remain unmeasured. No USB authorization prompt was handled, no ADB keys or security settings were changed, and no packages were installed or upgraded.
+- The device owner must make the authorized AVD or device available and complete any visible USB debugging authorization. Continue only after ADB reports the device as `device`, then verify the guest and browser before the nine trials. Task 3.4 remains open at 9/10 and the 8 MiB cap is unchanged.

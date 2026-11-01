@@ -1,8 +1,38 @@
 export const PLAYBACK_MODE_SEQUENTIAL = 'sequential';
 export const PLAYBACK_MODE_RANDOM = 'random';
+export const EXPERIENCE_END_TARGET_PLAYLIST = 'playlist';
+export const EXPERIENCE_END_TARGET_SLIDESHOW = 'slideshow';
+export const DEFAULT_EXPERIENCE_END_TARGET = EXPERIENCE_END_TARGET_PLAYLIST;
 
 export function normalizeLayerPlaybackMode(value) {
   return value === PLAYBACK_MODE_RANDOM ? PLAYBACK_MODE_RANDOM : PLAYBACK_MODE_SEQUENTIAL;
+}
+
+export function normalizeExperienceEndTarget(value) {
+  return value === EXPERIENCE_END_TARGET_SLIDESHOW
+    ? EXPERIENCE_END_TARGET_SLIDESHOW
+    : DEFAULT_EXPERIENCE_END_TARGET;
+}
+
+export function isExperienceEndSatisfied({
+  endTarget = DEFAULT_EXPERIENCE_END_TARGET,
+  playlistDone = false,
+  slideshowDone = false,
+  playlistHasPlayableItems = false,
+  slideshowHasPlayableItems = false
+} = {}) {
+  const target = normalizeExperienceEndTarget(endTarget);
+  const targetHasPlayableItems = target === EXPERIENCE_END_TARGET_PLAYLIST
+    ? playlistHasPlayableItems
+    : slideshowHasPlayableItems;
+  const targetDone = target === EXPERIENCE_END_TARGET_PLAYLIST ? playlistDone : slideshowDone;
+  if (targetHasPlayableItems) return targetDone;
+
+  const companionHasPlayableItems = target === EXPERIENCE_END_TARGET_PLAYLIST
+    ? slideshowHasPlayableItems
+    : playlistHasPlayableItems;
+  if (!companionHasPlayableItems) return true;
+  return target === EXPERIENCE_END_TARGET_PLAYLIST ? slideshowDone : playlistDone;
 }
 
 export function normalizeLayerPlaybackSettings(settings = {}) {

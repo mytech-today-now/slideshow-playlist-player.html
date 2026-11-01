@@ -2,8 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  DEFAULT_EXPERIENCE_END_TARGET,
+  EXPERIENCE_END_TARGET_PLAYLIST,
+  EXPERIENCE_END_TARGET_SLIDESHOW,
+  isExperienceEndSatisfied,
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
+  normalizeExperienceEndTarget,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from '../../playback-mode.js';
@@ -33,6 +38,9 @@ const ROOT = new URL('../../', import.meta.url);
 test('index settings include playback/transition controls', async () => {
   const html = await readFile(new URL('index.html', ROOT), 'utf8');
   assert.equal(html.includes('id="experience-playback-mode"'), true);
+  assert.match(html, /<label for="experience-end-target">Experience end target<\/label>/);
+  assert.match(html, /<option value="playlist" selected>Playlist<\/option>/);
+  assert.match(html, /<option value="slideshow">Slideshow<\/option>/);
   assert.match(html, /<option value="loop" selected>Loop<\/option>/);
   assert.match(html, /<option value="stop">Stop at End<\/option>/);
   assert.match(html, /<option value="next-experience">Go to Next Experience<\/option>/);
@@ -44,6 +52,64 @@ test('index settings include playback/transition controls', async () => {
   assert.equal(html.includes('id="enabled-transitions-list"'), true);
   assert.equal(html.includes('id="quality-auto-adjust"'), true);
   assert.equal(html.includes('id="show-transition-fps"'), true);
+});
+
+test('experience end target normalization defaults missing and invalid settings to Playlist', () => {
+  assert.equal(DEFAULT_EXPERIENCE_END_TARGET, EXPERIENCE_END_TARGET_PLAYLIST);
+  assert.equal(normalizeExperienceEndTarget(undefined), EXPERIENCE_END_TARGET_PLAYLIST);
+  assert.equal(normalizeExperienceEndTarget(null), EXPERIENCE_END_TARGET_PLAYLIST);
+  assert.equal(normalizeExperienceEndTarget('invalid'), EXPERIENCE_END_TARGET_PLAYLIST);
+  assert.equal(normalizeExperienceEndTarget(EXPERIENCE_END_TARGET_SLIDESHOW), EXPERIENCE_END_TARGET_SLIDESHOW);
+});
+
+test('experience completion follows only the selected playable layer and falls back safely', () => {
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_PLAYLIST,
+    playlistDone: true,
+    slideshowDone: false,
+    playlistHasPlayableItems: true,
+    slideshowHasPlayableItems: true
+  }), true);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_PLAYLIST,
+    playlistDone: false,
+    slideshowDone: true,
+    playlistHasPlayableItems: true,
+    slideshowHasPlayableItems: true
+  }), false);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_SLIDESHOW,
+    playlistDone: false,
+    slideshowDone: true,
+    playlistHasPlayableItems: true,
+    slideshowHasPlayableItems: true
+  }), true);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_SLIDESHOW,
+    playlistDone: true,
+    slideshowDone: false,
+    playlistHasPlayableItems: true,
+    slideshowHasPlayableItems: true
+  }), false);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_PLAYLIST,
+    playlistDone: false,
+    slideshowDone: true,
+    playlistHasPlayableItems: false,
+    slideshowHasPlayableItems: true
+  }), true);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_SLIDESHOW,
+    playlistDone: false,
+    slideshowDone: false,
+    playlistHasPlayableItems: true,
+    slideshowHasPlayableItems: false
+  }), false);
+  assert.equal(isExperienceEndSatisfied({
+    endTarget: EXPERIENCE_END_TARGET_SLIDESHOW,
+    playlistHasPlayableItems: false,
+    slideshowHasPlayableItems: false
+  }), true);
 });
 
 test('layer mode normalization keeps old and invalid settings sequential', () => {
@@ -112,6 +178,11 @@ test('app runtime includes completion modes and transition hooks', async () => {
   assert.equal(app.includes('EXPERIENCE_PLAYBACK_MODE_STOP'), true);
   assert.equal(app.includes('EXPERIENCE_PLAYBACK_MODE_NEXT'), true);
   assert.equal(app.includes('handleExperienceCompletion'), true);
+  assert.match(app, /experienceEndTarget:\s*DEFAULT_EXPERIENCE_END_TARGET/);
+  assert.match(app, /isExperienceEndSatisfied\(\{/);
+  assert.match(app, /maybeHandleExperienceCompletion\('end_target_changed'\)/);
+  assert.match(app, /reason === 'manual_next'/);
+  assert.match(app, /await transitionManager\?\.cancelActiveTransitions\?\./);
   assert.equal(app.includes('transitionOverlapMs'), true);
   assert.equal(app.includes('setupTransitionManager'), true);
   assert.match(app, /normalizeLayerPlaybackSettings\(merged\)/);

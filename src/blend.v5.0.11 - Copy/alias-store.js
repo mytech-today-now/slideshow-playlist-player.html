@@ -5,7 +5,7 @@ import {
   DB_STORE_KEY_PATHS,
   ensureBlendDatabaseStores,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261028-v5.0.11-storage-share-scope';
+} from './indexeddb-open.js?v=20261101-v5.0.11-experience-end-target';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;

@@ -220,6 +220,7 @@ export class TransitionManager {
     this.highFpsStreak = 0;
     this.fpsRaf = 0;
     this.metricsSubscribers = new Set();
+    this.activeTransitionOperations = new Set();
     this.disposeReducedMotionListener = null;
     this.reducedMotion = matchesReducedMotion();
     this.bindReducedMotion();
@@ -375,7 +376,36 @@ export class TransitionManager {
     return finalEffect.id;
   }
 
-  async applyTransition({ container, incoming, outgoing, durationMs, effectId = '' } = {}) {
+  applyTransition(options = {}) {
+    const operation = this.performTransition(options);
+    this.activeTransitionOperations.add(operation);
+    operation.finally(() => this.activeTransitionOperations.delete(operation)).catch(() => {});
+    return operation;
+  }
+
+  async cancelActiveTransitions(containers = []) {
+    const roots = (Array.isArray(containers) ? containers : [containers]).filter(Boolean);
+    for (const root of roots) {
+      let animations = [];
+      try {
+        animations = root.getAnimations?.({ subtree: true }) || [];
+      } catch (_) {
+        try { animations = root.getAnimations?.() || []; } catch (_) {}
+      }
+      for (const animation of animations) {
+        try { animation.cancel(); } catch (_) {}
+      }
+    }
+
+    await Promise.allSettled(Array.from(this.activeTransitionOperations));
+    for (const root of roots) {
+      for (const overlay of root.querySelectorAll?.('.transition-overlay') || []) {
+        overlay.remove();
+      }
+    }
+  }
+
+  async performTransition({ container, incoming, outgoing, durationMs, effectId = '' } = {}) {
     if (!incoming) return { effectId: 'hard-cut', applied: false };
     const duration = clampNumber(durationMs, 120, 10000, this.settings.transitionDurationMs);
     const pickedId = this.pickEffectId(effectId);

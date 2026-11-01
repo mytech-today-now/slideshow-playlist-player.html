@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261028-v5.0.11-storage-share-scope';
-  const CACHE_VERSION = '20261028-v5.0.11-storage-share-scope';
+  const ASSET_VERSION = '20261101-v5.0.11-experience-end-target';
+  const CACHE_VERSION = '20261101-v5.0.11-experience-end-target';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -53,7 +53,7 @@
     asset('./signed-url-cleanup.js'),
     asset('./transition-manager.js'),
     asset('./playback-clock.js'),
-    './playback-mode.js',
+    asset('./playback-mode.js'),
     asset('./markdown.js'),
     asset('./readme-fetcher.js'),
     asset('./url-share.js'),
