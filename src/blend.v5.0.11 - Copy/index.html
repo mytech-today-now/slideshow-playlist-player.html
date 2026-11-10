@@ -25,8 +25,8 @@
   <title>Blend version 5.0.11</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest?v=20261101-v5.0.11-experience-end-target">
-  <link rel="stylesheet" href="./styles.css?v=20261101-v5.0.11-experience-end-target">
+  <link rel="manifest" href="./manifest.webmanifest?v=20261109-v5.0.11-random-layer-cycle-completion">
+  <link rel="stylesheet" href="./styles.css?v=20261109-v5.0.11-random-layer-cycle-completion">
 </head>
 <body>
   <a class="skip-link" href="#config-gear">Go to configuration controls</a>
@@ -271,7 +271,7 @@
         </div>
         <div class="setting">
           <label for="experience-playback-mode">Experience playback mode</label>
-          <select id="experience-playback-mode">
+          <select id="experience-playback-mode" aria-describedby="experience-random-cycle-help">
             <option value="loop" selected>Loop</option>
             <option value="stop">Stop at End</option>
             <option value="next-experience">Go to Next Experience</option>
@@ -279,25 +279,26 @@
         </div>
         <div class="setting">
           <label for="experience-end-target">Experience end target</label>
-          <select id="experience-end-target">
+          <select id="experience-end-target" aria-describedby="experience-random-cycle-help">
             <option value="playlist" selected>Playlist</option>
             <option value="slideshow">Slideshow</option>
           </select>
         </div>
         <div class="setting">
           <label for="playlist-order">Playlist order</label>
-          <select id="playlist-order">
+          <select id="playlist-order" aria-describedby="experience-random-cycle-help">
             <option value="sequential" selected>Sequential</option>
             <option value="random">Random</option>
           </select>
         </div>
         <div class="setting">
           <label for="slideshow-order">Slideshow order</label>
-          <select id="slideshow-order">
+          <select id="slideshow-order" aria-describedby="experience-random-cycle-help">
             <option value="sequential" selected>Sequential</option>
             <option value="random">Random</option>
           </select>
         </div>
+        <p id="experience-random-cycle-help" class="setting__hint setting--wide">With Random order, each playable item plays once per cycle. When that layer is the Experience end target, Loop starts a fresh cycle, Stop at End stops playback, and Go to Next Experience moves on. A random companion layer starts another cycle automatically. After reload, a new cycle begins from the saved current item.</p>
         <div class="setting">
           <label for="default-duration">Default image duration</label>
           <div class="setting__control">
@@ -634,42 +635,61 @@
       <section id="info-panel-about" class="info-panel markdown-body active" role="tabpanel" aria-labelledby="info-tab-about" data-tab="about" tabindex="0">
         <header class="about-hero">
           <h1>myTech.Today</h1>
-          <p class="about-tagline">Managed IT services &amp; custom technology solutions for small and mid-sized businesses across the Midwest.</p>
+          <p class="about-tagline">Professional IT services for Omaha and Lincoln, Nebraska.</p>
           <p class="about-cta">
             <a class="about-link-btn" href="https://mytech.today/" target="_blank" rel="noopener noreferrer">Visit mytech.today →</a>
           </p>
         </header>
 
-        <h2>Who we are</h2>
-        <p>Founded in 2016 and headquartered in Illinois, <strong>myTech.Today</strong> is a leading IT service provider serving small and mid-sized businesses (SMBs) across multiple industries. We deliver professional, customized solutions — and we never outsource our support.</p>
+        <div class="about-profile-grid">
+          <section class="about-profile-card" aria-labelledby="about-services-title">
+            <h2 id="about-services-title">🛠️ Our Services</h2>
+            <ul>
+              <li>IT Consulting and Support</li>
+              <li>Custom PowerShell Automation and Scripting</li>
+              <li>Infrastructure Optimization and System Administration</li>
+              <li>Cloud Integration (Azure, AWS, GCS, Microsoft 365)</li>
+              <li>Network Design and Management</li>
+              <li>Cybersecurity and Compliance Solutions</li>
+              <li>Database Management and Custom Development</li>
+              <li>System Setup, Upgrades, and Troubleshooting</li>
+              <li>Virus and Spyware Removal</li>
+              <li>Hardware Procurement, Installation, and Configuration</li>
+            </ul>
 
-        <h2>What we do</h2>
-        <ul>
-          <li><strong>Managed IT &amp; help desk</strong> — subscription-based or hourly support, with calls answered in about 15 seconds and returned immediately.</li>
-          <li><strong>Cloud &amp; infrastructure</strong> — AWS, Azure, Microsoft 365, hosted servers, colocation, and mail services.</li>
-          <li><strong>Backup &amp; disaster recovery</strong> — online backup, cloud services, and business-continuity planning.</li>
-          <li><strong>Networking &amp; security</strong> — VPN deployment, DNS web filtering, Active Directory, Wi-Fi enhancements, and internet connectivity.</li>
-          <li><strong>Projects &amp; development</strong> — custom programming, VMware configuration, OS upgrades, database and workflow transformations.</li>
-          <li><strong>Domains &amp; web</strong> — domain registration, DNS, hardware and software solutions.</li>
-        </ul>
+            <h2>📍 Service Area</h2>
+            <ul>
+              <li>Omaha, NE</li>
+              <li>Lincoln, NE</li>
+            </ul>
+          </section>
 
-        <h2>Why businesses choose us</h2>
-        <ul>
-          <li>9+ years of trusted service to the SMB community.</li>
-          <li>Fast, human support — your call is answered quickly and never offshored.</li>
-          <li>Flexible engagement: subscription plans or pay-as-you-go hourly help.</li>
-          <li>Tailored solutions designed around how your business actually works.</li>
-        </ul>
+          <section class="about-profile-card" aria-labelledby="about-why-title">
+            <h2 id="about-why-title">⭐ Why Choose myTech.Today?</h2>
+            <ul>
+              <li>20+ years of IT consulting and software development experience</li>
+              <li>Personalized service to 190+ satisfied clients</li>
+              <li>5-star review rating with consistent 24-hour solution delivery</li>
+              <li>Payment-upon-success terms available</li>
+              <li>Expertise in Windows automation, PowerShell scripting, and system optimization</li>
+            </ul>
 
-        <h2>Get in touch</h2>
-        <p>Request a callback and one of our Technology Advisors will reach out — typically within 15 minutes during business hours (Monday–Friday, 8:30&nbsp;am – 5:00&nbsp;pm Central Time).</p>
-        <ul class="about-links">
-          <li><a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a> — home &amp; request a callback</li>
-          <li><a href="https://mytech.today/it-services-and-solutions-mobile/" target="_blank" rel="noopener noreferrer">IT Services &amp; Solutions</a></li>
-          <li><a href="https://www.linkedin.com/in/kylerode/" target="_blank" rel="noopener noreferrer">Kyle Rode — Owner, on LinkedIn</a></li>
-        </ul>
+            <h2>📬 Contact Information</h2>
+            <dl class="about-contact-list">
+              <dt>📧 <strong>Email</strong></dt>
+              <dd><a href="mailto:sales@mytech.today">sales@mytech.today</a></dd>
+              <dt>🌐 <strong>Website</strong></dt>
+              <dd><a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a></dd>
+              <dt>💻 <strong>GitHub</strong></dt>
+              <dd><a href="https://github.com/mytech-today-now" target="_blank" rel="noopener noreferrer">@mytech-today-now</a></dd>
+              <dt>🔗 <strong>LinkedIn</strong></dt>
+              <dd><a href="https://linkedin.com/in/kylerode" target="_blank" rel="noopener noreferrer">linkedin.com/in/kylerode</a></dd>
+            </dl>
+          </section>
+        </div>
 
         <hr>
+        <p class="about-footnote"><strong>myTech.Today</strong> · Professional IT Services · Serving Omaha and Lincoln · <a href="https://mytech.today/" target="_blank" rel="noopener noreferrer">mytech.today</a></p>
         <p class="about-footnote">Blend is built and maintained by myTech.Today. This player keeps all of your media on your own machine — private by design.</p>
       </section>
 
@@ -760,6 +780,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261101-v5.0.11-experience-end-target"></script>
+  <script type="module" src="./app.js?v=20261109-v5.0.11-random-layer-cycle-completion"></script>
 </body>
 </html>

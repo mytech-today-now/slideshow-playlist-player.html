@@ -5,6 +5,7 @@ import { createRunSuffix } from './support/experience-lifecycle-utils.mjs';
 
 const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
 const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
+const RANDOM_CYCLE_COMPLETION_COPY = 'Random order finished its current cycle. Playback will stop, loop, or move to the next experience according to Experience playback mode.';
 
 async function removeEndTargetFromPersistedExperience(page, experienceId) {
   await page.evaluate(async id => {
@@ -44,7 +45,13 @@ async function setupExperience(page, testInfo) {
   return blendPage;
 }
 
-async function setupTwoLayerPlayback(page, testInfo, { endTarget, slideshowDuration, playbackMode = 'stop' }) {
+async function setupTwoLayerPlayback(page, testInfo, {
+  endTarget,
+  slideshowDuration,
+  playbackMode = 'stop',
+  playlistOrder = 'sequential',
+  slideshowOrder = 'sequential'
+}) {
   const blendPage = await setupExperience(page, testInfo);
   await blendPage.dropListFile('playlist', {
     name: 'playlist.txt',
@@ -56,17 +63,89 @@ async function setupTwoLayerPlayback(page, testInfo, { endTarget, slideshowDurat
     text: `${FIXTURE_ORIGIN}/samples/IL.jpeg\n`,
     expectedMinimumCount: 1
   });
-  const saved = await page.evaluate(({ target, duration, playbackMode }) => {
+  const saved = await page.evaluate(({ target, duration, playbackMode, playlistOrder, slideshowOrder }) => {
     const state = window.Blend.state;
     state.settings.experienceEndTarget = target;
     state.settings.experiencePlaybackMode = playbackMode;
+    state.settings.playbackModePlaylist = playlistOrder;
+    state.settings.playbackModeSlideshow = slideshowOrder;
     state.settings.transitionOverlapMs = 0;
     state.slideshow[0].displayDuration = duration;
     return window.Blend.saveStateNow();
-  }, { target: endTarget, duration: slideshowDuration, playbackMode });
+  }, { target: endTarget, duration: slideshowDuration, playbackMode, playlistOrder, slideshowOrder });
   expect(saved).toBe(true);
   await blendPage.openConfig();
   return blendPage;
+}
+
+async function addUnavailableBoundaryReferences(page, layer) {
+  const saved = await page.evaluate(layerName => {
+    const state = window.Blend.state;
+    const list = state[layerName];
+    if (!Array.isArray(list) || list.length !== 1) throw new Error(`Expected one ${layerName} item`);
+    const playableRef = list[0];
+    state[layerName] = [
+      { id: `${layerName}-unavailable-leading`, available: false },
+      playableRef,
+      { id: `${layerName}-unavailable-trailing`, available: false }
+    ];
+    state.runtime[`${layerName}Index`] = 0;
+    return window.Blend.saveStateNow();
+  }, layer);
+  expect(saved).toBe(true);
+}
+
+async function addMixedSlideshowBoundaryReferences(page) {
+  const saved = await page.evaluate(() => {
+    const state = window.Blend.state;
+    if (state.slideshow.length !== 1 || state.playlist.length !== 1) {
+      throw new Error('Expected one image and one video fixture');
+    }
+    const imageRef = state.slideshow[0];
+    const videoRef = { ...state.playlist[0], includeAudio: false };
+    state.slideshow = [
+      { id: 'slideshow-unavailable-leading', available: false },
+      imageRef,
+      { id: 'slideshow-unavailable-middle', available: false },
+      videoRef,
+      { id: 'slideshow-unavailable-trailing', available: false }
+    ];
+    state.runtime.slideshowIndex = 0;
+    return window.Blend.saveStateNow();
+  });
+  expect(saved).toBe(true);
+}
+
+async function duplicatePlayableLayerReferences(page, layer, sourceLayer = layer) {
+  const saved = await page.evaluate(({ layerName, sourceLayerName }) => {
+    const state = window.Blend.state;
+    const source = state[sourceLayerName]?.[0];
+    if (!source) throw new Error(`Expected a playable ${sourceLayerName} item`);
+    const first = { ...source };
+    if (layerName === 'slideshow') first.includeAudio = false;
+    state[layerName] = [first, { ...first }];
+    state.runtime[`${layerName}Index`] = 0;
+    return window.Blend.saveStateNow();
+  }, { layerName: layer, sourceLayerName: sourceLayer });
+  expect(saved).toBe(true);
+}
+
+async function endActiveVideo(page, layer) {
+  await page.evaluate(layerName => {
+    const selector = layerName === 'playlist' ? '#playlist-layer video[src]' : '#slideshow-layer video[src]';
+    const media = Array.from(document.querySelectorAll(selector)).find(element => !element.paused);
+    if (!media?.onended) throw new Error(`No active ${layerName} video ended handler is available`);
+    media.dispatchEvent(new Event('ended'));
+  }, layer);
+}
+
+async function expectLayerVideoPlaying(page, layer, index) {
+  await page.waitForFunction(({ layerName, expectedIndex }) => {
+    const mediaSelector = layerName === 'playlist' ? '#playlist-layer video[src]' : '#slideshow-layer video[src]';
+    return window.Blend?.transport === 'playing' &&
+      window.Blend.state.runtime[`${layerName}Index`] === expectedIndex &&
+      Array.from(document.querySelectorAll(mediaSelector)).some(element => !element.paused && element.currentTime > 0);
+  }, { layerName: layer, expectedIndex: index }, { timeout: 15000 });
 }
 
 test('end target choices are keyboard accessible, persist, and leave layer order unchanged', async ({ page }, testInfo) => {
@@ -84,6 +163,15 @@ test('end target choices are keyboard accessible, persist, and leave layer order
   await expect(endTarget).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(playlistOrder).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(slideshowOrder).toBeFocused();
+  const cycleDescription = page.locator('#experience-random-cycle-help');
+  await expect(cycleDescription).toBeVisible();
+  await expect(cycleDescription).toContainText('each playable item plays once per cycle');
+  await expect(cycleDescription).toContainText('After reload, a new cycle begins from the saved current item');
+  for (const control of [playbackMode, endTarget, playlistOrder, slideshowOrder]) {
+    await expect(control).toHaveAttribute('aria-describedby', 'experience-random-cycle-help');
+  }
 
   await playlistOrder.selectOption('random');
   await slideshowOrder.selectOption('random');
@@ -152,6 +240,7 @@ test('Playlist end target stops while Slideshow still has a current item', async
     endTarget: 'playlist',
     slideshowDuration: 1
   });
+  await addUnavailableBoundaryReferences(page, 'playlist');
   await blendPage.playButton.click();
   await expect.poll(() => page.evaluate(() => {
     const video = document.querySelector('#playlist-layer video[src]');
@@ -182,6 +271,8 @@ test('Playlist end target stops while Slideshow still has a current item', async
 
   const state = await page.evaluate(() => ({
     transport: window.Blend.transport,
+    playlistIndex: window.Blend.state.runtime.playlistIndex,
+    playlistRefs: window.Blend.state.playlist.map(ref => ref.id),
     slideshowIndex: window.Blend.state.runtime.slideshowIndex,
     slideshowImageVisible: !!document.querySelector('#slideshow-layer img[src]'),
     transitionState: window.__endTargetTransition.playState,
@@ -189,6 +280,11 @@ test('Playlist end target stops while Slideshow still has a current item', async
     transform: document.querySelector('#slideshow-layer img[src]')?.style.transform || ''
   }));
   expect(state.transport).toBe('stopped');
+  expect(state.playlistIndex).toBe(1);
+  expect(state.playlistRefs).toHaveLength(3);
+  expect(state.playlistRefs[0]).toBe('playlist-unavailable-leading');
+  expect(state.playlistRefs[1]).toBeTruthy();
+  expect(state.playlistRefs[2]).toBe('playlist-unavailable-trailing');
   expect(state.slideshowIndex).toBe(0);
   expect(state.slideshowImageVisible).toBe(true);
   expect(state.transitionState).toBe('idle');
@@ -215,26 +311,109 @@ test('Slideshow end target stops while Playlist has not ended', async ({ page },
     endTarget: 'slideshow',
     slideshowDuration: 1
   });
+  await addMixedSlideshowBoundaryReferences(page);
   await blendPage.playButton.click();
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
-    return window.Blend?.transport === 'playing' && video && image?.complete && image.naturalWidth > 0;
+    return window.Blend?.transport === 'playing' &&
+      window.Blend.state.runtime.slideshowIndex === 1 &&
+      video && image?.complete && image.naturalWidth > 0;
   });
   const playlistHadNotEnded = await page.evaluate(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     return video.ended === false;
   });
   expect(playlistHadNotEnded).toBe(true);
+
+  await page.waitForFunction(() => (
+    window.Blend?.transport === 'playing' &&
+    window.Blend.state.runtime.slideshowIndex === 3 &&
+    document.querySelector('#slideshow-layer video[src]')
+  ), null, { timeout: 10000 });
+  await page.evaluate(() => {
+    const video = document.querySelector('#slideshow-layer video[src]');
+    if (!video?.onended) throw new Error('Slideshow video ended handler is unavailable');
+    video.dispatchEvent(new Event('ended'));
+  });
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 10000 });
 
   const state = await page.evaluate(() => ({
     transport: window.Blend.transport,
-    playlistEnded: document.querySelector('#playlist-layer video[src]')?.ended ?? null,
-    playlistPaused: document.querySelector('#playlist-layer video[src]')?.paused ?? null,
-    slideshowIndex: window.Blend.state.runtime.slideshowIndex
+    slideshowIndex: window.Blend.state.runtime.slideshowIndex,
+    slideshowRefs: window.Blend.state.slideshow.map(ref => ref.id),
+    slideshowTypes: window.Blend.state.slideshow.map(ref => window.Blend.state.library.get(ref.id)?.type || 'unavailable')
   }));
-  expect(state).toEqual({ transport: 'stopped', playlistEnded: false, playlistPaused: true, slideshowIndex: 0 });
+  expect(state.transport).toBe('stopped');
+  expect(state.slideshowIndex).toBe(3);
+  expect(state.slideshowRefs).toHaveLength(5);
+  expect(state.slideshowRefs[0]).toBe('slideshow-unavailable-leading');
+  expect(state.slideshowRefs[2]).toBe('slideshow-unavailable-middle');
+  expect(state.slideshowRefs[4]).toBe('slideshow-unavailable-trailing');
+  expect(state.slideshowTypes).toEqual(['unavailable', 'image', 'unavailable', 'video', 'unavailable']);
+});
+
+test('sequential Playlist visits every playable index before completing past trailing unavailable rows', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'playlist',
+    slideshowDuration: 60
+  });
+  const saved = await page.evaluate(() => {
+    const state = window.Blend.state;
+    const playableRef = state.playlist[0];
+    state.playlist = [
+      { id: 'playlist-unavailable-leading', available: false },
+      playableRef,
+      { id: 'playlist-unavailable-middle', available: false },
+      { ...playableRef },
+      { id: 'playlist-unavailable-trailing', available: false }
+    ];
+    state.runtime.playlistIndex = 0;
+    return window.Blend.saveStateNow();
+  });
+  expect(saved).toBe(true);
+
+  await blendPage.playButton.click();
+  await page.waitForFunction(() => (
+    window.Blend?.transport === 'playing' &&
+    window.Blend.state.runtime.playlistIndex === 1 &&
+    Array.from(document.querySelectorAll('#playlist-layer video[src]')).some(video => !video.paused)
+  ));
+  await page.evaluate(() => {
+    const video = Array.from(document.querySelectorAll('#playlist-layer video[src]'))
+      .find(element => !element.paused);
+    if (!video?.onended) throw new Error('Playlist ended handler is unavailable');
+    video.dispatchEvent(new Event('ended'));
+  });
+  await page.waitForFunction(() => (
+    window.Blend?.transport === 'playing' &&
+    window.Blend.state.runtime.playlistIndex === 3 &&
+    Array.from(document.querySelectorAll('#playlist-layer video[src]')).some(video => !video.paused)
+  ));
+
+  await page.evaluate(() => {
+    const video = Array.from(document.querySelectorAll('#playlist-layer video[src]'))
+      .find(element => !element.paused);
+    if (!video?.onended) throw new Error('Final Playlist ended handler is unavailable');
+    video.dispatchEvent(new Event('ended'));
+  });
+  await expect.poll(() => page.evaluate(() => window.Blend?.transport)).toBe('stopped');
+  await expect(page.locator('#toast-container .toast').filter({ hasText: 'Experience finished' })).toHaveCount(1);
+  expect(await page.evaluate(() => ({
+    index: window.Blend.state.runtime.playlistIndex,
+    refs: window.Blend.state.playlist.map(ref => ref.id),
+    availableFlags: window.Blend.state.playlist.map(ref => ref.available)
+  }))).toEqual({
+    index: 3,
+    refs: [
+      'playlist-unavailable-leading',
+      expect.any(String),
+      'playlist-unavailable-middle',
+      expect.any(String),
+      'playlist-unavailable-trailing'
+    ],
+    availableFlags: [false, true, false, true, false]
+  });
 });
 
 test('manual Next at both layer boundaries does not trigger automatic completion', async ({ page }, testInfo) => {
@@ -458,4 +637,157 @@ test('failed next-item load completes cleanly and a later Play can recover', asy
       .some(element => !element.paused && element.currentTime > 0.25)
   ), null, { timeout: 15000 });
   expect(await page.evaluate(() => window.Blend.transport)).toBe('playing');
+});
+
+test('random Playlist end target stops after one cycle and leaves Slideshow visible', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'playlist',
+    slideshowDuration: 60,
+    playbackMode: 'stop',
+    playlistOrder: 'random'
+  });
+  await duplicatePlayableLayerReferences(page, 'playlist');
+
+  const mediaRequests = [];
+  const signedUrlRequests = [];
+  page.on('request', request => {
+    const requestUrl = new URL(request.url());
+    if (requestUrl.pathname.startsWith('/samples/')) mediaRequests.push(requestUrl.pathname);
+    if (requestUrl.pathname.includes('/storage/v1/object/sign/')) signedUrlRequests.push(requestUrl.pathname);
+  });
+
+  await blendPage.playButton.click();
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+  await expect.poll(() => page.evaluate(() => {
+    const image = document.querySelector('#slideshow-layer img[src]');
+    return !!image?.complete && image.naturalWidth > 0;
+  })).toBe(true);
+
+  await endActiveVideo(page, 'playlist');
+  await expectLayerVideoPlaying(page, 'playlist', 1);
+  expect(await page.evaluate(() => window.Blend.transport)).toBe('playing');
+  expect(await page.evaluate(() => !!document.querySelector('#slideshow-layer img[src]'))).toBe(true);
+
+  await page.evaluate(() => { window.__randomCycleBoundaryAt = performance.now(); });
+  await endActiveVideo(page, 'playlist');
+  await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 15000 });
+  await expect(page.getByRole('status').filter({ hasText: RANDOM_CYCLE_COMPLETION_COPY })).toHaveCount(1);
+  expect(await page.evaluate(() => ({
+    playlistIndex: window.Blend.state.runtime.playlistIndex,
+    slideshowIndex: window.Blend.state.runtime.slideshowIndex,
+    slideshowVisible: !!document.querySelector('#slideshow-layer img[src]')
+  }))).toEqual({ playlistIndex: 1, slideshowIndex: 0, slideshowVisible: true });
+
+  const requestCountAtStop = mediaRequests.length;
+  await page.waitForFunction(() => performance.now() - window.__randomCycleBoundaryAt >= 1200, null, { timeout: 3000 });
+  expect(mediaRequests).toHaveLength(requestCountAtStop);
+  expect(signedUrlRequests).toEqual([]);
+});
+
+test('random Slideshow end target stops after one cycle and leaves Playlist visible', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'slideshow',
+    slideshowDuration: 60,
+    playbackMode: 'stop',
+    playlistOrder: 'random',
+    slideshowOrder: 'random'
+  });
+  await duplicatePlayableLayerReferences(page, 'playlist');
+  await duplicatePlayableLayerReferences(page, 'slideshow', 'playlist');
+
+  await blendPage.playButton.click();
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+  await expectLayerVideoPlaying(page, 'slideshow', 0);
+  await endActiveVideo(page, 'slideshow');
+  await expectLayerVideoPlaying(page, 'slideshow', 1);
+  expect(await page.evaluate(() => window.Blend.transport)).toBe('playing');
+
+  await endActiveVideo(page, 'slideshow');
+  await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 15000 });
+  await expect(page.getByRole('status').filter({ hasText: RANDOM_CYCLE_COMPLETION_COPY })).toHaveCount(1);
+  expect(await page.evaluate(() => ({
+    slideshowIndex: window.Blend.state.runtime.slideshowIndex,
+    playlistIndex: window.Blend.state.runtime.playlistIndex,
+    playlistVisible: !!document.querySelector('#playlist-layer video[src]')
+  }))).toEqual({ slideshowIndex: 1, playlistIndex: expect.any(Number), playlistVisible: true });
+});
+
+test('Loop restarts a fresh random cycle after the end-target cycle finishes', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'playlist',
+    slideshowDuration: 60,
+    playbackMode: 'loop',
+    playlistOrder: 'random'
+  });
+  await duplicatePlayableLayerReferences(page, 'playlist');
+  await blendPage.playButton.click();
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+  await endActiveVideo(page, 'playlist');
+  await expectLayerVideoPlaying(page, 'playlist', 1);
+  await endActiveVideo(page, 'playlist');
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+  await expect(page.getByRole('status').filter({ hasText: RANDOM_CYCLE_COMPLETION_COPY })).toHaveCount(1);
+
+  await endActiveVideo(page, 'playlist');
+  await expectLayerVideoPlaying(page, 'playlist', 1);
+  expect(await page.evaluate(() => window.Blend.transport)).toBe('playing');
+});
+
+test('Go to Next Experience waits for a full random end-target cycle', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'playlist',
+    slideshowDuration: 60,
+    playbackMode: 'next-experience',
+    playlistOrder: 'random'
+  });
+  const firstExperienceName = await page.evaluate(() => window.Blend.state.projectName);
+  const nextExperienceName = `Next random target ${createRunSuffix(testInfo)}`;
+  await blendPage.createExperience(nextExperienceName);
+  await blendPage.dropListFile('playlist', {
+    name: 'next-random-playlist.txt',
+    text: `${FIXTURE_ORIGIN}/samples/nyc-01.mp4\n`,
+    expectedMinimumCount: 1
+  });
+  await blendPage.dropListFile('slideshow', {
+    name: 'next-random-slideshow.txt',
+    text: `${FIXTURE_ORIGIN}/samples/IL.jpeg\n`,
+    expectedMinimumCount: 1
+  });
+  await blendPage.flushSaveState();
+  await blendPage.switchExperience(firstExperienceName);
+  await duplicatePlayableLayerReferences(page, 'playlist');
+
+  await blendPage.playButton.click();
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+  await endActiveVideo(page, 'playlist');
+  await expectLayerVideoPlaying(page, 'playlist', 1);
+  expect(await page.evaluate(() => window.Blend.state.projectName)).toBe(firstExperienceName);
+
+  await endActiveVideo(page, 'playlist');
+  await page.waitForFunction(expectedName => (
+    window.Blend?.state?.projectName === expectedName &&
+    window.Blend.transport === 'playing' &&
+    document.querySelector('#playlist-layer video[src]') &&
+    document.querySelector('#slideshow-layer img[src]')
+  ), nextExperienceName, { timeout: 15000 });
+});
+
+test('manual Next at a random cycle boundary does not finish the experience', async ({ page }, testInfo) => {
+  const blendPage = await setupTwoLayerPlayback(page, testInfo, {
+    endTarget: 'playlist',
+    slideshowDuration: 60,
+    playbackMode: 'stop',
+    playlistOrder: 'random'
+  });
+  await duplicatePlayableLayerReferences(page, 'playlist');
+  await blendPage.playButton.click();
+  await expectLayerVideoPlaying(page, 'playlist', 0);
+
+  await page.locator('#btn-next').click();
+  await expectLayerVideoPlaying(page, 'playlist', 1);
+  await page.locator('#btn-next').click();
+  await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 10000 });
+  expect(await page.evaluate(() => [0, 1].includes(window.Blend.state.runtime.playlistIndex))).toBe(true);
+  await expect(page.getByRole('status').filter({ hasText: RANDOM_CYCLE_COMPLETION_COPY })).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Experience finished' })).toHaveCount(0);
 });

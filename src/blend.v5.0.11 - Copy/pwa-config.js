@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261101-v5.0.11-experience-end-target';
-  const CACHE_VERSION = '20261101-v5.0.11-experience-end-target';
+  const ASSET_VERSION = '20261109-v5.0.11-random-layer-cycle-completion';
+  const CACHE_VERSION = '20261109-v5.0.11-random-layer-cycle-completion';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -38,7 +38,7 @@
     asset('./git-playlist-catalog.js'),
     asset('./git-playlist-storage.js'),
     asset('./indexeddb-open.js'),
-    './resume-on-load.js?v=20260927-v5.0.11-resume',
+    asset('./resume-on-load.js'),
     asset('./experience-persistence.js'),
     asset('./local-import-limits.js'),
     asset('./directory-scan-yield.js'),

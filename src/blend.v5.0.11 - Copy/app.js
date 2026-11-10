@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261101-v5.0.11-experience-end-target';
+} from './indexeddb-open.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261101-v5.0.11-experience-end-target';
+} from './experience-persistence.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261101-v5.0.11-experience-end-target';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261101-v5.0.11-experience-end-target';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261101-v5.0.11-experience-end-target';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261101-v5.0.11-experience-end-target';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261101-v5.0.11-experience-end-target';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261101-v5.0.11-experience-end-target';
+} from './supabase-config.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,37 +33,38 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261101-v5.0.11-experience-end-target';
+} from './storage-url-resolver.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261101-v5.0.11-experience-end-target';
+} from './signed-url-cleanup.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261101-v5.0.11-experience-end-target';
+} from './transition-manager.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261101-v5.0.11-experience-end-target';
+} from './playback-clock.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
   normalizeLayerPlaybackMode,
   normalizeLayerPlaybackSettings,
   normalizeExperienceEndTarget,
+  getPlayableListIndices,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261101-v5.0.11-experience-end-target';
-import { renderMarkdown } from './markdown.js?v=20261101-v5.0.11-experience-end-target';
-import { fetchReadme } from './readme-fetcher.js?v=20261101-v5.0.11-experience-end-target';
+} from './playback-mode.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { renderMarkdown } from './markdown.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { fetchReadme } from './readme-fetcher.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -79,28 +80,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261101-v5.0.11-experience-end-target';
+} from './url-share.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261101-v5.0.11-experience-end-target';
+} from './url-share-diagnostics.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261101-v5.0.11-experience-end-target';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261101-v5.0.11-experience-end-target';
+} from './timeline-analysis.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261101-v5.0.11-experience-end-target';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261101-v5.0.11-experience-end-target';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261101-v5.0.11-experience-end-target';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261101-v5.0.11-experience-end-target';
+} from './shared-experience-download.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -111,7 +112,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261101-v5.0.11-experience-end-target';
+} from './git-playlist-catalog.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -122,7 +123,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261101-v5.0.11-experience-end-target';
+} from './git-playlist-storage.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -135,17 +136,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261101-v5.0.11-experience-end-target';
+} from './local-import-limits.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261101-v5.0.11-experience-end-target';
+} from './directory-scan-yield.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261101-v5.0.11-experience-end-target';
+} from './resume-on-load.js?v=20261109-v5.0.11-random-layer-cycle-completion';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -240,7 +241,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261101-v5.0.11-experience-end-target';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261109-v5.0.11-random-layer-cycle-completion';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -559,6 +560,10 @@ let layerCompletionState = {
   playlistDone: false,
   slideshowDone: false,
   handlingCompletion: false
+};
+let randomLayerCycleState = {
+  playlist: null,
+  slideshow: null
 };
 
 // ====================== UTILITIES ======================
@@ -6589,6 +6594,10 @@ function listFor(which) {
   return which === 'playlist' ? state.playlist : state.slideshow;
 }
 
+function playableIndicesForLayer(which) {
+  return getPlayableListIndices(listFor(which), ref => isPlayableListRef(which, ref));
+}
+
 function allowedListTypes(which) {
   return which === 'playlist' ? ['video', 'audio'] : ['video', 'image'];
 }
@@ -8300,16 +8309,129 @@ function setupTransitionManager() {
 }
 
 function listHasPlayableItems(which) {
-  const list = which === 'playlist' ? state.playlist : state.slideshow;
-  if (!Array.isArray(list) || !list.length) return false;
-  for (const ref of list) {
-    if (isPlayableListRef(which, ref)) return true;
+  return playableIndicesForLayer(which).length > 0;
+}
+
+function resetRandomLayerCycleState(which = '') {
+  if (which === 'playlist' || which === 'slideshow') {
+    randomLayerCycleState[which] = null;
+    return;
   }
-  return false;
+  randomLayerCycleState = { playlist: null, slideshow: null };
+}
+
+function randomLayerCycleFor(which, playableIndices, currentIndex) {
+  const list = listFor(which);
+  const signature = JSON.stringify(playableIndices.map(index => [index, String(list[index]?.id ?? '')]));
+  let cycle = randomLayerCycleState[which];
+  if (cycle != null && (
+    typeof cycle !== 'object' ||
+    typeof cycle.signature !== 'string' ||
+    !Array.isArray(cycle.visitedIndices)
+  )) return null;
+
+  if (!cycle || cycle.signature !== signature) {
+    cycle = { signature, visitedIndices: [], nextIndex: null };
+    randomLayerCycleState[which] = cycle;
+  } else {
+    const visited = new Set();
+    for (const index of cycle.visitedIndices) {
+      if (!Number.isInteger(index) || !playableIndices.includes(index) || visited.has(index)) return null;
+      visited.add(index);
+    }
+    if (cycle.nextIndex !== undefined && cycle.nextIndex !== null && (
+      !Number.isInteger(cycle.nextIndex) ||
+      !playableIndices.includes(cycle.nextIndex) ||
+      visited.has(cycle.nextIndex)
+    )) return null;
+    if (cycle.nextIndex === undefined) cycle.nextIndex = null;
+  }
+
+  if (playableIndices.includes(currentIndex) && !cycle.visitedIndices.includes(currentIndex)) {
+    cycle.visitedIndices.push(currentIndex);
+  }
+  if (cycle.nextIndex === currentIndex) return null;
+  return cycle;
+}
+
+function nextRandomLayerIndex(which, currentIndex, playableIndices, { allowCycleCompletion = false } = {}) {
+  const cycle = randomLayerCycleFor(which, playableIndices, currentIndex);
+  if (!cycle) return { index: -1, cycleComplete: false, invalidState: true };
+
+  let index = cycle.nextIndex;
+  cycle.nextIndex = null;
+  if (index == null) {
+    index = selectNextLayerIndex({
+      mode: 'random',
+      currentIndex,
+      playableIndices,
+      visitedIndices: cycle.visitedIndices,
+      wrap: false
+    });
+  }
+  if (index >= 0) return { index, cycleComplete: false, invalidState: false };
+  if (allowCycleCompletion) return { index: -1, cycleComplete: true, invalidState: false };
+
+  cycle.visitedIndices = [];
+  cycle.nextIndex = null;
+  index = selectNextLayerIndex({
+    mode: 'random',
+    currentIndex,
+    playableIndices,
+    visitedIndices: cycle.visitedIndices,
+    wrap: false
+  });
+  return index >= 0
+    ? { index, cycleComplete: false, invalidState: false }
+    : { index: -1, cycleComplete: false, invalidState: true };
+}
+
+function randomLayerPreloadIndex(which, playableIndices, currentIndex) {
+  const cycle = randomLayerCycleFor(which, playableIndices, -1);
+  if (!cycle) return -1;
+
+  const used = new Set(cycle.visitedIndices);
+  if (playableIndices.includes(currentIndex)) used.add(currentIndex);
+  if (cycle.nextIndex != null && used.has(cycle.nextIndex)) cycle.nextIndex = null;
+  if (cycle.nextIndex == null) {
+    const nextIndex = selectNextLayerIndex({
+      mode: 'random',
+      currentIndex,
+      playableIndices,
+      visitedIndices: used,
+      wrap: false
+    });
+    cycle.nextIndex = nextIndex >= 0 ? nextIndex : null;
+  }
+  return cycle.nextIndex ?? -1;
+}
+
+function randomCycleCompletionSatisfiesExperience(which) {
+  return isExperienceEndSatisfied({
+    endTarget: state.settings.experienceEndTarget,
+    playlistDone: which === 'playlist' || layerCompletionState.playlistDone,
+    slideshowDone: which === 'slideshow' || layerCompletionState.slideshowDone,
+    playlistHasPlayableItems: listHasPlayableItems('playlist'),
+    slideshowHasPlayableItems: listHasPlayableItems('slideshow')
+  });
+}
+
+function failRandomLayerCycle(which) {
+  resetRandomLayerCycleState(which);
+  showToast('Random playback stopped because its cycle state was invalid.', {
+    role: 'alert',
+    timeout: 6000
+  });
+  if (which === 'playlist') clearPlaylistPlayback();
+  else clearSlideshowPlayback();
+  markLayerComplete(which, 'random_cycle_error');
+  updateHUD();
+  saveStateDebounced();
 }
 
 function resetLayerCompletionState() {
   experienceTransitionToken += 1;
+  resetRandomLayerCycleState();
   layerCompletionState = {
     playlistDone: false,
     slideshowDone: false,
@@ -8424,6 +8546,14 @@ async function handleExperienceCompletion(reason = 'ended') {
   try {
     await stopPlaybackLayersAtExperienceBoundary();
     if (guardToken !== experienceTransitionToken || !state.runtime.isPlaying) return;
+    resetRandomLayerCycleState();
+    const randomCycleCompleted = reason === 'random_cycle_end';
+    if (randomCycleCompleted) {
+      showToast('Random order finished its current cycle. Playback will stop, loop, or move to the next experience according to Experience playback mode.', {
+        role: 'status',
+        timeout: 6000
+      });
+    }
     const mode = normalizeExperiencePlaybackMode(state.settings.experiencePlaybackMode);
     if (mode === EXPERIENCE_PLAYBACK_MODE_LOOP) {
       const restarted = await restartExperienceFromBeginning();
@@ -8439,7 +8569,7 @@ async function handleExperienceCompletion(reason = 'ended') {
 
     if (guardToken !== experienceTransitionToken) return;
     applyTransportMode(TRANSPORT.STOPPED);
-    showToast('Experience finished', { timeout: 2000 });
+    if (!randomCycleCompleted) showToast('Experience finished', { timeout: 2000 });
     saveStateDebounced();
   } finally {
     layerCompletionState.handlingCompletion = false;
@@ -8697,13 +8827,25 @@ function cleanupPreloadedUrl(preloaded) {
 function preloadUpcomingPlaylistItems(requestContext = null) {
   if (!state.playlist.length) return;
   const keep = new Set();
-  const ahead = Math.min(PERF.MEDIA_PRELOAD_AHEAD, state.playlist.length - 1);
-  for (let offset = 1; offset <= ahead; offset++) {
-    const idx = (state.runtime.playlistIndex + offset) % state.playlist.length;
-    const ref = state.playlist[idx];
-    if (!ref || !isPlayableListRef('playlist', ref)) continue;
-    keep.add(ref.id);
-    if (!playlistPreload.has(ref.id)) playlistPreload.set(ref.id, createPlaylistPreload(ref, requestContext));
+  if (normalizeLayerPlaybackMode(state.settings.playbackModePlaylist) === 'random') {
+    if (PERF.MEDIA_PRELOAD_AHEAD > 0) {
+      const playable = playableIndicesForLayer('playlist');
+      const nextIndex = randomLayerPreloadIndex('playlist', playable, state.runtime.playlistIndex);
+      const ref = state.playlist[nextIndex];
+      if (ref && isPlayableListRef('playlist', ref)) {
+        keep.add(ref.id);
+        if (!playlistPreload.has(ref.id)) playlistPreload.set(ref.id, createPlaylistPreload(ref, requestContext));
+      }
+    }
+  } else {
+    const ahead = Math.min(PERF.MEDIA_PRELOAD_AHEAD, state.playlist.length - 1);
+    for (let offset = 1; offset <= ahead; offset++) {
+      const idx = (state.runtime.playlistIndex + offset) % state.playlist.length;
+      const ref = state.playlist[idx];
+      if (!ref || !isPlayableListRef('playlist', ref)) continue;
+      keep.add(ref.id);
+      if (!playlistPreload.has(ref.id)) playlistPreload.set(ref.id, createPlaylistPreload(ref, requestContext));
+    }
   }
   for (const [id, promise] of playlistPreload) {
     if (keep.has(id)) continue;
@@ -8970,13 +9112,25 @@ async function createSlideshowElement(itemRef, requestContext = null) {
 function preloadUpcomingSlideshowItems(requestContext = null) {
   if (!state.slideshow.length) return;
   const keep = new Set();
-  for (let offset = 1; offset <= Math.min(PERF.MEDIA_PRELOAD_AHEAD, state.slideshow.length - 1); offset++) {
-    const idx = (state.runtime.slideshowIndex + offset) % state.slideshow.length;
-    const ref = state.slideshow[idx];
-    if (!ref || !isPlayableListRef('slideshow', ref)) continue;
-    keep.add(ref.id);
-    if (slideshowPreload.has(ref.id)) continue;
-    slideshowPreload.set(ref.id, createSlideshowElement(ref, requestContext));
+  if (normalizeLayerPlaybackMode(state.settings.playbackModeSlideshow) === 'random') {
+    if (PERF.MEDIA_PRELOAD_AHEAD > 0) {
+      const playable = playableIndicesForLayer('slideshow');
+      const nextIndex = randomLayerPreloadIndex('slideshow', playable, state.runtime.slideshowIndex);
+      const ref = state.slideshow[nextIndex];
+      if (ref && isPlayableListRef('slideshow', ref)) {
+        keep.add(ref.id);
+        if (!slideshowPreload.has(ref.id)) slideshowPreload.set(ref.id, createSlideshowElement(ref, requestContext));
+      }
+    }
+  } else {
+    for (let offset = 1; offset <= Math.min(PERF.MEDIA_PRELOAD_AHEAD, state.slideshow.length - 1); offset++) {
+      const idx = (state.runtime.slideshowIndex + offset) % state.slideshow.length;
+      const ref = state.slideshow[idx];
+      if (!ref || !isPlayableListRef('slideshow', ref)) continue;
+      keep.add(ref.id);
+      if (slideshowPreload.has(ref.id)) continue;
+      slideshowPreload.set(ref.id, createSlideshowElement(ref, requestContext));
+    }
   }
   for (const [id, promise] of slideshowPreload) {
     if (keep.has(id)) continue;
@@ -9069,29 +9223,41 @@ function advancePlaylist(opts = {}) {
     return;
   }
   const mode = normalizeLayerPlaybackMode(state.settings.playbackModePlaylist);
-  if (mode === 'random') {
-    const playable = state.playlist
-      .map((ref, index) => (isPlayableListRef('playlist', ref) ? index : -1))
-      .filter(index => index >= 0);
-    if (!playable.length) {
-      clearPlaylistPlayback();
-      markLayerComplete('playlist', opts.reason || 'unplayable');
-      updateHUD();
-      return;
-    }
-    layerCompletionState.playlistDone = false;
-    const current = state.runtime.playlistIndex;
-    if (playable.includes(current)) state.runtime.historyPlaylist.push(current);
-    const next = selectNextLayerIndex({ mode, currentIndex: current, playableIndices: playable });
-    playlistAdvanceInFlight = true;
-    void playPlaylistAtIndex(next, { direction: 1, allowWrap: true })
-      .finally(() => { playlistAdvanceInFlight = false; });
+  const playable = playableIndicesForLayer('playlist');
+  if (!playable.length) {
+    clearPlaylistPlayback();
+    markLayerComplete('playlist', opts.reason || 'unplayable');
+    updateHUD();
     return;
   }
-
-  const next = opts.reason === 'manual_next'
-    ? findPlayableListIndex('playlist', state.runtime.playlistIndex + 1, 1)
-    : findPlayableListIndexNoWrap('playlist', state.runtime.playlistIndex + 1, 1);
+  const current = state.runtime.playlistIndex;
+  let next;
+  if (mode === 'random') {
+    if (playable.includes(current)) state.runtime.historyPlaylist.push(current);
+    const selection = nextRandomLayerIndex('playlist', current, playable, {
+      allowCycleCompletion: opts.reason !== 'manual_next' && randomCycleCompletionSatisfiesExperience('playlist')
+    });
+    if (selection.invalidState) {
+      failRandomLayerCycle('playlist');
+      return;
+    }
+    if (selection.cycleComplete) {
+      resetRandomLayerCycleState('playlist');
+      clearPlaylistPlayback();
+      markLayerComplete('playlist', 'random_cycle_end');
+      updateHUD();
+      saveStateDebounced();
+      return;
+    }
+    next = selection.index;
+  } else {
+    next = selectNextLayerIndex({
+      mode,
+      currentIndex: current,
+      playableIndices: playable,
+      wrap: opts.reason === 'manual_next'
+    });
+  }
   if (next < 0) {
     clearPlaylistPlayback();
     markLayerComplete('playlist', opts.reason || 'list_end');
@@ -9103,7 +9269,7 @@ function advancePlaylist(opts = {}) {
   playlistAdvanceInFlight = true;
   void playPlaylistAtIndex(next, { direction: 1, allowWrap: false })
     .finally(() => { playlistAdvanceInFlight = false; });
-  saveStateDebounced();
+  if (mode !== 'random') saveStateDebounced();
 }
 
 function advanceSlideshow(opts = {}) {
@@ -9118,28 +9284,41 @@ function advanceSlideshow(opts = {}) {
     return;
   }
   const mode = normalizeLayerPlaybackMode(state.settings.playbackModeSlideshow);
-  if (mode === 'random') {
-    const playable = state.slideshow
-      .map((ref, index) => (isPlayableListRef('slideshow', ref) ? index : -1))
-      .filter(index => index >= 0);
-    if (!playable.length) {
-      clearSlideshowPlayback();
-      markLayerComplete('slideshow', opts.reason || 'unplayable');
-      updateHUD();
-      return;
-    }
-    layerCompletionState.slideshowDone = false;
-    const current = state.runtime.slideshowIndex;
-    if (playable.includes(current)) state.runtime.historySlideshow.push(current);
-    const next = selectNextLayerIndex({ mode, currentIndex: current, playableIndices: playable });
-    slideshowAdvanceInFlight = true;
-    void playSlideshowAtIndex(next, { direction: 1, withCrossfade: true, allowWrap: true })
-      .finally(() => { slideshowAdvanceInFlight = false; });
+  const playable = playableIndicesForLayer('slideshow');
+  if (!playable.length) {
+    clearSlideshowPlayback();
+    markLayerComplete('slideshow', opts.reason || 'unplayable');
+    updateHUD();
     return;
   }
-  const next = opts.reason === 'manual_next'
-    ? findPlayableListIndex('slideshow', state.runtime.slideshowIndex + 1, 1)
-    : findPlayableListIndexNoWrap('slideshow', state.runtime.slideshowIndex + 1, 1);
+  const current = state.runtime.slideshowIndex;
+  let next;
+  if (mode === 'random') {
+    if (playable.includes(current)) state.runtime.historySlideshow.push(current);
+    const selection = nextRandomLayerIndex('slideshow', current, playable, {
+      allowCycleCompletion: opts.reason !== 'manual_next' && randomCycleCompletionSatisfiesExperience('slideshow')
+    });
+    if (selection.invalidState) {
+      failRandomLayerCycle('slideshow');
+      return;
+    }
+    if (selection.cycleComplete) {
+      resetRandomLayerCycleState('slideshow');
+      clearSlideshowPlayback();
+      markLayerComplete('slideshow', 'random_cycle_end');
+      updateHUD();
+      saveStateDebounced();
+      return;
+    }
+    next = selection.index;
+  } else {
+    next = selectNextLayerIndex({
+      mode,
+      currentIndex: current,
+      playableIndices: playable,
+      wrap: opts.reason === 'manual_next'
+    });
+  }
   if (next < 0) {
     clearSlideshowPlayback();
     markLayerComplete('slideshow', opts.reason || 'list_end');
@@ -9151,7 +9330,7 @@ function advanceSlideshow(opts = {}) {
   slideshowAdvanceInFlight = true;
   void playSlideshowAtIndex(next, { direction: 1, withCrossfade: true, allowWrap: false })
     .finally(() => { slideshowAdvanceInFlight = false; });
-  saveStateDebounced();
+  if (mode !== 'random') saveStateDebounced();
 }
 
 // ====================== TRANSPORT STATE ======================
@@ -9918,6 +10097,7 @@ function wireTransport() {
     if (!select) continue;
     select.onchange = event => {
       state.settings[key] = normalizeLayerPlaybackMode(event.target.value);
+      resetRandomLayerCycleState(key === 'playbackModePlaylist' ? 'playlist' : 'slideshow');
       saveStateDebounced();
     };
   }

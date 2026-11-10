@@ -32,6 +32,31 @@ const REQUIRED_INFO_VIEWPORTS = [
   { width: 1280, height: 720 }
 ];
 
+const COMPANY_PROFILE_COPY = [
+  'IT Consulting and Support',
+  'Custom PowerShell Automation and Scripting',
+  'Infrastructure Optimization and System Administration',
+  'Cloud Integration (Azure, AWS, GCS, Microsoft 365)',
+  'Network Design and Management',
+  'Cybersecurity and Compliance Solutions',
+  'Database Management and Custom Development',
+  'System Setup, Upgrades, and Troubleshooting',
+  'Virus and Spyware Removal',
+  'Hardware Procurement, Installation, and Configuration',
+  'Omaha, NE',
+  'Lincoln, NE',
+  '20+ years of IT consulting and software development experience',
+  'Personalized service to 190+ satisfied clients',
+  '5-star review rating with consistent 24-hour solution delivery',
+  'Payment-upon-success terms available',
+  'Expertise in Windows automation, PowerShell scripting, and system optimization',
+  'sales@mytech.today',
+  '@mytech-today-now',
+  'linkedin.com/in/kylerode',
+  'Professional IT Services',
+  'Serving Omaha and Lincoln'
+];
+
 test.describe('Configuration dialog', () => {
   test('opens centered, scrolls vertically only, and traps focus', async ({ page }) => {
     test.setTimeout(60000);
@@ -121,6 +146,10 @@ test.describe('Information dialog', () => {
 
     // About marketing content + external link that opens in a new tab.
     await expect(aboutPanel).toContainText('myTech.Today');
+    for (const text of COMPANY_PROFILE_COPY) await expect(aboutPanel).toContainText(text);
+    await expect(aboutPanel.locator('a[href="mailto:sales@mytech.today"]')).toHaveText('sales@mytech.today');
+    await expect(aboutPanel.locator('a[href="https://github.com/mytech-today-now"]')).toHaveText('@mytech-today-now');
+    await expect(aboutPanel.locator('a[href="https://linkedin.com/in/kylerode"]')).toHaveText('linkedin.com/in/kylerode');
     const aboutLink = aboutPanel.locator('a[href="https://mytech.today/"]').first();
     await expect(aboutLink).toHaveAttribute('target', '_blank');
     await expect(aboutLink).toHaveAttribute('rel', /noopener/);
@@ -161,6 +190,7 @@ test.describe('Information dialog', () => {
       .toHaveAttribute('data-version', '5.0.11');
     await expect(page.locator('#info-readme-source-status'))
       .toHaveAttribute('data-version-matches', 'true');
+    for (const text of COMPANY_PROFILE_COPY) await expect(readmePanel).toContainText(text);
     expect(onlineRequests).toHaveLength(0);
 
     // README external links are rendered with a new-tab target.
@@ -173,6 +203,31 @@ test.describe('Information dialog', () => {
     await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version', '5.1.0');
     await expect(page.locator('#info-readme-source-status')).toHaveAttribute('data-version-matches', 'false');
     expect(onlineRequests).toHaveLength(1);
+  });
+
+  test('company profile stays readable at desktop and mobile widths', async ({ page }) => {
+    await openInfo(page);
+    const grid = page.locator('#info-panel-about .about-profile-grid');
+
+    for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
+      await page.setViewportSize(viewport);
+      const metrics = await grid.evaluate(node => {
+        const cards = [...node.querySelectorAll('.about-profile-card')];
+        return {
+          columns: getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length,
+          width: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          cardWidths: cards.map(card => card.clientWidth),
+          cardScrollWidths: cards.map(card => card.scrollWidth)
+        };
+      });
+
+      expect(metrics.columns).toBe(viewport.width <= 700 ? 1 : 2);
+      expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.width + 1);
+      for (let i = 0; i < metrics.cardWidths.length; i++) {
+        expect(metrics.cardScrollWidths[i]).toBeLessThanOrEqual(metrics.cardWidths[i] + 1);
+      }
+    }
   });
 
   test('each tab scrolls independently and remembers its position', async ({ page }) => {

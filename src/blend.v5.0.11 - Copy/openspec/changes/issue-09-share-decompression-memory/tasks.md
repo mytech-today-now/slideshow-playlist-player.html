@@ -107,3 +107,38 @@ No trial duration, idle baseline, peak anonymous renderer RSS, responsiveness, o
 - Ran the task-local `adb.exe devices -l`. The command returned `List of devices attached` with no device entries, so no Android device or emulator is currently available to this runner.
 - No Android trials were run (0/9). Guest API/image, installed Chrome build, idle baseline, renderer RSS, trial duration, responsiveness, and device-side URL/state recovery remain unmeasured. No USB authorization prompt was handled, no ADB keys or security settings were changed, and no packages were installed or upgraded.
 - The device owner must make the authorized AVD or device available and complete any visible USB debugging authorization. Continue only after ADB reports the device as `device`, then verify the guest and browser before the nine trials. Task 3.4 remains open at 9/10 and the 8 MiB cap is unchanged.
+
+## Android availability recheck (2026-11-02)
+
+- Rechecked the current repository, environment, standard SDK locations, and current temporary directory. `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `ANDROID_SDK_HOME`, and `ANDROID_AVD_HOME` are unset. `adb`, `emulator`, `avdmanager`, and `sdkmanager` are not on `PATH`, and `%USERPROFILE%\.android\avd` is absent.
+- Located the task-local tools under `%TEMP%\blend-android-sdk-issue05\sdk`. ADB reports version 37.0.1-15733141 and the emulator reports version 37.2.12.0, build 16428233. With `ANDROID_AVD_HOME` set only for the list command to `%TEMP%\blend-android-sdk-issue05\.android\avd`, `emulator.exe -list-avds` lists `blend-issue05-api33-lowmem`.
+- The AVD files configure `target=android-33`, `abi.type=x86_64`, `hw.cpu.arch=x86_64`, `image.sysdir.1=system-images\android-33\google_apis_playstore\x86_64\`, `PlayStore.enabled=yes`, `hw.ramSize=2048`, `hw.lcd.width=720`, and `hw.lcd.height=1600`. The referenced image directory and `system.img` exist, but its `source.properties` file is missing. These are on-disk configuration values, not observed running guest values; the image package revision and active guest build are unverified.
+- `adb.exe devices -l` started its local daemon and returned `List of devices attached` with no entries. The current process check found no `adb.exe`, `emulator.exe`, or `qemu-system` process. No device is attached, and no unauthorized device state is currently reported because the device list is empty.
+- The AVD is not running, so the guest API, image, architecture, memory, and display could not be confirmed in operation. Installed Chrome for Android 155.0.8059.39, Perfetto memory counters, and device-side behavior are unverified. The trial gate was not met, so no AVD was launched and no payload trial was started. No debugging prompt was accepted, no ADB keys or security settings were changed, no package was installed or upgraded, and the AVD was not wiped.
+
+Commands and results:
+
+- `rg --files --hidden --no-ignore -g 'adb.exe' -g 'emulator.exe' -g 'avdmanager.bat' -g 'sdkmanager.bat' -g 'config.ini' $root` was run for the current checkout, `$env:TEMP`, and existing standard SDK/AVD roots. It found the task-local SDK tools and AVD file under `$env:TEMP\blend-android-sdk-issue05`.
+- `Get-Command adb,emulator,avdmanager,sdkmanager -ErrorAction SilentlyContinue` returned no commands.
+- With `$sdk=Join-Path $env:TEMP 'blend-android-sdk-issue05\sdk'` and `$adb=Join-Path $sdk 'platform-tools\adb.exe'`, `& $adb version` returned ADB 37.0.1-15733141 and `& $adb devices -l` returned an empty device list after starting the local ADB daemon.
+- Read the AVD `config.ini` with `Get-Content -LiteralPath $config`. Checked the referenced image with `Get-ChildItem -LiteralPath $image -Force` and checked `source.properties` with `Test-Path`; `system.img` exists and `source.properties` does not.
+- With `$env:ANDROID_AVD_HOME` temporarily set to `$avdHome` and restored in `finally`, `& $emu -list-avds` listed `blend-issue05-api33-lowmem`.
+- `& $emu -version` returned Android emulator 37.2.12.0, build 16428233.
+- `Get-CimInstance Win32_Process` filtered for ADB, emulator, and QEMU process names returned no matches.
+
+All nine trials remain Not run. Baseline, peak additional anonymous renderer RSS, duration, responsiveness, URL recovery, and state recovery were not measured or observed:
+
+| Payload | Trial | Outcome | Five-second baseline | Peak additional anonymous renderer RSS | Duration | Responsiveness | URL recovery | State recovery |
+|---|---:|---|---|---|---|---|---|---|
+| Valid 1 MiB | 1 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Valid 1 MiB | 2 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Valid 1 MiB | 3 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Exact 8 MiB | 1 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Exact 8 MiB | 2 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Exact 8 MiB | 3 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Rejected 10 MiB | 1 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Rejected 10 MiB | 2 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+| Rejected 10 MiB | 3 | Not run | Not measured | Not measured | Not run | Not observed | Not checked | Not checked |
+
+- Blocker for all nine trials: task-local ADB currently reports no attached device. The device owner must make the configured AVD available and complete any visible USB debugging authorization. Resume only after ADB reports the target as `device`, then verify the running guest and installed Chrome build before measuring.
+- The 8 MiB application cap remains unchanged. All results in this record are emulator availability evidence only; no Android memory measurement was collected. Task 3.4 remains open at 9/10. No physical-device, Motorola moto e13, or Android Go conclusion is supported.

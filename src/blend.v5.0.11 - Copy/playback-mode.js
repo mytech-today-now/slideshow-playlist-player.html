@@ -44,15 +44,27 @@ export function normalizeLayerPlaybackSettings(settings = {}) {
 }
 
 function playableIndicesFrom(value) {
-  if (!Array.isArray(value)) return [];
-  return Array.from(new Set(value.filter(index => Number.isInteger(index) && index >= 0)))
+  const indices = Array.isArray(value)
+    ? value
+    : (value instanceof Set ? Array.from(value) : []);
+  return Array.from(new Set(indices.filter(index => Number.isInteger(index) && index >= 0)))
     .sort((a, b) => a - b);
+}
+
+export function getPlayableListIndices(items, isPlayable) {
+  if (!Array.isArray(items) || typeof isPlayable !== 'function') return [];
+  const indices = [];
+  for (let index = 0; index < items.length; index++) {
+    if (isPlayable(items[index], index)) indices.push(index);
+  }
+  return indices;
 }
 
 export function selectNextLayerIndex({
   mode = PLAYBACK_MODE_SEQUENTIAL,
   currentIndex = -1,
   playableIndices = [],
+  visitedIndices,
   random = Math.random,
   wrap = false
 } = {}) {
@@ -60,8 +72,16 @@ export function selectNextLayerIndex({
   if (!playable.length) return -1;
 
   if (normalizeLayerPlaybackMode(mode) === PLAYBACK_MODE_RANDOM) {
-    const alternatives = playable.filter(index => index !== currentIndex);
-    const choices = alternatives.length ? alternatives : playable;
+    let choices;
+    if (visitedIndices === undefined) {
+      const alternatives = playable.filter(index => index !== currentIndex);
+      choices = alternatives.length ? alternatives : playable;
+    } else {
+      const visited = new Set(playableIndicesFrom(visitedIndices));
+      const unvisited = playable.filter(index => !visited.has(index));
+      choices = unvisited.length ? unvisited : (wrap ? playable : []);
+    }
+    if (!choices.length) return -1;
     const sample = Number(random());
     const normalizedSample = Number.isFinite(sample) ? Math.min(1 - Number.EPSILON, Math.max(0, sample)) : 0;
     return choices[Math.min(choices.length - 1, Math.floor(normalizedSample * choices.length))];

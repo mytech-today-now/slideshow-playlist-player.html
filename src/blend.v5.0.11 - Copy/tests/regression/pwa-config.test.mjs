@@ -57,7 +57,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./git-playlist-catalog.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./git-playlist-storage.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./playback-mode.js?v=' + config.ASSET_VERSION));
-  assert.ok(required.has('./resume-on-load.js?v=20260927-v5.0.11-resume'));
+  assert.ok(required.has('./resume-on-load.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./pwa-config.js'));
   assert.ok(required.has('./pwa-client.js'));
   assert.ok(required.has('./alias-router.js'));

@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-09
+goal: "Ensure a random Playlist or Slideshow end target completes once every
+  playable item has played in the current cycle, while preserving sequential and
+  manual navigation contracts. Beads issue: blend-3va; report: Pasted text.txt
+  (issue-01)."

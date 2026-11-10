@@ -2020,6 +2020,39 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
 .about-link-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .about-links { line-height: 1.9; }
 .about-footnote { color: var(--text-muted); font-size: 13px; }
+.about-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(12px, 2vw, 20px);
+}
+.about-profile-card {
+  min-width: 0;
+  padding: clamp(14px, 2.5vw, 22px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elev2);
+}
+.info-panel .about-profile-card h2 {
+  font-size: 1.15em;
+}
+.info-panel .about-profile-card h2:first-child {
+  margin-top: 0;
+}
+.about-contact-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 0.5em 0;
+}
+.about-contact-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .about-profile-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* Shared Markdown rendering (README + About) */
 .markdown-body { line-height: 1.65; font-size: 14.5px; color: var(--text); word-wrap: break-word; }

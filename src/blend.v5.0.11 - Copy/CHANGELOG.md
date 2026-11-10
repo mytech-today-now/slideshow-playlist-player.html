@@ -19,6 +19,7 @@ These changes are present in the current review checkout. The app version remain
 
 - Experience completion follows the selected Playlist or Slideshow end target, defaulting to Playlist for new and legacy experiences. If that layer has no playable items, the available companion layer defines completion.
 - Stop, Loop, and Go to Next Experience now run at the selected layer boundary after both playback layers and active transitions are stopped. Manual Next remains navigation and does not trigger automatic experience completion.
+- Random Playlist and Slideshow order now play each playable item once per cycle. A random end-target cycle then follows the selected experience mode; the controls explain the cycle and reload fallback.
 - New private Storage URLs use the owner-approved one-hour default, and signed resolver URLs stay out of IndexedDB while authenticated refresh continues to use portable storage references.
 - Folder scans now announce a pause while the tab is hidden, resume the existing enumeration when visible, and offer cancellation while preserving saved batches. Cutoff notices now state that entries beyond the 2,000-entry ceiling, if any, were not visited or inspected.
 - The configuration shell opens before storage initialization. Database recovery no longer covers the whole screen, and settings stay read-only until saved data is ready.

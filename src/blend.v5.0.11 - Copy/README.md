@@ -38,6 +38,7 @@ Blend is a local-first, browser-based dual-layer media studio. It lets you run a
 - [Future Development and Recommended Improvements](#future-development-and-recommended-improvements)
 - [Changelog Reference](#changelog-reference)
 - [Contributing](#contributing)
+- [About myTech.Today](#about-mytechtoday)
 - [Credits](#credits)
 - [License](#license)
 
@@ -87,7 +88,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261101-v5.0.11-experience-end-target`
+- **Cache/app shell version key:** `20261109-v5.0.11-random-layer-cycle-completion`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -1127,6 +1128,43 @@ Suggested workflow:
 2. Run regression tests.
 3. Run targeted e2e scenarios for changed workflows.
 4. Validate import/export roundtrips with real sample media.
+
+## About myTech.Today
+
+### Our Services
+
+- IT Consulting and Support
+- Custom PowerShell Automation and Scripting
+- Infrastructure Optimization and System Administration
+- Cloud Integration (Azure, AWS, GCS, Microsoft 365)
+- Network Design and Management
+- Cybersecurity and Compliance Solutions
+- Database Management and Custom Development
+- System Setup, Upgrades, and Troubleshooting
+- Virus and Spyware Removal
+- Hardware Procurement, Installation, and Configuration
+
+### Service Area
+
+- Omaha, NE
+- Lincoln, NE
+
+### Why Choose myTech.Today?
+
+- 20+ years of IT consulting and software development experience
+- Personalized service to 190+ satisfied clients
+- 5-star review rating with consistent 24-hour solution delivery
+- Payment-upon-success terms available
+- Expertise in Windows automation, PowerShell scripting, and system optimization
+
+### Contact Information
+
+- 📧 **Email:** [sales@mytech.today](mailto:sales@mytech.today)
+- 🌐 **Website:** [mytech.today](https://mytech.today/)
+- 💻 **GitHub:** [@mytech-today-now](https://github.com/mytech-today-now)
+- 🔗 **LinkedIn:** [linkedin.com/in/kylerode](https://linkedin.com/in/kylerode)
+
+> **myTech.Today** · Professional IT Services · Serving Omaha and Lincoln · [mytech.today](https://mytech.today/)
 
 ## Credits
 
