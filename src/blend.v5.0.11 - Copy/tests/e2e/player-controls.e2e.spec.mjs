@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { BlendAppPage } from './support/blend-app-page.mjs';
 import { createRunSuffix } from './support/experience-lifecycle-utils.mjs';
 
@@ -572,6 +573,66 @@ test('layer order controls persist and random navigation uses per-layer history'
     playlistHistory: window.Blend.state.runtime.historyPlaylist,
     slideshowHistory: window.Blend.state.runtime.historySlideshow
   }))).toEqual({ playlistIndex: 0, slideshowIndex: 0, playlistHistory: [0], slideshowHistory: [0] });
+});
+
+test('random playback history remains bounded, announces trimming, and stays out of full exports', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
+  const blendPage = await buildVideoExperience(page, testInfo);
+  await page.evaluate(() => {
+    const state = window.Blend.state;
+    const sourceRef = state.playlist[0];
+    const sourceItem = state.library.get(sourceRef.id);
+    const id = `history-copy-${Date.now()}`;
+    state.library.set(id, { ...sourceItem, id, name: 'history-copy.mp4' });
+    state.playlist.push({ ...sourceRef, id });
+    state.settings.playbackModePlaylist = 'random';
+    state.settings.playbackModeSlideshow = 'random';
+    state.runtime.playlistIndex = 0;
+    state.runtime.slideshowIndex = 0;
+    state.runtime.historyPlaylist = Array.from({ length: 256 }, (_, index) => index % state.playlist.length);
+    state.runtime.historySlideshow = Array.from({ length: 256 }, (_, index) => index % state.slideshow.length);
+  });
+  await page.evaluate(() => window.Blend.saveStateNow());
+  await blendPage.openConfig();
+
+  await page.locator('#btn-next').click();
+  await expect.poll(() => page.evaluate(() => [
+    window.Blend.state.runtime.historyPlaylist.length,
+    window.Blend.state.runtime.historySlideshow.length
+  ])).toEqual([256, 256]);
+
+  const notice = page.locator('#playback-history-notice');
+  await expect(notice).toBeVisible();
+  await expect(notice).toHaveText('Earlier playback history was trimmed to keep this experience saveable. Previous still moves through the most recent items.');
+  await expect(page.locator('#btn-prev')).toHaveAttribute('aria-describedby', 'playback-history-notice');
+  await expect(page.locator('#slideshow-prev')).toHaveAttribute('aria-describedby', 'playback-history-notice');
+
+  await page.evaluate(() => window.Blend.saveStateNow());
+  const experienceId = await page.evaluate(() => window.Blend.state.activeExperienceId);
+  const persistedHistoryLengths = await page.evaluate(id => new Promise((resolve, reject) => {
+    const openRequest = indexedDB.open('player-blend-v1');
+    openRequest.onerror = () => reject(openRequest.error || new Error('Could not open Blend database'));
+    openRequest.onsuccess = () => {
+      const database = openRequest.result;
+      const transaction = database.transaction('experiences', 'readonly');
+      const read = transaction.objectStore('experiences').get(id);
+      read.onerror = () => reject(read.error || new Error('Could not read the saved experience'));
+      read.onsuccess = () => resolve({
+        playlist: read.result?.payload?.runtime?.historyPlaylist?.length ?? -1,
+        slideshow: read.result?.payload?.runtime?.historySlideshow?.length ?? -1
+      });
+      transaction.oncomplete = () => database.close();
+      transaction.onerror = () => reject(transaction.error || new Error('Could not inspect the saved experience'));
+    };
+  }), experienceId);
+  expect(persistedHistoryLengths).toEqual({ playlist: 256, slideshow: 256 });
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.evaluate(() => window.Blend.exportExperience());
+  const download = await downloadPromise;
+  const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
+  expect(exported).not.toHaveProperty('runtime.historyPlaylist');
+  expect(exported).not.toHaveProperty('runtime.historySlideshow');
 });
 
 test('old experience schema without layer order fields imports as sequential', async ({ page }, testInfo) => {

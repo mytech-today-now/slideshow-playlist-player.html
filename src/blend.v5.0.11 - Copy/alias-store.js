@@ -5,7 +5,7 @@ import {
   DB_STORE_KEY_PATHS,
   ensureBlendDatabaseStores,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './indexeddb-open.js?v=20261109-v5.0.11-bounded-playback-history';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;

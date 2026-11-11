@@ -10,6 +10,8 @@ import {
   normalizeLayerPlaybackSettings,
   normalizeExperienceEndTarget,
   getPlayableListIndices,
+  appendPlaybackHistory,
+  compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
 } from '../../playback-mode.js';
@@ -34,6 +36,11 @@ const ROOT = new URL('../../', import.meta.url);
  *    - Sleep/resume or tab backgrounding, low-memory devices.
  * 6. Performance:
  *    - Verify FPS monitor updates and auto-quality downgrade/upgrade.
+ * 7. Playback history: with both layers in Random order, advance beyond 256
+ *    items, confirm Previous walks the retained recent items and the trim
+ *    status is announced. Inspect saved snapshots for <=256 rows and confirm
+ *    full exports omit runtime history. Load oversized legacy data and check
+ *    that the list contents stay intact.
  */
 
 test('index settings include playback/transition controls', async () => {
@@ -265,6 +272,93 @@ test('random previous follows the most recent playable history entry', () => {
   });
 });
 
+test('playback history stays at 256 entries after 1,000 advances and Previous keeps the newest retained index', () => {
+  const cap = 256;
+  const items = Array.from({ length: 1000 }, (_, index) => ({ id: `item-${index}` }));
+  const playableIndices = items.map((_, index) => index);
+  let playlistHistory = [];
+  let slideshowHistory = [];
+  let playlistTrimmed = false;
+  let slideshowTrimmed = false;
+
+  for (let advance = 0; advance < 1000; advance++) {
+    const playlistResult = appendPlaybackHistory(playlistHistory, advance % items.length, cap, items.length);
+    const slideshowResult = appendPlaybackHistory(slideshowHistory, advance % items.length, cap, items.length);
+    playlistHistory = playlistResult.history;
+    slideshowHistory = slideshowResult.history;
+    playlistTrimmed ||= playlistResult.trimmed;
+    slideshowTrimmed ||= slideshowResult.trimmed;
+  }
+
+  const expectedRecent = Array.from({ length: cap }, (_, index) => index + 744);
+  assert.equal(playlistHistory.length, cap);
+  assert.equal(slideshowHistory.length, cap);
+  assert.equal(playlistTrimmed, true);
+  assert.equal(slideshowTrimmed, true);
+  assert.deepEqual(playlistHistory, expectedRecent);
+  assert.deepEqual(slideshowHistory, expectedRecent);
+  assert.deepEqual(selectPreviousLayerIndex({
+    currentIndex: 0,
+    playableIndices,
+    history: playlistHistory
+  }), { index: 999, historyIndex: cap - 1 });
+});
+
+test('legacy playback history compacts malformed and out-of-range entries without changing list items', () => {
+  const cap = 256;
+  const playlist = Array.from({ length: 1000 }, (_, index) => ({ id: `playlist-${index}` }));
+  const slideshow = Array.from({ length: 1000 }, (_, index) => ({ id: `slide-${index}` }));
+  const playlistBefore = playlist.slice();
+  const slideshowBefore = slideshow.slice();
+  const oversized = Array.from({ length: 10000 }, (_, index) => index % 1000);
+  oversized.push(1.5, -1, 1000);
+
+  const normalizedPlaylistHistory = compactPlaybackHistory(oversized, cap, playlist.length);
+  const normalizedSlideshowHistory = compactPlaybackHistory(oversized, cap, slideshow.length);
+
+  assert.equal(normalizedPlaylistHistory.history.length, cap);
+  assert.equal(normalizedSlideshowHistory.history.length, cap);
+  assert.equal(normalizedPlaylistHistory.trimmed, true);
+  assert.ok(normalizedPlaylistHistory.history.every(index => Number.isInteger(index) && index >= 0 && index < playlist.length));
+  assert.deepEqual(playlist, playlistBefore);
+  assert.deepEqual(slideshow, slideshowBefore);
+
+  assert.deepEqual(compactPlaybackHistory(undefined, cap, 2), { history: [], trimmed: false });
+  assert.deepEqual(appendPlaybackHistory(null, 1, cap, 2), { history: [1], trimmed: false });
+});
+
+test('bounded experience snapshots stop growing with random advance count', () => {
+  const cap = 256;
+  const listLength = 1000;
+  const playlist = Array.from({ length: listLength }, (_, index) => ({ id: `playlist-${index}` }));
+  const slideshow = Array.from({ length: listLength }, (_, index) => ({ id: `slide-${index}` }));
+
+  const buildSnapshot = advanceCount => {
+    let playlistHistory = [];
+    let slideshowHistory = [];
+    for (let advance = 0; advance < advanceCount; advance++) {
+      playlistHistory = appendPlaybackHistory(playlistHistory, advance % listLength, cap, listLength).history;
+      slideshowHistory = appendPlaybackHistory(slideshowHistory, advance % listLength, cap, listLength).history;
+    }
+    return {
+      playlist,
+      slideshow,
+      runtime: {
+        historyPlaylist: compactPlaybackHistory(playlistHistory, cap, playlist.length).history,
+        historySlideshow: compactPlaybackHistory(slideshowHistory, cap, slideshow.length).history
+      }
+    };
+  };
+
+  const afterOneThousand = buildSnapshot(1000);
+  const afterTenThousand = buildSnapshot(10000);
+  assert.equal(afterOneThousand.runtime.historyPlaylist.length, cap);
+  assert.equal(afterTenThousand.runtime.historyPlaylist.length, cap);
+  assert.equal(JSON.stringify(afterOneThousand).length, JSON.stringify(afterTenThousand).length);
+  assert.deepEqual(afterTenThousand.playlist.map(item => item.id), playlist.map(item => item.id));
+  assert.deepEqual(afterTenThousand.slideshow.map(item => item.id), slideshow.map(item => item.id));
+});
+
 test('app runtime includes completion modes and transition hooks', async () => {
   const app = await readFile(new URL('app.js', ROOT), 'utf8');
   assert.equal(app.includes('EXPERIENCE_PLAYBACK_MODE_LOOP'), true);
@@ -296,4 +390,39 @@ test('app runtime includes completion modes and transition hooks', async () => {
   assert.match(app, /selectPreviousLayerIndex\(/);
   assert.match(app, /playbackModePlaylist:\s*legacySettings\?\.playbackModePlaylist\s*\?\?\s*legacyPlaylist\?\.mode/);
   assert.match(app, /playbackModeSlideshow:\s*legacySettings\?\.playbackModeSlideshow\s*\?\?\s*legacySlideshow\?\.mode/);
+});
+
+test('app bounds runtime and saved history while full-experience exports omit runtime history', async () => {
+  const app = await readFile(new URL('app.js', ROOT), 'utf8');
+  const html = await readFile(new URL('index.html', ROOT), 'utf8');
+  assert.match(app, /const MAX_PLAYBACK_HISTORY_ENTRIES = 256;/);
+  assert.doesNotMatch(app, /state\.runtime\.history(?:Playlist|Slideshow)\.push\(/);
+  assert.match(app, /function advancePlaylist\([\s\S]*?appendPlaybackHistory\([\s\S]*?MAX_PLAYBACK_HISTORY_ENTRIES/);
+  assert.match(app, /function advanceSlideshow\([\s\S]*?appendPlaybackHistory\([\s\S]*?MAX_PLAYBACK_HISTORY_ENTRIES/);
+
+  const snapshotStart = app.indexOf('function experienceSnapshotFromState()');
+  const snapshotEnd = app.indexOf('\nfunction libraryRecordForPersistence', snapshotStart);
+  const snapshotBuilder = app.slice(snapshotStart, snapshotEnd);
+  assert.match(snapshotBuilder, /compactPlaybackHistory\(/);
+  assert.match(snapshotBuilder, /historyPlaylist: historyPlaylist\.history/);
+  assert.match(snapshotBuilder, /historySlideshow: historySlideshow\.history/);
+
+  const normalizeStart = app.indexOf('function normalizeExperienceSnapshot(');
+  const normalizeEnd = app.indexOf('\nfunction currentExperienceRecord', normalizeStart);
+  const normalizer = app.slice(normalizeStart, normalizeEnd);
+  assert.match(normalizer, /compactPlaybackHistory\(/);
+  assert.match(normalizer, /historyPlaylist: historyPlaylist\.history/);
+  assert.match(normalizer, /historySlideshow: historySlideshow\.history/);
+
+  const exportStart = app.indexOf('function buildExperienceExportPayload(');
+  const exportEnd = app.indexOf('\nfunction buildUrlShareLink', exportStart);
+  const exportBuilder = app.slice(exportStart, exportEnd);
+  assert.doesNotMatch(exportBuilder, /runtime|historyPlaylist|historySlideshow/);
+
+  assert.match(html, /<p id="playback-history-notice"[^>]*role="status"[^>]*aria-live="polite"[^>]*hidden>Earlier playback history was trimmed to keep this experience saveable\. Previous still moves through the most recent items\.<\/p>/);
+  assert.equal((app.match(/if \(appended\.trimmed\) setPlaybackHistoryTrimNoticeVisible\(true\);/g) || []).length, 2);
+  assert.match(app, /setPlaybackHistoryTrimNoticeVisible\(historyWasTrimmed\)/);
+
+  assert.match(app, /async function restartExperienceFromBeginning\([\s\S]*?state\.runtime\.historyPlaylist = \[\];[\s\S]*?state\.runtime\.historySlideshow = \[\];/);
+  assert.match(app, /function stopPlayback\([\s\S]*?state\.runtime\.historyPlaylist = \[\];[\s\S]*?state\.runtime\.historySlideshow = \[\];/);
 });

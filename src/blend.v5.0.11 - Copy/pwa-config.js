@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261109-v5.0.11-random-layer-cycle-completion';
-  const CACHE_VERSION = '20261109-v5.0.11-random-layer-cycle-completion';
+  const ASSET_VERSION = '20261109-v5.0.11-bounded-playback-history';
+  const CACHE_VERSION = '20261109-v5.0.11-bounded-playback-history';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';

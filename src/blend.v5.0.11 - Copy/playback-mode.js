@@ -60,6 +60,31 @@ export function getPlayableListIndices(items, isPlayable) {
   return indices;
 }
 
+export function compactPlaybackHistory(history, maxEntries, listLength) {
+  const limit = Number.isSafeInteger(maxEntries) && maxEntries >= 0 ? maxEntries : 0;
+  const length = Number.isSafeInteger(listLength) && listLength >= 0 ? listLength : 0;
+  const valid = Array.isArray(history)
+    ? history.filter(index => Number.isInteger(index) && index >= 0 && index < length)
+    : [];
+  const trimmed = valid.length > limit;
+  return {
+    history: limit === 0 ? [] : valid.slice(-limit),
+    trimmed
+  };
+}
+
+export function appendPlaybackHistory(history, index, maxEntries, listLength) {
+  const limit = Number.isSafeInteger(maxEntries) && maxEntries >= 0 ? maxEntries : 0;
+  const length = Number.isSafeInteger(listLength) && listLength >= 0 ? listLength : 0;
+  const compacted = compactPlaybackHistory(history, limit, length);
+  const nextHistory = compacted.history;
+  if (Number.isInteger(index) && index >= 0 && index < length) nextHistory.push(index);
+
+  const trimmed = compacted.trimmed || nextHistory.length > limit;
+  if (nextHistory.length > limit) nextHistory.splice(0, nextHistory.length - limit);
+  return { history: nextHistory, trimmed };
+}
+
 export function selectNextLayerIndex({
   mode = PLAYBACK_MODE_SEQUENTIAL,
   currentIndex = -1,

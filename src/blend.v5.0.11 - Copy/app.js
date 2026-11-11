@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './indexeddb-open.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './experience-persistence.js?v=20261109-v5.0.11-bounded-playback-history';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261109-v5.0.11-bounded-playback-history';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261109-v5.0.11-bounded-playback-history';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261109-v5.0.11-bounded-playback-history';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './supabase-config.js?v=20261109-v5.0.11-bounded-playback-history';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,26 +33,26 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './storage-url-resolver.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './signed-url-cleanup.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './transition-manager.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './playback-clock.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
@@ -60,11 +60,13 @@ import {
   normalizeLayerPlaybackSettings,
   normalizeExperienceEndTarget,
   getPlayableListIndices,
+  appendPlaybackHistory,
+  compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { renderMarkdown } from './markdown.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { fetchReadme } from './readme-fetcher.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './playback-mode.js?v=20261109-v5.0.11-bounded-playback-history';
+import { renderMarkdown } from './markdown.js?v=20261109-v5.0.11-bounded-playback-history';
+import { fetchReadme } from './readme-fetcher.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -80,28 +82,28 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './url-share.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './url-share-diagnostics.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './timeline-analysis.js?v=20261109-v5.0.11-bounded-playback-history';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261109-v5.0.11-random-layer-cycle-completion';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './shared-experience-download.js?v=20261109-v5.0.11-bounded-playback-history';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261109-v5.0.11-bounded-playback-history';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261109-v5.0.11-bounded-playback-history';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -112,7 +114,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './git-playlist-catalog.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -123,7 +125,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './git-playlist-storage.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -136,17 +138,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './local-import-limits.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './directory-scan-yield.js?v=20261109-v5.0.11-bounded-playback-history';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261109-v5.0.11-random-layer-cycle-completion';
+} from './resume-on-load.js?v=20261109-v5.0.11-bounded-playback-history';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -241,7 +243,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261109-v5.0.11-random-layer-cycle-completion';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261109-v5.0.11-bounded-playback-history';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -418,6 +420,9 @@ const storageUrlResolver = createStorageUrlResolver({
 let db = null;
 let persistedExperienceRevision = 0;
 let persistedExperienceRecordsByStore = null;
+const MAX_PLAYBACK_HISTORY_ENTRIES = 256;
+// Retain recent Previous steps while keeping long-session saves bounded.
+const playbackHistoryTrimmedSnapshots = new WeakSet();
 let state = {
   projectName: DEFAULT_EXPERIENCE_NAME,
   library: new Map(),          // id -> {id, handle, name, size, type, duration?, ...}
@@ -4254,11 +4259,26 @@ async function persistExperienceRecordsAtomically(recordsByStore, keepLibraryKey
 }
 
 function experienceSnapshotFromState() {
+  const playlist = state.playlist.map(cloneListRef).filter(Boolean);
+  const slideshow = state.slideshow.map(cloneListRef).filter(Boolean);
+  const historyPlaylist = compactPlaybackHistory(
+    state.runtime.historyPlaylist,
+    MAX_PLAYBACK_HISTORY_ENTRIES,
+    playlist.length
+  );
+  const historySlideshow = compactPlaybackHistory(
+    state.runtime.historySlideshow,
+    MAX_PLAYBACK_HISTORY_ENTRIES,
+    slideshow.length
+  );
+  if (historyPlaylist.trimmed || historySlideshow.trimmed) {
+    setPlaybackHistoryTrimNoticeVisible(true);
+  }
   return {
     projectName: state.projectName,
     settings: clonePlain(state.settings),
-    playlist: state.playlist.map(cloneListRef).filter(Boolean),
-    slideshow: state.slideshow.map(cloneListRef).filter(Boolean),
+    playlist,
+    slideshow,
     listMeta: {
       playlist: normalizeListMeta('playlist', state.listMeta.playlist),
       slideshow: normalizeListMeta('slideshow', state.listMeta.slideshow)
@@ -4267,13 +4287,27 @@ function experienceSnapshotFromState() {
       playlistIndex: state.runtime.playlistIndex || 0,
       slideshowIndex: state.runtime.slideshowIndex || 0,
       isPlaying: !!state.runtime.isPlaying,
-      historyPlaylist: Array.isArray(state.runtime.historyPlaylist) ? state.runtime.historyPlaylist.slice() : [],
-      historySlideshow: Array.isArray(state.runtime.historySlideshow) ? state.runtime.historySlideshow.slice() : []
+      historyPlaylist: historyPlaylist.history,
+      historySlideshow: historySlideshow.history
     },
     ui: {
       activeList: state.ui.activeList === 'slideshow' ? 'slideshow' : 'playlist'
     }
   };
+}
+
+function setPlaybackHistoryTrimNoticeVisible(visible) {
+  const notice = document.getElementById('playback-history-notice');
+  if (notice) notice.hidden = !visible;
+
+  for (const button of [$('#btn-prev'), $('#slideshow-prev')]) {
+    if (!button) continue;
+    const ids = new Set((button.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    if (visible) ids.add('playback-history-notice');
+    else ids.delete('playback-history-notice');
+    if (ids.size) button.setAttribute('aria-describedby', Array.from(ids).join(' '));
+    else button.removeAttribute('aria-describedby');
+  }
 }
 
 function libraryRecordForPersistence(id, item) {
@@ -4439,7 +4473,17 @@ function normalizeExperienceSnapshot(snapshot = {}) {
   const slideshow = Array.isArray(snapshot.slideshow) ? snapshot.slideshow.map(cloneListRef).filter(Boolean) : [];
   const runtime = snapshot && typeof snapshot.runtime === 'object' ? snapshot.runtime : {};
   const ui = snapshot && typeof snapshot.ui === 'object' ? snapshot.ui : {};
-  return {
+  const historyPlaylist = compactPlaybackHistory(
+    runtime.historyPlaylist,
+    MAX_PLAYBACK_HISTORY_ENTRIES,
+    playlist.length
+  );
+  const historySlideshow = compactPlaybackHistory(
+    runtime.historySlideshow,
+    MAX_PLAYBACK_HISTORY_ENTRIES,
+    slideshow.length
+  );
+  const normalized = {
     projectName: normalizeExperienceName(snapshot.projectName || snapshot.name || DEFAULT_EXPERIENCE_NAME),
     settings,
     playlist,
@@ -4452,13 +4496,17 @@ function normalizeExperienceSnapshot(snapshot = {}) {
       playlistIndex: clampExperienceIndex(runtime.playlistIndex, playlist.length),
       slideshowIndex: clampExperienceIndex(runtime.slideshowIndex, slideshow.length),
       isPlaying: !!runtime.isPlaying,
-      historyPlaylist: Array.isArray(runtime.historyPlaylist) ? runtime.historyPlaylist.filter(Number.isFinite) : [],
-      historySlideshow: Array.isArray(runtime.historySlideshow) ? runtime.historySlideshow.filter(Number.isFinite) : []
+      historyPlaylist: historyPlaylist.history,
+      historySlideshow: historySlideshow.history
     },
     ui: {
       activeList: ui.activeList === 'slideshow' ? 'slideshow' : 'playlist'
     }
   };
+  if (historyPlaylist.trimmed || historySlideshow.trimmed) {
+    playbackHistoryTrimmedSnapshots.add(normalized);
+  }
+  return normalized;
 }
 
 function currentExperienceRecord() {
@@ -4686,7 +4734,10 @@ function serializeActiveExperience(existing = null) {
 }
 
 function applyExperienceSnapshot(snapshot, opts = {}) {
+  const sourceHistoryWasTrimmed = snapshot && typeof snapshot === 'object'
+    && playbackHistoryTrimmedSnapshots.has(snapshot);
   const normalized = normalizeExperienceSnapshot(snapshot);
+  const historyWasTrimmed = sourceHistoryWasTrimmed || playbackHistoryTrimmedSnapshots.has(normalized);
 
   log.info('[experience] applying snapshot', {
     projectName: normalized.projectName,
@@ -4714,6 +4765,7 @@ function applyExperienceSnapshot(snapshot, opts = {}) {
     historyPlaylist: normalized.runtime.historyPlaylist.slice(),
     historySlideshow: normalized.runtime.historySlideshow.slice()
   };
+  setPlaybackHistoryTrimNoticeVisible(historyWasTrimmed);
   state.ui.selectedLibrary.clear();
   state.ui.lastSelectedLibraryId = null;
 
@@ -9233,7 +9285,16 @@ function advancePlaylist(opts = {}) {
   const current = state.runtime.playlistIndex;
   let next;
   if (mode === 'random') {
-    if (playable.includes(current)) state.runtime.historyPlaylist.push(current);
+    if (playable.includes(current)) {
+      const appended = appendPlaybackHistory(
+        state.runtime.historyPlaylist,
+        current,
+        MAX_PLAYBACK_HISTORY_ENTRIES,
+        state.playlist.length
+      );
+      state.runtime.historyPlaylist = appended.history;
+      if (appended.trimmed) setPlaybackHistoryTrimNoticeVisible(true);
+    }
     const selection = nextRandomLayerIndex('playlist', current, playable, {
       allowCycleCompletion: opts.reason !== 'manual_next' && randomCycleCompletionSatisfiesExperience('playlist')
     });
@@ -9294,7 +9355,16 @@ function advanceSlideshow(opts = {}) {
   const current = state.runtime.slideshowIndex;
   let next;
   if (mode === 'random') {
-    if (playable.includes(current)) state.runtime.historySlideshow.push(current);
+    if (playable.includes(current)) {
+      const appended = appendPlaybackHistory(
+        state.runtime.historySlideshow,
+        current,
+        MAX_PLAYBACK_HISTORY_ENTRIES,
+        state.slideshow.length
+      );
+      state.runtime.historySlideshow = appended.history;
+      if (appended.trimmed) setPlaybackHistoryTrimNoticeVisible(true);
+    }
     const selection = nextRandomLayerIndex('slideshow', current, playable, {
       allowCycleCompletion: opts.reason !== 'manual_next' && randomCycleCompletionSatisfiesExperience('slideshow')
     });
