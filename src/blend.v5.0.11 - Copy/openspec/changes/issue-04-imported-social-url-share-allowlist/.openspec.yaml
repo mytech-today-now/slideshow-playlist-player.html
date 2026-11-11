@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-11
+goal: Prevent imported metadata from steering Share to unsafe schemes while
+  retaining legitimate https overrides and accessible fallback feedback.

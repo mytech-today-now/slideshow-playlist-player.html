@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './indexeddb-open.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './experience-persistence.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261109-v5.0.11-bounded-playback-history';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261109-v5.0.11-bounded-playback-history';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261109-v5.0.11-bounded-playback-history';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261109-v5.0.11-bounded-playback-history';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261109-v5.0.11-bounded-playback-history';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './supabase-config.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,26 +33,26 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './storage-url-resolver.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './signed-url-cleanup.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './transition-manager.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './playback-clock.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
@@ -64,9 +64,9 @@ import {
   compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261109-v5.0.11-bounded-playback-history';
-import { renderMarkdown } from './markdown.js?v=20261109-v5.0.11-bounded-playback-history';
-import { fetchReadme } from './readme-fetcher.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './playback-mode.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { renderMarkdown } from './markdown.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { fetchReadme } from './readme-fetcher.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -82,28 +82,33 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './url-share.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import {
+  isUnsupportedImportScheme,
+  resolveHttpShareUrl,
+  resolvePlatformShareUrl
+} from './share-destination-safety.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './url-share-diagnostics.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261109-v5.0.11-bounded-playback-history';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './timeline-analysis.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261109-v5.0.11-bounded-playback-history';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261109-v5.0.11-bounded-playback-history';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261109-v5.0.11-bounded-playback-history';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './shared-experience-download.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -114,7 +119,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './git-playlist-catalog.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -125,7 +130,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './git-playlist-storage.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -138,17 +143,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './local-import-limits.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './directory-scan-yield.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './resume-on-load.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -243,7 +248,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261109-v5.0.11-bounded-playback-history';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261111-v5.0.11-issue-04-share-url-safety';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -1037,7 +1042,7 @@ function sanitizeImportPath(path) {
   if (isIpfsUri(raw)) return sanitizeIpfsUri(raw);
   if (isSupabaseRef(raw)) return sanitizeSupabaseRef(raw);
   if (isRemoteUrl(raw)) return raw;
-  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw.replace(/\\/g, '/'))) return '';
+  if (isUnsupportedImportScheme(raw)) return '';
   const normalized = normalizePathForExport(raw);
   const withoutDrive = normalized.replace(/^[a-zA-Z]:\//, '');
   const segments = withoutDrive.split('/').filter(Boolean);
@@ -1280,7 +1285,16 @@ function normalizeSocialObject(value) {
     value.posterUrl ||
     ''
   ) || String(value.image || value.thumbnail || '').trim();
-  const targetUrl = sanitizeImportPath(value.url || value.href || '') || String(value.url || value.href || '').trim();
+  const targetCandidates = [value.url, value.href]
+    .filter(candidate => typeof candidate === 'string' && candidate.trim());
+  let targetUrl = '';
+  let unsafeShareAddressIgnored = false;
+  for (const candidate of targetCandidates) {
+    const safeUrl = resolveHttpShareUrl(candidate, canonicalEntryUrl());
+    if (safeUrl && !targetUrl) targetUrl = safeUrl;
+    if (!safeUrl) unsafeShareAddressIgnored = true;
+  }
+  if (unsafeShareAddressIgnored) targetUrl = '';
   const type = sanitizeDisplayText(value.type || value.ogType || '', 40).toLowerCase();
   const hashtags = normalizeHashtagList(value.hashtags);
   const mastodonInstance = sanitizeDisplayText(value.mastodonInstance || value.instance || '', 120);
@@ -1290,6 +1304,7 @@ function normalizeSocialObject(value) {
   if (text) normalized.text = text;
   if (imageCandidate) normalized.image = imageCandidate;
   if (targetUrl) normalized.url = targetUrl;
+  if (unsafeShareAddressIgnored) normalized.unsafeShareAddressIgnored = true;
   if (type) normalized.type = type;
   if (hashtags.length) normalized.hashtags = hashtags;
   if (mastodonInstance) normalized.mastodonInstance = mastodonInstance;
@@ -1581,7 +1596,10 @@ function buildExperienceContext(which, ref, index, opts = {}) {
     layer: which,
     itemId: String(ref.id || '')
   });
-  const pageLocation = safeAbsoluteUrl(overrides.url, deepLink);
+  const shareAddressIgnored = !!overrides.unsafeShareAddressIgnored;
+  const pageLocation = shareAddressIgnored
+    ? deepLink
+    : resolveHttpShareUrl(overrides.url, canonicalEntryUrl(), deepLink);
   const imageChoice = pickInitialSocialImage(overrides, item, ref);
   const mediaType = item?.type || ref.type || 'media';
   const layerLabel = which === 'slideshow' ? 'slideshow' : 'playlist';
@@ -1598,6 +1616,7 @@ function buildExperienceContext(which, ref, index, opts = {}) {
     listIndex: Number.isFinite(index) ? index : 0,
     pageTitle,
     pageLocation,
+    shareAddressIgnored,
     pagePath: pagePathFromUrl(pageLocation),
     description,
     imageUrl: imageChoice.url,
@@ -2409,11 +2428,12 @@ function platformShareText(context, platformId) {
 async function buildPlatformShareUrl(platformId, context) {
   const platform = sharePlatformRegistry.get(normalizeSharePlatformId(platformId));
   if (!platform) return '';
-  const url = safeAbsoluteUrl(context?.pageLocation || buildDeepLinkUrl({ experienceId: state.activeExperienceId }), canonicalEntryUrl());
+  const deepLink = buildDeepLinkUrl({ experienceId: context?.experienceId || state.activeExperienceId });
+  const url = resolveHttpShareUrl(context?.pageLocation || deepLink, canonicalEntryUrl(), deepLink);
   const title = sanitizeDisplayText(context?.pageTitle || `${state.projectName} • Blend`, 180);
   const text = platformShareText(context, platform.id);
   const built = await Promise.resolve(platform.buildUrl({ url, title, text, context }));
-  return String(built || '').trim();
+  return resolvePlatformShareUrl(built, platform.id, canonicalEntryUrl());
 }
 
 async function copyToClipboard(text) {
@@ -2446,11 +2466,13 @@ async function copyToClipboard(text) {
 
 async function shareWithWebShare(context) {
   if (!navigator.share) return false;
+  const deepLink = buildDeepLinkUrl({ experienceId: context?.experienceId || state.activeExperienceId });
+  const pageLocation = resolveHttpShareUrl(context?.pageLocation || deepLink, canonicalEntryUrl(), deepLink);
   const payload = {
     title: sanitizeDisplayText(context?.pageTitle || `${state.projectName} • Blend`, 180),
-    text: platformShareText(context, 'native'),
-    url: safeAbsoluteUrl(context?.pageLocation || buildDeepLinkUrl({ experienceId: state.activeExperienceId }), canonicalEntryUrl())
+    text: platformShareText(context, 'native')
   };
+  if (pageLocation) payload.url = pageLocation;
   try {
     if (navigator.canShare && !navigator.canShare(payload)) {
       delete payload.url;
@@ -2469,7 +2491,30 @@ async function shareWithWebShare(context) {
 }
 
 async function shareContextByMethod(method, context = null) {
-  const active = context || activeExperienceContext || buildProjectContext();
+  const requestedContext = context || activeExperienceContext || buildProjectContext();
+  const deepLink = buildDeepLinkUrl({
+    experienceId: requestedContext.experienceId || state.activeExperienceId,
+    layer: requestedContext.mediaLayer === 'playlist' || requestedContext.mediaLayer === 'slideshow'
+      ? requestedContext.mediaLayer
+      : undefined,
+    itemId: requestedContext.mediaId || ''
+  });
+  const rawPageLocation = String(requestedContext.pageLocation || '').trim();
+  const parsedPageLocation = resolveHttpShareUrl(rawPageLocation, canonicalEntryUrl());
+  const shareAddressIgnored = !!requestedContext.shareAddressIgnored || (!!rawPageLocation && !parsedPageLocation);
+  const active = {
+    ...requestedContext,
+    pageLocation: shareAddressIgnored
+      ? deepLink
+      : resolveHttpShareUrl(rawPageLocation || deepLink, canonicalEntryUrl(), deepLink),
+    shareAddressIgnored
+  };
+  if (active.shareAddressIgnored) {
+    showToast('Blend ignored an unsafe share address from this item and used the local experience link instead.', {
+      role: 'status',
+      timeout: 4800
+    });
+  }
   if (method === 'native') {
     return shareWithWebShare(active);
   }
@@ -2487,19 +2532,38 @@ async function shareContextByMethod(method, context = null) {
 
   const shareUrl = await buildPlatformShareUrl(method, active);
   if (!shareUrl) {
-    showToast('Could not build that share URL', { timeout: 2600 });
-    trackShareEvent(method, active, { outcome: 'error' });
-    return false;
+    const copied = await copyToClipboard(active.pageLocation);
+    showToast(copied
+      ? 'That share destination could not be opened. The experience link was copied instead.'
+      : 'Could not build that share URL', {
+      timeout: copied ? 3600 : 2600,
+      role: copied ? 'status' : undefined
+    });
+    trackShareEvent(method, active, { outcome: copied ? 'copied_fallback' : 'error' });
+    return copied;
   }
 
-  if (/^mailto:/i.test(shareUrl)) {
+  const safeShareUrl = resolvePlatformShareUrl(shareUrl, method, canonicalEntryUrl());
+  if (!safeShareUrl) {
+    const copied = await copyToClipboard(active.pageLocation);
+    showToast(copied
+      ? 'That share destination could not be opened. The experience link was copied instead.'
+      : 'Could not build that share URL', {
+      timeout: copied ? 3600 : 2600,
+      role: copied ? 'status' : undefined
+    });
+    trackShareEvent(method, active, { outcome: copied ? 'copied_fallback' : 'error' });
+    return copied;
+  }
+
+  if (/^mailto:/i.test(safeShareUrl) && normalizeSharePlatformId(method) === 'email') {
     if (!(await flushSaveState())) return false;
-    window.location.href = shareUrl;
+    window.location.assign(safeShareUrl);
     trackShareEvent(method, active, { outcome: 'opened' });
     return true;
   }
 
-  const popup = window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  const popup = window.open(safeShareUrl, '_blank', 'noopener,noreferrer');
   if (!popup) {
     const copied = await copyToClipboard(active.pageLocation);
     if (copied) showToast('Popup blocked. Link copied instead.', { timeout: 3200 });
@@ -12271,23 +12335,15 @@ function normalizeImportItems(items) {
     let metadata = item.metadata && typeof item.metadata === 'object'
       ? clonePlain(item.metadata)
       : (item.customMetadata && typeof item.customMetadata === 'object' ? clonePlain(item.customMetadata) : undefined);
-    const social = normalizeSocialObject(
-      item.social ||
-      item.share ||
-      item.og ||
-      metadata?.social ||
-      metadata?.share ||
-      metadata?.og
-    );
-    if (social) {
-      const baseMetadata = metadata && typeof metadata === 'object' ? metadata : {};
-      baseMetadata.social = {
-        ...(baseMetadata.social && typeof baseMetadata.social === 'object' ? baseMetadata.social : {}),
-        ...social
-      };
-      if (baseMetadata.share && typeof baseMetadata.share === 'object') delete baseMetadata.share;
-      if (baseMetadata.og && typeof baseMetadata.og === 'object') delete baseMetadata.og;
-      metadata = baseMetadata;
+    for (const key of ['social', 'share', 'og']) {
+      const candidate = item[key];
+      if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+        metadata = metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {};
+        metadata[key] = {
+          ...(metadata[key] && typeof metadata[key] === 'object' && !Array.isArray(metadata[key]) ? metadata[key] : {}),
+          ...clonePlain(candidate)
+        };
+      }
     }
     return {
       id: item.id,
@@ -12317,23 +12373,15 @@ function normalizeImportedLibraryRecord(record) {
   const type = ['video', 'audio', 'image'].includes(record.type) ? record.type : getMediaType(pathHint || name);
   if (!type) return null;
   let metadata = record.metadata && typeof record.metadata === 'object' ? clonePlain(record.metadata) : undefined;
-  const social = normalizeSocialObject(
-    record.social ||
-    record.share ||
-    record.og ||
-    metadata?.social ||
-    metadata?.share ||
-    metadata?.og
-  );
-  if (social) {
-    const baseMetadata = metadata && typeof metadata === 'object' ? metadata : {};
-    baseMetadata.social = {
-      ...(baseMetadata.social && typeof baseMetadata.social === 'object' ? baseMetadata.social : {}),
-      ...social
-    };
-    if (baseMetadata.share && typeof baseMetadata.share === 'object') delete baseMetadata.share;
-    if (baseMetadata.og && typeof baseMetadata.og === 'object') delete baseMetadata.og;
-    metadata = baseMetadata;
+  for (const key of ['social', 'share', 'og']) {
+    const candidate = record[key];
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      metadata = metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {};
+      metadata[key] = {
+        ...(metadata[key] && typeof metadata[key] === 'object' && !Array.isArray(metadata[key]) ? metadata[key] : {}),
+        ...clonePlain(candidate)
+      };
+    }
   }
   return {
     id,

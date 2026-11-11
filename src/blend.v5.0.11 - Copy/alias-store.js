@@ -5,7 +5,7 @@ import {
   DB_STORE_KEY_PATHS,
   ensureBlendDatabaseStores,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261109-v5.0.11-bounded-playback-history';
+} from './indexeddb-open.js?v=20261111-v5.0.11-issue-04-share-url-safety';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;

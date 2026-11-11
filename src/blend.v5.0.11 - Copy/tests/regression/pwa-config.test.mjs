@@ -46,6 +46,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./analytics-consent.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./analytics-event-params.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./experience-persistence.js?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./share-destination-safety.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./indexeddb-open.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./local-import-limits.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./directory-scan-yield.js?v=' + config.ASSET_VERSION));
@@ -99,6 +100,7 @@ test('HTML shell uses manifest.webmanifest and the configured asset version', as
   assert.match(app, new RegExp(`playback-mode\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`directory-scan-yield\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`url-share\\.js\\?v=${config.ASSET_VERSION}`));
+  assert.match(app, new RegExp(`share-destination-safety\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`git-playlist-catalog\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`git-playlist-storage\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(html, new RegExp(`content="${config.APP_VERSION}"`));

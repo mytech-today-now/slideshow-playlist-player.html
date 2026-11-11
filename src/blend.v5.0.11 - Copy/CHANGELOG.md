@@ -17,6 +17,7 @@ These changes are present in the current review checkout. The app version remain
 
 ### Changed
 
+- Imported social share addresses now use HTTP(S) destinations only; unsafe imported values fall back to a generated local experience link, and the updated helper is included in the PWA cache generation.
 - Experience completion follows the selected Playlist or Slideshow end target, defaulting to Playlist for new and legacy experiences. If that layer has no playable items, the available companion layer defines completion.
 - Stop, Loop, and Go to Next Experience now run at the selected layer boundary after both playback layers and active transitions are stopped. Manual Next remains navigation and does not trigger automatic experience completion.
 - Random Playlist and Slideshow order now play each playable item once per cycle. A random end-target cycle then follows the selected experience mode; the controls explain the cycle and reload fallback.

@@ -88,7 +88,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261109-v5.0.11-bounded-playback-history`
+- **Cache/app shell version key:** `20261111-v5.0.11-issue-04-share-url-safety`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -183,7 +183,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Remote Playlists | Public Git catalog browsing | Yes | Separate unauthenticated GitHub or Bitbucket reads and local import |
 | Remote Playlists | User-owned Git read and publish | Partial | GitHub read and SHA-guarded publish; Bitbucket read and review only while atomic writes are undocumented |
 | Sharing | Deep links | Yes | `exp`, `layer`, `item`, optional `autoplay` |
-| Sharing | Social share menu | Yes | Native share, copy, and platform links |
+| Sharing | Social share menu | Yes | Native share, copy, and platform links; unsafe imported destinations fall back to the generated item link |
 | PWA | Service worker shell cache | Browser-dependent | Desktop Chromium and focused Firefox offline-shell reloads are covered; the WebKit smoke records an explicit offline-navigation skip. iOS/Android installation and offline reload with saved media are unverified. Media/range requests bypass cache. |
 
 ## Detailed Feature Documentation

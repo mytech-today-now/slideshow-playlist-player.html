@@ -1,0 +1,46 @@
+{
+  "version": "5.0.11",
+  "schema": "player.blend.experience.v2",
+  "type": "experience",
+  "id": "issue-04-unsafe-social-share-fixture",
+  "name": "Issue 04 Unsafe Social Share Fixture",
+  "settings": {},
+  "library": {
+    "order": [],
+    "items": []
+  },
+  "playlist": {
+    "schema": "player.blend.list.v1",
+    "type": "playlist",
+    "name": "Playlist",
+    "order": ["issue-04-unsafe-share-item"],
+    "items": [
+      {
+        "id": "issue-04-unsafe-share-item",
+        "path": "C:\\BlendFixtures\\issue-04-unsafe-share-item.mp4",
+        "fullPath": "C:\\BlendFixtures\\issue-04-unsafe-share-item.mp4",
+        "pathKind": "absolute",
+        "name": "Imported share destination sample",
+        "type": "video",
+        "metadata": {
+          "social": {
+            "url": "javascript:alert(1)",
+            "href": "https://evil.example/alternate",
+            "title": "Imported share title"
+          },
+          "preservedLabel": "keep this metadata"
+        }
+      }
+    ]
+  },
+  "slideshow": {
+    "schema": "player.blend.list.v1",
+    "type": "slideshow",
+    "name": "Slideshow",
+    "order": [],
+    "items": []
+  },
+  "ui": {
+    "activeList": "playlist"
+  }
+}
