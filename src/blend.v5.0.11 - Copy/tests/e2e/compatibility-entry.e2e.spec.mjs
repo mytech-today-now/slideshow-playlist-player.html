@@ -27,6 +27,7 @@ async function prepareAppPage(page) {
       localStorage.setItem(configKey, JSON.stringify({
         ...existing,
         SUPABASE_URL: origin,
+        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
         SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
         SUPABASE_MEDIA_BUCKET: 'media',
         SUPABASE_PUBLIC_BUCKETS: 'public'

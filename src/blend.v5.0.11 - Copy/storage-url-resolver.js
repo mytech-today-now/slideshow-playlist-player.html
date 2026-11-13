@@ -12,6 +12,7 @@ const DEFAULT_RETRY = Object.freeze({
   baseDelayMs: 250
 });
 const INVALID_STORAGE_PATH_ENCODING_MESSAGE = 'The storage path has invalid percent encoding. Check the URL and try again.';
+const SUPABASE_CONFIG_REQUIRED_MESSAGE = 'Supabase is not configured for this copy of Blend. Add a project URL and anon key in runtime configuration if you need Supabase Storage.';
 
 export class StorageResolverError extends Error {
   constructor(message, { code = 'resolver_error', status = 0, retryable = false, cause = null } = {}) {
@@ -498,6 +499,13 @@ export function createStorageUrlResolver({
     if (!normalized) {
       throw new StorageResolverError('Media reference is not a valid Supabase or URL source.', {
         code: 'invalid_reference',
+        retryable: false
+      });
+    }
+
+    if (normalized.mode !== 'direct' && (!String(config?.supabaseUrl || '').trim() || !String(config?.supabaseAnonKey || '').trim())) {
+      throw new StorageResolverError(SUPABASE_CONFIG_REQUIRED_MESSAGE, {
+        code: 'supabase_not_configured',
         retryable: false
       });
     }

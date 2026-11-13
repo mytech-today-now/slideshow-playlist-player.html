@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261111-v5.0.11-issue-04-share-url-safety';
-  const CACHE_VERSION = '20261111-v5.0.11-issue-04-share-url-safety';
+  const ASSET_VERSION = '20261112-v5.0.11-issue-05-inert-supabase-defaults';
+  const CACHE_VERSION = '20261112-v5.0.11-issue-05-inert-supabase-defaults';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';

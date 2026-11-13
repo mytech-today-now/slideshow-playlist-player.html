@@ -18,6 +18,8 @@ export class SupabaseAuthError extends Error {
   }
 }
 
+const SUPABASE_CONFIG_REQUIRED_MESSAGE = 'Supabase is not configured for this copy of Blend. Add a project URL and anon key in runtime configuration to use Supabase Auth.';
+
 function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
 }
@@ -141,6 +143,7 @@ export function createSupabaseAuthClient({
   clearTimeoutImpl = globalThis.clearTimeout.bind(globalThis),
   broadcastChannelImpl = typeof globalThis.window === 'object' ? globalThis.BroadcastChannel : null
 } = {}) {
+  const hasSupabaseConfig = Boolean(String(supabaseUrl || '').trim() && String(supabaseAnonKey || '').trim());
   const listeners = new Set();
   let session = null;
   let persistenceEnabled = false;
@@ -600,6 +603,12 @@ export function createSupabaseAuthClient({
   }
 
   async function requestJson(url, init = {}, friendlyCode = 'auth_request_failed') {
+    if (!hasSupabaseConfig) {
+      throw new SupabaseAuthError(SUPABASE_CONFIG_REQUIRED_MESSAGE, {
+        code: 'auth_not_configured',
+        retryable: false
+      });
+    }
     if (typeof fetchImpl !== 'function') {
       throw new SupabaseAuthError('Fetch is not available in this environment.', {
         code: 'fetch_unavailable',
@@ -960,8 +969,8 @@ export function createSupabaseAuthClient({
     const token = session?.access_token || '';
     const url = `${String(supabaseUrl || '').replace(/\/+$/, '')}/auth/v1/logout`;
     lastSignOutOutcome = null;
-    let remoteOutcome = token ? 'unknown' : 'skipped';
-    if (token) {
+    let remoteOutcome = token && hasSupabaseConfig ? 'unknown' : 'skipped';
+    if (token && hasSupabaseConfig) {
       try {
         await requestJson(url, {
           method: 'POST',
@@ -997,6 +1006,10 @@ export function createSupabaseAuthClient({
 
   function getStatus() {
     return { ...authStatus };
+  }
+
+  function isConfigured() {
+    return hasSupabaseConfig;
   }
 
   function getSession() {
@@ -1050,6 +1063,7 @@ export function createSupabaseAuthClient({
     signOut,
     onAuthStateChange,
     isAuthenticated,
+    isConfigured,
     getStatus,
     getSession,
     getAccessToken,

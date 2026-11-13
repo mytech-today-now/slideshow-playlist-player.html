@@ -45,6 +45,7 @@ async function bootApp(page, { serviceWorkersUnavailable = false } = {}) {
       localStorage.setItem(runtimeConfigKey, JSON.stringify({
         ...current,
         SUPABASE_URL: location.origin,
+        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
         SUPABASE_AUTH_REDIRECT_URL: `${location.origin}/index.html`,
         SUPABASE_MEDIA_BUCKET: 'media',
         SUPABASE_PUBLIC_BUCKETS: 'public'

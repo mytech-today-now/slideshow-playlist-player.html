@@ -88,7 +88,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261111-v5.0.11-issue-04-share-url-safety`
+- **Cache/app shell version key:** `20261112-v5.0.11-issue-05-inert-supabase-defaults`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -690,6 +690,19 @@ Import behavior rules:
 | Playlist volume | `#vol-playlist` | IndexedDB settings | 0.0-1.0 |
 | Slideshow volume | `#vol-slideshow` | IndexedDB settings | 0.0-1.0 |
 | Master volume | `#vol-master` | IndexedDB settings | 0.0-1.0 |
+
+### Supabase project configuration
+
+The static app starts with Supabase disconnected and does not load `.env` files. An operator must supply both the project URL and public anon key through `globalThis.BLEND_RUNTIME_CONFIG` before `app.js` runs, or through the operator-managed LocalStorage object `blend-runtime-config-v1`:
+
+```js
+globalThis.BLEND_RUNTIME_CONFIG = {
+  SUPABASE_URL: '',
+  SUPABASE_ANON_KEY: ''
+};
+```
+
+Fill in values for the deployment's intended project. The anon key is browser-visible configuration, not a service-role secret. The app shows the configured project URL in Supabase settings and refuses Auth or Storage requests until both values are present. Local files and direct public media URLs continue to work while Supabase is disconnected.
 
 Random chooses among playable items and excludes the current item when another playable choice exists; a one-item playable list stays on that item. Previous returns through recorded random navigation history for each layer.
 

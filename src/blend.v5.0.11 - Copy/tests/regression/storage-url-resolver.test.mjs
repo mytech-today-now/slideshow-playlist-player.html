@@ -437,6 +437,53 @@ test('throws auth_required when private media has no token', async () => {
   );
 });
 
+test('Supabase references fail closed without both settings while direct public URLs remain available', async () => {
+  let requestCount = 0;
+  const configs = [
+    { supabaseUrl: '', supabaseAnonKey: 'synthetic-anon-key' },
+    { supabaseUrl: 'https://runtime.example.test', supabaseAnonKey: '' }
+  ];
+  for (const config of configs) {
+    const resolver = createStorageUrlResolver({
+      config: {
+        ...config,
+        defaultBucket: 'media',
+        publicBucketAllowList: ['public']
+      },
+      authClient: createAuth('synthetic-access-token'),
+      fetchImpl: async () => {
+        requestCount += 1;
+        throw new Error('fetch must not be called without complete Supabase configuration');
+      }
+    });
+
+    for (const reference of [
+      'supabase://media/private/video.mp4',
+      'supabase://public/video.mp4'
+    ]) {
+      await assert.rejects(
+        () => resolver.resolve(reference),
+        error => error instanceof StorageResolverError
+          && error.code === 'supabase_not_configured'
+          && /Supabase is not configured/.test(error.message)
+      );
+    }
+  }
+  assert.equal(requestCount, 0);
+
+  const directUrl = 'https://media.example.test/video.mp4';
+  const disconnectedResolver = createStorageUrlResolver({
+    config: {},
+    fetchImpl: async () => {
+      requestCount += 1;
+      throw new Error('direct public URL resolution must not fetch');
+    }
+  });
+  const direct = await disconnectedResolver.resolve(directUrl);
+  assert.equal(direct.url, directUrl);
+  assert.equal(requestCount, 0);
+});
+
 test('maps legacy ipfs URI into Supabase legacy prefix', async () => {
   const resolver = createStorageUrlResolver({
     config: {

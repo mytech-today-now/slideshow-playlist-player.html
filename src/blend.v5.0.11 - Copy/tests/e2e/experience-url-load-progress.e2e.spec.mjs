@@ -52,6 +52,7 @@ test.describe('experience URL load progress overlay (v5.0.11)', () => {
         const origin = `http://127.0.0.1:${port}`;
         localStorage.setItem(cfgKey, JSON.stringify({
           SUPABASE_URL: origin,
+          SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
           SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
           SUPABASE_MEDIA_BUCKET: 'media',
           SUPABASE_PUBLIC_BUCKETS: 'public'

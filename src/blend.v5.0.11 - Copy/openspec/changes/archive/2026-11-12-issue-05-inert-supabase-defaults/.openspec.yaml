@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-12
+goal: Prevent unconfigured Blend copies from contacting a baked-in Supabase
+  project while preserving operator overrides and local-first playback.

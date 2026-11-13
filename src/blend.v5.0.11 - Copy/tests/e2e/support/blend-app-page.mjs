@@ -42,6 +42,7 @@ export class BlendAppPage {
         localStorage.setItem(runtimeConfigKey, JSON.stringify({
           ...existing,
           SUPABASE_URL: fixtureOrigin,
+          SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
           SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
           SUPABASE_MEDIA_BUCKET: 'media',
           SUPABASE_PUBLIC_BUCKETS: 'public',

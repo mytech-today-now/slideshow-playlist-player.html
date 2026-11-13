@@ -30,6 +30,7 @@ async function boot(page, { publicBuckets = 'public' } = {}) {
       localStorage.setItem(key, JSON.stringify({
         ...existing,
         SUPABASE_URL: fixtureOrigin,
+        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
         SUPABASE_MEDIA_BUCKET: 'media',
         SUPABASE_PUBLIC_BUCKETS: publicBuckets
       }));

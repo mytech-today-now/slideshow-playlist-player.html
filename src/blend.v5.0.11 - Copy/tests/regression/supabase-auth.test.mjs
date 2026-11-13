@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SupabaseAuthError, createSupabaseAuthClient } from '../../supabase-auth.js';
+import { SupabaseAuthError, createSupabaseAuthClient as createSupabaseAuthClientImpl } from '../../supabase-auth.js';
 
 function createMemoryStorage(seed = {}) {
   const map = new Map(Object.entries(seed));
@@ -21,6 +21,14 @@ function createMemoryStorage(seed = {}) {
     writes,
     keys() { return Array.from(map.keys()); }
   };
+}
+
+function createSupabaseAuthClient(options = {}) {
+  return createSupabaseAuthClientImpl({
+    supabaseUrl: 'https://runtime.example.test',
+    supabaseAnonKey: 'synthetic-anon-key',
+    ...options
+  });
 }
 
 function createExpiredSavedSession(storageKey = 'blend-supabase-auth-session-v2') {
@@ -1202,6 +1210,67 @@ test('signInWithPassword rejects missing credentials', async () => {
       () => client.signInWithPassword({ email: '', password: '' }),
       error => error instanceof SupabaseAuthError && error.code === 'auth_invalid_credentials'
     );
+  } finally {
+    client.shutdown();
+  }
+});
+
+test('Auth requests require both a runtime project URL and anon key', async () => {
+  for (const config of [
+    { supabaseUrl: '', supabaseAnonKey: 'synthetic-anon-key' },
+    { supabaseUrl: 'https://runtime.example.test', supabaseAnonKey: '' }
+  ]) {
+    let requestCount = 0;
+    const client = createSupabaseAuthClient({
+      ...config,
+      fetchImpl: async () => {
+        requestCount += 1;
+        throw new Error('fetch must not be called without complete Supabase configuration');
+      }
+    });
+
+    try {
+      assert.equal(client.isConfigured(), false);
+      await assert.rejects(
+        () => client.signInWithPassword({ email: 'user@example.test', password: 'synthetic-password' }),
+        error => error instanceof SupabaseAuthError
+          && error.code === 'auth_not_configured'
+          && /Supabase is not configured/.test(error.message)
+      );
+      assert.equal(requestCount, 0);
+    } finally {
+      client.shutdown();
+    }
+  }
+});
+
+test('expired saved sessions do not refresh or sign out remotely without runtime configuration', async () => {
+  const expired = createExpiredSavedSession();
+  let requestCount = 0;
+  const client = createSupabaseAuthClient({
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+    storage: expired.storage,
+    fetchImpl: async () => {
+      requestCount += 1;
+      throw new Error('fetch must not be called without Supabase configuration');
+    }
+  });
+
+  try {
+    await client.bootstrap();
+    assert.equal(requestCount, 0);
+    assert.equal(client.inspectSavedSessionState(), 'present');
+    await assert.rejects(
+      () => client.refreshSession(),
+      error => error instanceof SupabaseAuthError && error.code === 'auth_not_configured'
+    );
+    assert.equal(requestCount, 0);
+    assert.equal(client.inspectSavedSessionState(), 'present');
+
+    await client.signOut();
+    assert.equal(requestCount, 0);
+    assert.equal(client.inspectSavedSessionState(), 'clear');
   } finally {
     client.shutdown();
   }

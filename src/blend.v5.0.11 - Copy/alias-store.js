@@ -5,7 +5,7 @@ import {
   DB_STORE_KEY_PATHS,
   ensureBlendDatabaseStores,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './indexeddb-open.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 
 const config = globalThis.BlendPwaConfig;
 const router = globalThis.BlendAliasRouter;

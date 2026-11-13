@@ -5,25 +5,25 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './indexeddb-open.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './experience-persistence.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
   getBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './supabase-config.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,26 +33,26 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './storage-url-resolver.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './signed-url-cleanup.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './transition-manager.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './playback-clock.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
@@ -64,9 +64,9 @@ import {
   compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { renderMarkdown } from './markdown.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { fetchReadme } from './readme-fetcher.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './playback-mode.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { renderMarkdown } from './markdown.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { fetchReadme } from './readme-fetcher.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -82,33 +82,33 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './url-share.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   isUnsupportedImportScheme,
   resolveHttpShareUrl,
   resolvePlatformShareUrl
-} from './share-destination-safety.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './share-destination-safety.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './url-share-diagnostics.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './timeline-analysis.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261111-v5.0.11-issue-04-share-url-safety';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './shared-experience-download.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -119,7 +119,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './git-playlist-catalog.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -130,7 +130,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './git-playlist-storage.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -143,17 +143,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './local-import-limits.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './directory-scan-yield.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261111-v5.0.11-issue-04-share-url-safety';
+} from './resume-on-load.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -248,7 +248,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261111-v5.0.11-issue-04-share-url-safety';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261112-v5.0.11-issue-05-inert-supabase-defaults';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -2616,6 +2616,32 @@ function openShareMenuForListRow(anchor, which, index) {
 }
 
 // ====================== CLOUD STORAGE ======================
+const SUPABASE_UNCONFIGURED_MESSAGE = 'Supabase is not configured for this copy of Blend. Local files and direct public media URLs still play. Add your project URL and anon key in runtime configuration if you need private Storage.';
+
+function getSupabaseProjectDisplayUrl() {
+  const configuredUrl = String(RUNTIME_CONFIG.supabaseUrl || '').trim();
+  if (!configuredUrl) return '';
+  try {
+    const origin = new URL(configuredUrl).origin;
+    return origin && origin !== 'null' ? origin : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function syncSupabaseConfigurationStatus() {
+  const statusEl = $('#supabase-config-status');
+  if (!statusEl) return;
+  const projectUrl = getSupabaseProjectDisplayUrl();
+  if (RUNTIME_CONFIG.supabaseConfigured && projectUrl) {
+    statusEl.textContent = `Supabase is configured for project ${projectUrl}.`;
+    statusEl.dataset.state = 'enabled';
+    return;
+  }
+  statusEl.textContent = `${SUPABASE_UNCONFIGURED_MESSAGE}${projectUrl ? ` Current project URL: ${projectUrl}.` : ''}`;
+  statusEl.dataset.state = 'error';
+}
+
 function ipfsConfigFromState(overrides = {}) {
   return {
     enabled: true,
@@ -2630,6 +2656,14 @@ function ipfsConfigFromState(overrides = {}) {
 
 function currentAuthReadiness() {
   const config = ipfsConfigFromState();
+  if (!RUNTIME_CONFIG.supabaseConfigured) {
+    return {
+      state: 'unconfigured',
+      statusState: 'error',
+      canAccessPrivateMedia: false,
+      message: 'Supabase is not configured for this copy of Blend.'
+    };
+  }
   const hasSession = supabaseAuthClient.isAuthenticated();
   const hasSavedSession = !!supabaseAuthClient.getSession();
   const authStatus = supabaseAuthClient.getStatus();
@@ -2765,6 +2799,7 @@ function syncIpfsControls() {
   const signOutBtn = $('#supabase-sign-out');
   const privateToggle = $('#private-media-auth-required');
 
+  syncSupabaseConfigurationStatus();
   if (bucketInput) bucketInput.value = config.defaultBucket;
   if (ttlInput) ttlInput.value = String(config.signedUrlTtlSeconds);
   if (privateToggle) privateToggle.checked = config.privateMediaRequiresAuth;
@@ -2773,7 +2808,7 @@ function syncIpfsControls() {
     statusEl.dataset.state = readiness.statusState || readiness.state;
   }
   if (retryBtn) retryBtn.hidden = readiness.statusState !== 'temporarily-unavailable';
-  if (signInBtn) signInBtn.disabled = readiness.state === 'ready';
+  if (signInBtn) signInBtn.disabled = !RUNTIME_CONFIG.supabaseConfigured || readiness.state === 'ready';
   if (signOutBtn) {
     signOutBtn.disabled = !supabaseAuthClient.getSession()
       && supabaseAuthClient.inspectSavedSessionState() === 'clear';
@@ -3230,6 +3265,10 @@ function buildAuthDialog() {
 }
 
 async function promptSupabaseSignIn() {
+  if (!RUNTIME_CONFIG.supabaseConfigured) {
+    syncIpfsControls();
+    return null;
+  }
   const parts = buildAuthDialog();
   if (!parts) {
     showToast('Supabase auth dialog is unavailable in this build.', { timeout: 3200 });
@@ -8893,6 +8932,10 @@ async function loadPlaylistItem(itemRef, useB = false, opts = {}) {
         remoteUrlForItem(item, itemRef),
         normalizeStorageMetadata(item, itemRef)
       ));
+    } else if (item?.metadata?.lastStorageError === 'supabase_not_configured') {
+      item.stale = false;
+      itemRef.available = true;
+      delete itemRef.reason;
     } else {
       item.stale = true;
       itemRef.available = false;
@@ -9036,6 +9079,10 @@ async function loadSlideshowItem(itemRef, withCrossfade = true, opts = {}) {
         remoteUrlForItem(item, itemRef),
         normalizeStorageMetadata(item, itemRef)
       ));
+    } else if (item?.metadata?.lastStorageError === 'supabase_not_configured') {
+      item.stale = false;
+      itemRef.available = true;
+      delete itemRef.reason;
     } else {
       item.stale = true;
       itemRef.available = false;

@@ -61,7 +61,7 @@ test('dropping browser console output is ignored as non-media text', async ({ pa
     'index.html:1 Banner not shown: beforeinstallpromptevent.preventDefault() called.',
     'logger.js?v=20260622-v5.0.0-supabase-storage:124 [2026-06-22T20:26:13.556Z] [Blend] [WARN] Remote media import failed StorageResolverError: Media reference is not a valid Supabase or URL source.',
     '    at Object.resolve (storage-url-resolver.js?v=20260622-v5.0.0-supabase-storage:369:13)',
-    'lqpmmviiloztbanshfxy.supabase.co/auth/v1/token?grant_type=password:1  Failed to load resource: the server responded with a status of 400 ()'
+    'runtime.example.test/auth/v1/token?grant_type=password:1  Failed to load resource: the server responded with a status of 400 ()'
   ];
 
   await blendPage.boot('/index.html');

@@ -3,11 +3,11 @@ export const LEGACY_DEFAULT_SIGNED_URL_TTL_SECONDS = 1209600;
 export const SIGNED_URL_TTL_POLICY_VERSION = 1;
 
 const PLACEHOLDER_DEFAULTS = Object.freeze({
-  SUPABASE_URL: 'https://lqpmmviiloztbanshfxy.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxcG1tdmlpbG96dGJhbnNoZnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Mjc3MjgsImV4cCI6MjA5NjQwMzcyOH0.B7Oy2oH7YFPxgIvXLTPvduP7YFViiDaLfhROIJ44pOQ',
-  SUPABASE_STORAGE_BUCKET: 'https://lqpmmviiloztbanshfxy.storage.supabase.co/storage/v1/s3',
-  SUPABASE_CDN_BASE_URL: 'https://api.cloudflare.com/client/v4/accounts/<account_id>/d1/database',
-  SUPABASE_AUTH_REDIRECT_URL: 'https://mytech.today/tools/player/v/index.html',
+  SUPABASE_URL: '',
+  SUPABASE_ANON_KEY: '',
+  SUPABASE_STORAGE_BUCKET: '',
+  SUPABASE_CDN_BASE_URL: '',
+  SUPABASE_AUTH_REDIRECT_URL: '',
   SIGNED_URL_TTL_SECONDS: String(DEFAULT_SIGNED_URL_TTL_SECONDS),
   MEDIA_METADATA_SOURCE: 'browser',
   SUPABASE_MEDIA_BUCKET: 'media',
@@ -88,6 +88,7 @@ export function getBlendRuntimeConfig(overrides = {}) {
 
   const supabaseUrl = normalizeUrl(source.SUPABASE_URL, PLACEHOLDER_DEFAULTS.SUPABASE_URL);
   const supabaseAnonKey = String(source.SUPABASE_ANON_KEY || PLACEHOLDER_DEFAULTS.SUPABASE_ANON_KEY).trim();
+  const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
   const authRedirectUrl = normalizeUrl(source.SUPABASE_AUTH_REDIRECT_URL, PLACEHOLDER_DEFAULTS.SUPABASE_AUTH_REDIRECT_URL);
   const cdnBaseUrl = normalizeUrl(source.SUPABASE_CDN_BASE_URL, PLACEHOLDER_DEFAULTS.SUPABASE_CDN_BASE_URL);
   const defaultBucket = String(source.SUPABASE_MEDIA_BUCKET || PLACEHOLDER_DEFAULTS.SUPABASE_MEDIA_BUCKET).trim() || 'media';
@@ -96,6 +97,7 @@ export function getBlendRuntimeConfig(overrides = {}) {
   return Object.freeze({
     supabaseUrl,
     supabaseAnonKey,
+    supabaseConfigured,
     storageBucket: String(source.SUPABASE_STORAGE_BUCKET || PLACEHOLDER_DEFAULTS.SUPABASE_STORAGE_BUCKET).trim(),
     cdnBaseUrl,
     authRedirectUrl,

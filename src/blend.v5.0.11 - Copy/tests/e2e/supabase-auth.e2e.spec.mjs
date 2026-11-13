@@ -23,6 +23,11 @@ function containsPrivateSignedUrlOrToken(value) {
 
 async function openAuthDialog(app) {
   await app.openConfig();
+  const configStatus = app.page.locator('#supabase-config-status');
+  await expect(configStatus)
+    .toHaveText(`Supabase is configured for project ${new URL(app.page.url()).origin}.`);
+  await expect(configStatus).toHaveAttribute('role', 'status');
+  await expect(configStatus).not.toContainText('synthetic-browser-anon-key');
   await expect(app.page.locator('#private-media-policy-warning'))
     .toHaveText('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.');
   await expect(app.page.locator('#supabase-signed-url-ttl')).toHaveValue('3600');
@@ -90,6 +95,135 @@ async function readPersistedMediaStores(page) {
     };
   }));
 }
+
+test('unconfigured copy keeps local and direct playback while preserving portable Storage references', async ({ page }) => {
+  const supabaseRequests = [];
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/\/(?:auth|storage)\/v1\//.test(pathname)) supabaseRequests.push(pathname);
+  });
+
+  const app = new BlendAppPage(page);
+  await app.boot('/index.html', {
+    runtimeConfigOverrides: { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' }
+  });
+  await app.openConfig();
+
+  const configStatus = page.locator('#supabase-config-status');
+  await expect(configStatus).toHaveAttribute('role', 'status');
+  await expect(configStatus).toHaveAttribute('aria-live', 'polite');
+  await expect(configStatus).toHaveText(
+    'Supabase is not configured for this copy of Blend. Local files and direct public media URLs still play. Add your project URL and anon key in runtime configuration if you need private Storage.'
+  );
+  await expect(page.locator('#supabase-sign-in')).toBeDisabled();
+
+  const localVideoPath = fileURLToPath(new URL('../../samples/nyc-01.mp4', import.meta.url));
+  await app.addLocalFiles([localVideoPath]);
+  await app.selectLibraryItemsByNames(['nyc-01.mp4']);
+  await app.addSelectedLibraryToList('playlist', 1);
+
+  const portableReference = 'supabase://media/private/unconfigured.mp4';
+  const directUrl = `${new URL(page.url()).origin}/samples/nyc-01.mp4?direct-unconfigured=1`;
+  await page.evaluate(({ directUrl, portableReference }) => {
+    const B = window.Blend;
+    const localRef = B.state.playlist.find(ref => ref.name === 'nyc-01.mp4');
+    if (!localRef) throw new Error('The local playback fixture was not added to the playlist.');
+    const direct = {
+      id: 'direct-public-unconfigured',
+      name: 'Direct public.mp4',
+      type: 'video',
+      sourceUrl: directUrl,
+      path: directUrl,
+      available: true,
+      metadata: {}
+    };
+    const directLibraryItem = { ...direct, handle: { remote: true, sourceUrl: directUrl }, stale: false };
+    const portable = {
+      id: 'portable-private-unconfigured',
+      name: 'Portable private.mp4',
+      type: 'video',
+      size: 0,
+      duration: 1,
+      pathHint: portableReference,
+      stale: false,
+      handle: { remote: true },
+      metadata: {
+        storageReference: portableReference,
+        storageBucket: 'media',
+        storagePath: 'private/unconfigured.mp4'
+      }
+    };
+    B.state.library.set(direct.id, directLibraryItem);
+    B.state.library.set(portable.id, portable);
+    B.state.playlist = [
+      localRef,
+      { id: direct.id, name: direct.name, type: direct.type, path: directUrl, sourceUrl: directUrl, available: true, metadata: {} },
+      {
+        id: portable.id,
+        name: portable.name,
+        type: portable.type,
+        path: portableReference,
+        available: true,
+        metadata: { ...portable.metadata }
+      }
+    ];
+    B.state.runtime.playlistIndex = 0;
+    B.state.settings.playbackModePlaylist = 'sequential';
+    B.renderLibrary();
+    B.renderListEditor();
+  }, { directUrl, portableReference });
+
+  await page.evaluate(() => window.Blend.play());
+  await expect.poll(() => page.locator('#playlist-layer video').evaluateAll(elements =>
+    elements.some(element => element.currentSrc.startsWith('blob:')))).toBe(true);
+
+  await page.evaluate(async () => {
+    const B = window.Blend;
+    await B.stop();
+    B.state.runtime.playlistIndex = 1;
+    await B.play();
+  });
+  await expect.poll(() => page.locator('#playlist-layer video').evaluateAll(elements =>
+    elements.some(element => element.currentSrc.includes('direct-unconfigured=1')))).toBe(true);
+
+  await page.evaluate(async () => {
+    const B = window.Blend;
+    await B.stop();
+    B.state.runtime.playlistIndex = 2;
+    await B.play();
+  });
+  await page.waitForFunction(() => {
+    const B = window.Blend;
+    const item = B.state.library.get('portable-private-unconfigured');
+    const ref = B.state.playlist[2];
+    return item?.metadata?.lastStorageError === 'supabase_not_configured' && ref?.available === true;
+  });
+  await page.evaluate(() => window.Blend.flushSaveState());
+
+  const portableState = await page.evaluate(() => {
+    const B = window.Blend;
+    const item = B.state.library.get('portable-private-unconfigured');
+    const ref = B.state.playlist[2];
+    return {
+      stale: item?.stale,
+      available: ref?.available,
+      reason: ref?.reason,
+      path: ref?.path,
+      storageReference: item?.metadata?.storageReference
+    };
+  });
+  expect(portableState).toEqual({
+    stale: false,
+    available: true,
+    reason: undefined,
+    path: portableReference,
+    storageReference: portableReference
+  });
+  const persisted = await readPersistedMediaStores(page);
+  expect(persisted).toContain(portableReference);
+  expect(persisted).toContain('nyc-01.mp4');
+  expect(supabaseRequests).toEqual([]);
+});
 
 async function seedLegacySignedUrlTtl(page, activeExperienceId) {
   await page.evaluate(activeId => new Promise((resolve, reject) => {
