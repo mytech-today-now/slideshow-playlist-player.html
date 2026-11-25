@@ -367,7 +367,7 @@ test('a proven same folder root and repeated source URLs still deduplicate', asy
   await page.locator('#experience-modal-input').fill('https://example.invalid/clip.mp4 https://example.invalid/clip.mp4');
   await page.locator('#experience-modal-ok').click();
   await page.waitForFunction(() => window.Blend?.state?.library?.size === 2);
-  await expect(page.locator('.toast').filter({ hasText: 'Added 1 URL item (1 already present)' })).toBeVisible();
+  await expect(page.locator('.toast').filter({ hasText: 'Added 1 media item; 1 already present' })).toBeVisible();
   expect(await page.evaluate(() => Array.from(window.Blend.state.library.values())
     .filter(item => item.sourceUrl === 'https://example.invalid/clip.mp4').length)).toBe(1);
 });

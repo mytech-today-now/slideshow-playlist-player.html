@@ -21,18 +21,13 @@ async function prepareAppPage(page) {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     localStorage.setItem('blend-analytics-consent-v1', '0');
-    const configKey = 'blend-runtime-config-v1';
-    try {
-      const existing = JSON.parse(localStorage.getItem(configKey) || '{}');
-      localStorage.setItem(configKey, JSON.stringify({
-        ...existing,
-        SUPABASE_URL: origin,
-        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
-        SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
-        SUPABASE_MEDIA_BUCKET: 'media',
-        SUPABASE_PUBLIC_BUCKETS: 'public'
-      }));
-    } catch (_) {}
+    window.BLEND_RUNTIME_CONFIG = {
+      SUPABASE_URL: origin,
+      SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
+      SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
+      SUPABASE_MEDIA_BUCKET: 'media',
+      SUPABASE_PUBLIC_BUCKETS: 'public'
+    };
 
     if (window.location.pathname.endsWith('/index.html')) {
       const countKey = 'issue04-compat-index-load-count';

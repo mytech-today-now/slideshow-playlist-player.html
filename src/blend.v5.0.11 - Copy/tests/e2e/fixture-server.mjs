@@ -17,6 +17,9 @@ const SHARED_IMAGE_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8DwHwAFgwJ/l7h5WQAAAABJRU5ErkJggg==',
   'base64'
 );
+const SIGNED_STORAGE_IMAGE_BYTES = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1"/></svg>'
+);
 const uploadedContentByCid = new Map();
 
 const MIME_TYPES = Object.freeze({
@@ -392,6 +395,17 @@ function cacheControlForStatic(url, filePath) {
   return 'no-cache';
 }
 
+function handleSignedStorageFixture(req, res, url) {
+  const hasToken = Array.from(url.searchParams.keys()).some(key => key.toLowerCase() === 'token');
+  if (req.method !== 'GET' || !/\/storage\/v\d+\/object\/sign\//i.test(url.pathname) || !hasToken) return false;
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Content-Length', String(SIGNED_STORAGE_IMAGE_BYTES.byteLength));
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.end(SIGNED_STORAGE_IMAGE_BYTES);
+  return true;
+}
+
 async function handleStatic(req, res, url) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.statusCode = 405;
@@ -447,6 +461,7 @@ const server = createServer(async (req, res) => {
       sendJson(res, 200, buildSharedExperienceV2());
       return;
     }
+    if (handleSignedStorageFixture(req, res, url)) return;
 
     await handleStatic(req, res, url);
   } catch (error) {

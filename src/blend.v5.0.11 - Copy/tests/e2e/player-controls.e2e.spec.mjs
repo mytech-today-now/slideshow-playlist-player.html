@@ -491,9 +491,12 @@ test('layer order controls persist and random navigation uses per-layer history'
   await expect(slideshowOrder).toHaveValue('sequential');
 
   const experiencePlaybackMode = page.getByRole('combobox', { name: 'Experience playback mode' });
+  const experienceEndTarget = page.getByRole('combobox', { name: 'Experience end target' });
   await experiencePlaybackMode.focus();
   await expect(experiencePlaybackMode).toBeFocused();
   await experiencePlaybackMode.press('Tab');
+  await expect(experienceEndTarget).toBeFocused();
+  await experienceEndTarget.press('Tab');
   await expect(playlistOrder).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(playlistOrder).toHaveValue('random');
@@ -529,6 +532,11 @@ test('layer order controls persist and random navigation uses per-layer history'
   await blendPage.openConfig();
   await expect(page.getByRole('combobox', { name: 'Playlist order' })).toHaveValue('random');
   await expect(page.getByRole('combobox', { name: 'Slideshow order' })).toHaveValue('random');
+  await page.getByRole('combobox', { name: 'Playlist order' }).selectOption('sequential');
+  await page.getByRole('combobox', { name: 'Playlist order' }).selectOption('random');
+  await page.getByRole('combobox', { name: 'Slideshow order' }).selectOption('sequential');
+  await page.getByRole('combobox', { name: 'Slideshow order' }).selectOption('random');
+  await page.evaluate(() => window.Blend.saveStateNow());
   await blendPage.openConfig();
 
   await page.evaluate(() => {

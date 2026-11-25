@@ -35,20 +35,14 @@ export class BlendAppPage {
       localStorage.setItem('blend-welcome-v4', '1');
       localStorage.setItem('blend-install-banner-hidden-v4', '1');
       localStorage.setItem('blend-analytics-consent-v1', '0');
-      const runtimeConfigKey = 'blend-runtime-config-v1';
-      try {
-        const existingRaw = localStorage.getItem(runtimeConfigKey);
-        const existing = existingRaw ? JSON.parse(existingRaw) : {};
-        localStorage.setItem(runtimeConfigKey, JSON.stringify({
-          ...existing,
-          SUPABASE_URL: fixtureOrigin,
-          SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
-          SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
-          SUPABASE_MEDIA_BUCKET: 'media',
-          SUPABASE_PUBLIC_BUCKETS: 'public',
-          ...runtimeConfigOverrides
-        }));
-      } catch (_) {}
+      window.BLEND_RUNTIME_CONFIG = {
+        SUPABASE_URL: fixtureOrigin,
+        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
+        SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
+        SUPABASE_MEDIA_BUCKET: 'media',
+        SUPABASE_PUBLIC_BUCKETS: 'public',
+        ...runtimeConfigOverrides
+      };
       try {
         Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true });
         Object.defineProperty(window, 'showDirectoryPicker', { value: undefined, configurable: true });

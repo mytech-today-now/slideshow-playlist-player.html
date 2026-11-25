@@ -19,7 +19,7 @@ The parent repository may have its own root documentation, workflows, and helper
 Run every command below from this project root, the directory containing this `CLAUDE.md` and its `package.json`.
 
 ```bash
-npm install              # dev deps only: @playwright/test, esbuild (app itself has no runtime deps)
+npm install              # install test/build tools and the optional Node server's pg dependency
 npm run check            # node --check syntax-lint of every active JS module
 npm run test:regression  # serial node:test run without child processes
 npm run test:regression:isolated # process-isolated node:test run
@@ -48,7 +48,7 @@ Two layers with different boundaries:
 `index.html` is the shell; `app.js` is the single orchestrator (state + UI wiring + import/export + playback + persistence). It pulls in focused modules:
 
 - `storage-url-resolver.js` — normalizes media references (`http(s)`, `supabase://bucket/path`, bare `bucket/path`, legacy `ipfs://CID/...`) into public or signed-private object URLs, with retry/backoff and per-item failure isolation. This is the runtime media-resolution path.
-- `supabase-config.js`: layered runtime config. Precedence: `overrides` → LocalStorage `blend-runtime-config-v1` → `globalThis.BLEND_RUNTIME_CONFIG`/`__BLEND_RUNTIME_CONFIG__` → frozen `PLACEHOLDER_DEFAULTS`. Supabase URL and anon-key defaults are empty; supply both values through runtime configuration. `.env.example` is a commented placeholder reference and is not loaded by the static app.
+- `supabase-config.js`: layered runtime config. Precedence: explicit overrides → host-injected `globalThis.BLEND_RUNTIME_CONFIG`/`__BLEND_RUNTIME_CONFIG__` → reviewed LocalStorage `blend-runtime-config-v1` → frozen `PLACEHOLDER_DEFAULTS`. Browser-stored settings are pending until confirmed in the current tab; project URLs must use HTTP(S), and Auth redirects must use the current app origin. Supabase URL and anon-key defaults are empty; `.env.example` is a commented placeholder reference and is not loaded by the static app.
 - `supabase-auth.js` — token/session lifecycle; sessions stay in memory unless the user opts in to LocalStorage persistence. Required only for signed private media.
 - `git-playlist-storage.js`: optional direct GitHub/Bitbucket Cloud BYOT connection, repository access checks, validated remote playlist reads, and deliberately reviewed publication. Session credentials stay in memory by default; an explicit choice stores the token separately from repository coordinates.
 - `transition-manager.js` — slideshow transition engine (17 effects, weighted selection, FPS-driven quality tiers, `prefers-reduced-motion` awareness).
@@ -64,7 +64,7 @@ Two layers with different boundaries:
 
 ### Persistence
 - IndexedDB `player-blend-v1` (version 5): stores `library`, `playlist`, `slideshow`, `settings`, `experiences`, `thumbnails`, `dirHandles`, `aliases`, and `aliasMeta`. `pwa-config.js` is the only database version source. `indexeddb-open.js` owns the shared store/key-path map and idempotent upgrade initializer used by `app.js` and `alias-store.js`. Bump `DB_VERSION` in `pwa-config.js` and update the shared schema initializer when changing stores.
-- LocalStorage: `blend-active-experience-id`, `blend-runtime-config-v1` (operator-managed connection configuration, preserved by Clear Browser Storage), `blend-supabase-auth-session-v2` (explicit opt-in only), `blend-git-playlist-repository-v1` (provider/repository coordinates only), `blend-git-playlist-credential-v1` (explicit opt-in only), consent/banner flags. Startup removes but never restores the old Supabase auth-session `v1` key.
+- LocalStorage: `blend-active-experience-id`, `blend-runtime-config-v1` (connection configuration; reviewed per tab and removed by Clear Browser Storage), `blend-supabase-auth-session-v2` (explicit opt-in only), `blend-git-playlist-repository-v1` (provider/repository coordinates only), `blend-git-playlist-credential-v1` (explicit opt-in only), consent/banner flags. SessionStorage holds tab-scoped reviewed runtime config only when LocalStorage writes fail. Startup removes but never restores the old Supabase auth-session `v1` key.
 - Version constants live in `pwa-config.js`: `APP_VERSION`, `ASSET_VERSION`, `CACHE_VERSION`, `DB_VERSION`, cache names, precache assets, and route policies. `app.js`, `index.html`, manifests, and service worker behavior should stay aligned with that source and the invariant tests.
 
 ### Service worker

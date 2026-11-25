@@ -16,13 +16,13 @@ async function bootThumbnailApp(page) {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     localStorage.setItem('blend-analytics-consent-v1', '0');
-    localStorage.setItem('blend-runtime-config-v1', JSON.stringify({
+    window.BLEND_RUNTIME_CONFIG = {
       SUPABASE_URL: fixtureOrigin,
       SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
       SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
       SUPABASE_MEDIA_BUCKET: 'media',
       SUPABASE_PUBLIC_BUCKETS: 'public'
-    }));
+    };
     Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true });
     Object.defineProperty(window, 'showDirectoryPicker', { value: undefined, configurable: true });
     window.__BLEND_TEST_HOOKS__ = {};

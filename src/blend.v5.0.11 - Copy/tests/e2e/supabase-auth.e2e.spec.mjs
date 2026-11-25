@@ -29,7 +29,11 @@ async function openAuthDialog(app) {
   await expect(configStatus).toHaveAttribute('role', 'status');
   await expect(configStatus).not.toContainText('synthetic-browser-anon-key');
   await expect(app.page.locator('#private-media-policy-warning'))
-    .toHaveText('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.');
+    .toContainText('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision.');
+  await expect(app.page.locator('#private-media-policy-warning'))
+    .toContainText('Private Storage signing is unavailable until the project owner records a reviewed policy revision.');
+  await expect(app.page.locator('#private-media-policy-warning'))
+    .toContainText('You can play local files and direct public media URLs, and you can export JSON.');
   await expect(app.page.locator('#supabase-signed-url-ttl')).toHaveValue('3600');
   await app.page.locator('#supabase-sign-in').click();
   await expect(app.page.locator('#supabase-auth-modal')).toBeVisible();
@@ -462,7 +466,7 @@ test('tab-only auth disclosure and fallback stay readable at the issue viewports
   }
 });
 
-test('temporary refresh outage keeps the saved session, local playback, and private media recovery available', async ({ page }) => {
+test('temporary refresh outage keeps the saved session and local playback available', async ({ page }) => {
   const fallbackCopy = 'Supabase is temporarily unavailable. Your saved session was kept; retry when online.';
   const providerBodySentinel = 'synthetic-private-provider-response-must-not-be-shown';
   const savedSession = JSON.stringify({
@@ -472,9 +476,6 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   });
   let providerAvailable = false;
   let refreshRequests = 0;
-  let signingRequests = 0;
-  let refreshAuthorizationPresent = false;
-
   await page.addInitScript(({ storageKey, value }) => {
     localStorage.setItem(storageKey, value);
   }, { storageKey: AUTH_STORAGE_KEY, value: savedSession });
@@ -499,16 +500,6 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
       })
     });
   });
-  await page.route('**/storage/v1/object/sign/**', async route => {
-    signingRequests += 1;
-    refreshAuthorizationPresent = !!route.request().headers().authorization;
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ signedURL: '/samples/IL.jpeg?token=private-media-recovered' })
-    });
-  });
-
   const app = new BlendAppPage(page);
   await app.boot();
   const offlineSessionHandle = await page.waitForFunction(storageKey => {
@@ -532,77 +523,6 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   await page.evaluate(() => window.Blend.play());
   await page.waitForFunction(() => document.querySelector('#playlist-layer video')?.currentSrc.startsWith('blob:'));
 
-  const privateReference = 'supabase://media/private/recovery.png';
-  await page.evaluate(reference => {
-    const B = window.Blend;
-    const expiredUrl = `${location.origin}/storage/v1/object/sign/media/private/recovery.png?token=expired-private-fixture`;
-    const metadata = {
-      storageReference: reference,
-      storageBucket: 'media',
-      storagePath: 'private/recovery.png',
-      signedUrlExpiresAt: Date.now() - 1
-    };
-    const item = {
-      id: 'private-recovery-image',
-      name: 'Private recovery.png',
-      pathHint: reference,
-      sourceUrl: expiredUrl,
-      type: 'image',
-      size: 0,
-      stale: false,
-      handle: { remote: true, sourceUrl: expiredUrl },
-      metadata: { ...metadata }
-    };
-    B.state.library.set(item.id, item);
-    B.state.slideshow = [{
-      id: item.id,
-      name: item.name,
-      path: reference,
-      sourceUrl: expiredUrl,
-      type: 'image',
-      available: true,
-      metadata: { ...metadata }
-    }];
-    B.state.runtime.slideshowIndex = 0;
-    B.state.ui.activeList = 'slideshow';
-    B.renderLibrary();
-    B.renderListEditor();
-  }, privateReference);
-  await page.evaluate(async () => {
-    const saved = await window.Blend.flushSaveState();
-    if (!saved) throw new Error('Could not persist the synthetic expired-media fixture.');
-    await window.Blend.stop();
-    await window.Blend.play();
-  });
-  await expect(page.locator('#toast-container')).toContainText('This private media link expired. Connect Supabase to refresh access.');
-  await expect(page.getByRole('button', { name: 'Connect', exact: true })).toBeVisible();
-  const expiredRecoveryState = await page.evaluate(() => {
-    const B = window.Blend;
-    const containsBearerData = value => /\/storage\/v1\/object\/sign\/[^?#\s"'<>]+|[?&]token=[^&#\s"'<>]+/i.test(String(value ?? ''));
-    const status = document.querySelector('#supabase-auth-status')?.textContent || '';
-    const alert = document.querySelector('[role="alert"]')?.textContent || '';
-    const log = B.log.exportJson();
-    return {
-      storageReference: B.state.slideshow[0]?.metadata?.storageReference,
-      slideshowIndex: B.state.runtime.slideshowIndex,
-      statusContainsBearerData: containsBearerData(status),
-      alertContainsBearerData: containsBearerData(alert),
-      logContainsBearerData: containsBearerData(log)
-    };
-  });
-  expect(expiredRecoveryState.storageReference).toBe(privateReference);
-  expect(expiredRecoveryState.slideshowIndex).toBe(0);
-  expect(expiredRecoveryState.statusContainsBearerData).toBe(false);
-  expect(expiredRecoveryState.alertContainsBearerData).toBe(false);
-  expect(expiredRecoveryState.logContainsBearerData).toBe(false);
-  await page.evaluate(() => window.Blend.flushSaveState());
-  const expiredPersistence = await readPersistedMediaStores(page);
-  expect(containsPrivateSignedUrlOrToken(expiredPersistence)).toBe(false);
-  expect(expiredPersistence).toContain(privateReference);
-  expect(signingRequests).toBe(0);
-  await expect(page.locator('#supabase-auth-status')).toHaveText(fallbackCopy);
-  await page.waitForFunction(() => document.querySelector('#playlist-layer video')?.currentSrc.startsWith('blob:'));
-
   const retryButton = page.locator('#supabase-auth-retry');
   await retryButton.focus();
   await expect(retryButton).toBeFocused();
@@ -613,21 +533,6 @@ test('temporary refresh outage keeps the saved session, local playback, and priv
   await expect(page.locator('#supabase-auth-retry')).toBeHidden();
   const recoveredSession = await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey) || 'null'), AUTH_STORAGE_KEY);
   expect(recoveredSession.refresh_token).toBe('synthetic-recovered-refresh-token');
-
-  await page.evaluate(async () => {
-    const B = window.Blend;
-    const ref = B.state.slideshow[0];
-    ref.available = true;
-    delete ref.retryAfter;
-    delete ref.reason;
-    B.renderListEditor();
-    await B.stop();
-    await B.play();
-  });
-  await expect.poll(() => signingRequests).toBe(1);
-  expect(refreshAuthorizationPresent).toBe(true);
-  await expect.poll(() => page.locator('#playlist-layer video').first().evaluate(video => video.currentSrc))
-    .toContain('blob:');
 
   const captured = await page.evaluate(() => ({
     body: document.body.innerText,
@@ -716,8 +621,8 @@ test('explicit opt-in persists documented fields, restores after reload, and sig
   expect(captured).not.toContain(REFRESH_TOKEN);
 });
 
-test('sign-out clears both cached private playback layers and allows public, local, and authenticated retry', async ({ page }) => {
-  const signedOutCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
+test('sign-out clears cached private playback layers while public and local playback remain available', async ({ page }) => {
+  const signedOutCopy = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
   const videoPath = fileURLToPath(new URL('../../samples/nyc-01.mp4', import.meta.url));
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const signingRequests = [];
@@ -815,12 +720,6 @@ test('sign-out clears both cached private playback layers and allows public, loc
     B.renderListEditor();
     return privateVideoUrl;
   });
-
-  await page.evaluate(() => window.Blend.play());
-  await expect.poll(() => page.locator('#playlist-layer video').evaluateAll(elements =>
-    elements.some(element => element.currentSrc.includes('private-video-copy-sentinel')))).toBe(true);
-  await expect.poll(() => page.locator('#slideshow-layer img').evaluateAll(elements =>
-    elements.some(element => element.currentSrc.includes('private-image-copy-sentinel')))).toBe(true);
 
   const liveSignedSources = await page.evaluate(() => [
     window.Blend.state.library.get('private-video')?.sourceUrl,
@@ -1059,18 +958,109 @@ test('sign-out clears both cached private playback layers and allows public, loc
   await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
   await expect(page.locator('#list-editor .list-item[data-idx="0"] .retry-media')).toBeVisible();
   await page.locator('#list-editor .list-item[data-idx="0"] .retry-media').click();
-  await expect.poll(() => signingRequests.length).toBe(1);
-  await expect.poll(() => page.locator('#playlist-layer video').evaluateAll(elements =>
-    elements.some(element => element.currentSrc.includes('private-media-retry-1')))).toBe(true);
+  await expect(page.locator('#toast-container .toast[role="alert"]').filter({
+    hasText: 'Private Storage signing is unavailable until the project owner records a reviewed policy revision.'
+  }))
+    .toContainText('Private Storage signing is unavailable until the project owner records a reviewed policy revision.');
+  expect(signingRequests).toHaveLength(0);
   await page.evaluate(() => window.Blend.flushSaveState());
   const durableAfterRetry = await readPersistedMediaStores(page);
   expect(containsPrivateSignedUrlOrToken(durableAfterRetry)).toBe(false);
   expect(durableAfterRetry).toContain('supabase://media/private/playlist.mp4');
 });
 
+test('sign-out keeps the copied-URL warning visible without in-app fields and clears Blend cached responses', async ({ page }) => {
+  const signedOutCopy = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
+  await page.route('**/auth/v1/logout', route => route.fulfill({ status: 200, body: '{}' }));
+
+  const app = new BlendAppPage(page);
+  await page.addInitScript(() => {
+    try { Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true }); } catch (_) {}
+  });
+  await app.boot();
+  await openAuthDialog(app);
+  await page.locator('#supabase-auth-token').fill(ACCESS_TOKEN);
+  await page.locator('#supabase-auth-refresh-token').fill(REFRESH_TOKEN);
+  await page.locator('[data-auth-submit]').click();
+  await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
+
+  await page.evaluate(async () => {
+    const signedObjectUrl = `${location.origin}/storage/v1/object/sign/media/private/copied.jpeg?token=synthetic-cache-cleanup`;
+    const blendCache = await caches.open('blend-api-issue-08-test');
+    const otherAppCache = await caches.open('other-app-cache-issue-08-test');
+    await blendCache.put(signedObjectUrl, new Response('private fixture response'));
+    await otherAppCache.put(signedObjectUrl, new Response('other app fixture response'));
+  });
+
+  await app.openConfig();
+  await page.locator('#supabase-sign-out').click();
+  await expect(page.locator('#supabase-auth-status')).toContainText(signedOutCopy);
+  await expect(page.locator('.toast-private-media-signout')).toContainText(signedOutCopy);
+
+  const cleanupState = await page.evaluate(async () => {
+    const isSignedObjectUrl = value => {
+      const url = new URL(value);
+      return /\/storage\/v\d+\/object\/sign\//i.test(url.pathname) && url.searchParams.has('token');
+    };
+    let blendSignedEntries = 0;
+    let otherAppSignedEntries = 0;
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      const signedCount = (await cache.keys()).filter(request => isSignedObjectUrl(request.url)).length;
+      if (name.startsWith('blend-')) blendSignedEntries += signedCount;
+      if (name === 'other-app-cache-issue-08-test') otherAppSignedEntries += signedCount;
+    }
+    const B = window.Blend;
+    const records = [...B.state.library.values(), ...B.state.playlist, ...B.state.slideshow];
+    const hasSignedField = records.some(record => [
+      record?.sourceUrl,
+      record?.metadata?.sourceUrl,
+      record?.metadata?.socialResolved?.image,
+      record?.handle?.sourceUrl
+    ].some(value => typeof value === 'string' && isSignedObjectUrl(value)));
+    return { blendSignedEntries, otherAppSignedEntries, hasSignedField };
+  });
+  expect(cleanupState).toEqual({ blendSignedEntries: 0, otherAppSignedEntries: 1, hasSignedField: false });
+});
+
+test('sign-out logs a safe reason when a signed URL shape is not recognized', async ({ page }) => {
+  const signedOutCopy = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
+  await page.route('**/auth/v1/logout', route => route.fulfill({ status: 200, body: '{}' }));
+
+  const app = new BlendAppPage(page);
+  await page.addInitScript(() => {
+    try { Object.defineProperty(navigator, 'serviceWorker', { value: undefined, configurable: true }); } catch (_) {}
+  });
+  await app.boot();
+  await openAuthDialog(app);
+  await page.locator('#supabase-auth-token').fill(ACCESS_TOKEN);
+  await page.locator('#supabase-auth-refresh-token').fill(REFRESH_TOKEN);
+  await page.locator('[data-auth-submit]').click();
+  await expect(page.locator('#supabase-auth-modal')).not.toBeVisible();
+  await page.evaluate(() => {
+    window.Blend.state.library.set('unrecognized-signed-url', {
+      id: 'unrecognized-signed-url',
+      sourceUrl: '/storage/v1/object/sign/media/private/unrecognized.jpeg?token=synthetic-shape-sentinel',
+      metadata: { signedUrlExpiresAt: Date.now() + 60_000 }
+    });
+  });
+
+  await app.openConfig();
+  await page.locator('#supabase-sign-out').click();
+  await expect(page.locator('#supabase-auth-status')).toContainText(signedOutCopy);
+  const diagnosticState = await page.evaluate(() => {
+    const logs = window.Blend.log.exportJson();
+    return {
+      reasonCodePresent: logs.includes('unrecognized_signed_storage_url_shape'),
+      bearerDataAbsent: !/\/storage\/v1\/object\/sign\/|[?&]token=|synthetic-shape-sentinel/.test(logs)
+    };
+  });
+  expect(diagnosticState).toEqual({ reasonCodePresent: true, bearerDataAbsent: true });
+});
+
 test('sign-out offers an accessible retry when local media cleanup fails without logging bearer data', async ({ page }) => {
-  const normalCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
-  const incompleteCopy = 'Local cleanup is incomplete. Retry to clear remaining sources and save private references. A copied link may still work until its provider and cache lifetime ends.';
+  const normalCopy = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
+  const incompleteCopy = 'Local cleanup is incomplete. Retry to clear remaining media sources, cached responses, and save private references. You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
   const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
   const sourceUrl = 'http://127.0.0.1:4191/storage/v1/object/sign/media/private/failure.jpeg?token=cleanup-failure-sentinel';
   const reference = 'supabase://media/private/failure.jpeg';
@@ -1134,6 +1124,23 @@ test('sign-out offers an accessible retry when local media cleanup fails without
       B.state.slideshow[0]?.id ?? null
     ];
   });
+  await page.evaluate(() => {
+    const originalCacheStorage = window.caches;
+    let failOnce = true;
+    Object.defineProperty(window, 'caches', {
+      configurable: true,
+      value: {
+        async keys() {
+          if (failOnce) {
+            failOnce = false;
+            throw new DOMException('synthetic Cache Storage failure', 'SecurityError');
+          }
+          return originalCacheStorage.keys();
+        },
+        open: originalCacheStorage.open.bind(originalCacheStorage)
+      }
+    });
+  });
   await page.locator('#supabase-sign-out').click();
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByRole('alert')).toContainText(incompleteCopy);
@@ -1160,6 +1167,7 @@ test('sign-out offers an accessible retry when local media cleanup fails without
       itemSourceCleared: B.state.library.get('cleanup-failure')?.sourceUrl === null,
       reference: B.state.library.get('cleanup-failure')?.metadata?.storageReference,
       diagnosticsContainBearerData: /\/storage\/v1\/object\/sign\/[^?#\s"'<>]+|[?&]token=[^&#\s"'<>]+/i.test(diagnostics),
+      cacheCleanupFailureRecorded: B.log.exportJson().includes('cache_list') && B.log.exportJson().includes('SecurityError'),
       playbackState: [
         B.state.runtime.playlistIndex ?? null,
         B.state.runtime.slideshowIndex ?? null,
@@ -1171,6 +1179,7 @@ test('sign-out offers an accessible retry when local media cleanup fails without
   expect(failedCleanupState.itemSourceCleared).toBe(true);
   expect(failedCleanupState.reference).toBe(reference);
   expect(failedCleanupState.diagnosticsContainBearerData).toBe(false);
+  expect(failedCleanupState.cacheCleanupFailureRecorded).toBe(true);
   expect(failedCleanupState.playbackState).toEqual(playbackStateBeforeSignOut);
   expect(containsPrivateSignedUrlOrToken(await readPersistedMediaStores(page))).toBe(false);
 
@@ -1182,36 +1191,13 @@ test('sign-out offers an accessible retry when local media cleanup fails without
   expect(containsPrivateSignedUrlOrToken(await readPersistedMediaStores(page))).toBe(false);
 });
 
-test('sign-out cancels pending private signing and ignores its late response', async ({ page }) => {
-  const signedOutCopy = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
-  const imagePath = fileURLToPath(new URL('../../samples/IL.jpeg', import.meta.url));
+test('sign-out clears an expired private URL while preserving its portable reference', async ({ page }) => {
+  const signedOutCopy = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
   const signingRequests = [];
-  let releaseSigning;
-  let notifySigningStarted;
-  let notifyRouteFinished;
-  const signingGate = new Promise(resolve => { releaseSigning = resolve; });
-  const signingStarted = new Promise(resolve => { notifySigningStarted = resolve; });
-  const routeFinished = new Promise(resolve => { notifyRouteFinished = resolve; });
   await page.route('**/auth/v1/logout', route => route.fulfill({ status: 200, body: '{}' }));
   await page.route('**/storage/v1/object/sign/**', async route => {
-    if (route.request().method() === 'POST') {
-      signingRequests.push('private-image');
-      notifySigningStarted();
-      await signingGate;
-      try {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ signedURL: '/storage/v1/object/sign/media/private/pending.jpeg?token=late-signout-response' })
-        });
-      } catch (_) {
-        // The auth sign-out may have already aborted this routed fetch.
-      } finally {
-        notifyRouteFinished();
-      }
-      return;
-    }
-    await route.fulfill({ status: 200, contentType: 'image/jpeg', path: imagePath });
+    if (route.request().method() === 'POST') signingRequests.push('POST');
+    await route.abort();
   });
 
   const app = new BlendAppPage(page);
@@ -1246,17 +1232,14 @@ test('sign-out cancels pending private signing and ignores its late response', a
     B.state.runtime.slideshowIndex = 0;
     B.renderLibrary();
     B.renderListEditor();
-    void B.play();
   });
 
-  await signingStarted;
+  expect(signingRequests).toEqual([]);
   await app.openConfig();
   await page.locator('#supabase-sign-out').click();
   await expect(page.locator('#toast-container')).toContainText(signedOutCopy);
   await page.waitForFunction(() => window.Blend.state.library.get('pending-private-image')?.sourceUrl === null
     && window.Blend.state.slideshow[0]?.sourceUrl === null);
-  releaseSigning();
-  await routeFinished;
   await expect.poll(() => page.evaluate(() => ({
     itemUrl: window.Blend.state.library.get('pending-private-image')?.sourceUrl,
     refUrl: window.Blend.state.slideshow[0]?.sourceUrl,
@@ -1268,7 +1251,7 @@ test('sign-out cancels pending private signing and ignores its late response', a
     storageReference: 'supabase://media/private/pending.jpeg',
     mediaSources: []
   });
-  expect(signingRequests).toEqual(['private-image']);
+  expect(signingRequests).toEqual([]);
 });
 
 test('a peer tab clears signed media when it receives the existing local-reset event', async ({ page }) => {
@@ -1322,7 +1305,7 @@ test('a peer tab clears signed media when it receives the existing local-reset e
     channel.postMessage({ type: 'local-reset', nonce: 'synthetic-peer-local-reset' });
     channel.close();
   });
-  await expect(peer.locator('#toast-container')).toContainText('Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.');
+  await expect(peer.locator('#toast-container')).toContainText('You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.');
   const peerState = await peer.evaluate(() => ({
     listUrl: window.Blend.state.slideshow[0]?.sourceUrl,
     itemUrl: window.Blend.state.library.get('peer-private-image')?.sourceUrl,

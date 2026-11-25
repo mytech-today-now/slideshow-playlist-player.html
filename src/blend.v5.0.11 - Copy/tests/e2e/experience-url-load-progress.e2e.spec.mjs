@@ -46,18 +46,14 @@ test.describe('experience URL load progress overlay (v5.0.11)', () => {
       localStorage.setItem('blend-welcome-v4', '1');
       localStorage.setItem('blend-install-banner-hidden-v4', '1');
       localStorage.setItem('blend-analytics-consent-v1', '0');
-      // Mirror the fixture origin so Supabase config resolves correctly.
-      const cfgKey = 'blend-runtime-config-v1';
-      try {
-        const origin = `http://127.0.0.1:${port}`;
-        localStorage.setItem(cfgKey, JSON.stringify({
-          SUPABASE_URL: origin,
-          SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
-          SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
-          SUPABASE_MEDIA_BUCKET: 'media',
-          SUPABASE_PUBLIC_BUCKETS: 'public'
-        }));
-      } catch (_) {}
+      const origin = `http://127.0.0.1:${port}`;
+      window.BLEND_RUNTIME_CONFIG = {
+        SUPABASE_URL: origin,
+        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
+        SUPABASE_AUTH_REDIRECT_URL: `${origin}/index.html`,
+        SUPABASE_MEDIA_BUCKET: 'media',
+        SUPABASE_PUBLIC_BUCKETS: 'public'
+      };
     }, { port: PLAYWRIGHT_PORT });
 
     await receiverTab.goto(shareUrl, { waitUntil: 'commit' });

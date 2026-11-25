@@ -5,15 +5,17 @@ const PLAYWRIGHT_PORT = Number(process.env.PLAYWRIGHT_PORT || '4191');
 const FIXTURE_ORIGIN = `http://127.0.0.1:${PLAYWRIGHT_PORT}`;
 const AUTH_STORAGE_KEY = 'blend-supabase-auth-session-v2';
 const RUNTIME_CONFIG_STORAGE_KEY = 'blend-runtime-config-v1';
+const RUNTIME_CONFIG_TAB_STORAGE_KEY = 'blend-runtime-config-tab-v1';
+const RUNTIME_CONFIG_REVIEW_STORAGE_KEY = 'blend-runtime-config-review-v1';
 const PUBLIC_GIT_CATALOG_STORAGE_KEY = 'blend-public-git-catalog-v1';
 const GIT_PLAYLIST_SETTINGS_STORAGE_KEY = 'blend-git-playlist-repository-v1';
 const GIT_PLAYLIST_CREDENTIAL_STORAGE_KEY = 'blend-git-playlist-credential-v1';
-const RESET_CONFIRMATION = 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings and any remembered Git credential, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.';
+const RESET_CONFIRMATION = 'This removes Blend browser data: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings, remembered Git credentials, the saved Supabase session and its runtime connection settings, YouTube API and OAuth client IDs and its tab access token, Spotify app client ID and tab session, pending provider playlist URLs, and this tab’s connection review state. It also disconnects any Vimeo, Dailymotion, or SoundCloud playlist provider session. Your media files on disk are not touched.';
 const RESET_SESSION_STORAGE_FAILURE = 'Browser reset incomplete. You are signed out in this tab, but removal of all saved Supabase session data could not be confirmed. Other Blend data was kept.';
 const RESET_SNAPSHOT_FAILURE = 'Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.';
 const RESET_DELETE_FAILURE = 'Browser reset incomplete. The saved Supabase session was removed from this browser. Saved data recovery is in progress; the thumbnail cache may be cleared, and previews can regenerate from retained media handles when available. Close other Blend tabs and retry.';
 const RESET_UNCONFIRMED_FAILURE = 'This tab is signed out, but another Blend tab may still be active. Close all Blend tabs and retry the local reset.';
-const RESET_SUCCESS = 'Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.';
+const RESET_SUCCESS = 'Browser data cleared. Saved Supabase, YouTube, and Spotify settings, YouTube and Spotify tab credentials, Git credentials, Git repository settings, public Git catalog settings, and saved connection settings were removed. Host-injected deployment settings remain available, and other apps on this site were left alone.';
 const AUTH_RESET_CHANNEL = 'blend-supabase-auth-local-reset-v1:blend-supabase-auth-session-v2';
 
 async function confirmResetWithKeyboard(page) {
@@ -856,21 +858,38 @@ test(`unconfirmed tab warns and retry succeeds at ${viewport.name} size`, async 
 });
 }
 
-test('reset removes the saved Supabase session, preserves runtime config, and keeps public playback available without remote logout', async ({ page }) => {
+test('reset removes saved runtime config and the Supabase session while host config keeps public playback available without remote logout', async ({ page }) => {
   let authRequests = 0;
   await page.route('**/auth/v1/**', async route => {
     authRequests += 1;
     await route.abort('failed');
   });
-  const runtimeConfig = {
-    SUPABASE_URL: 'https://reset-preserved.example.test',
-    SUPABASE_ANON_KEY: 'synthetic-reset-preserved-anon-key',
-    SUPABASE_MEDIA_BUCKET: 'reset-preserved-media',
-    SUPABASE_AUTH_REDIRECT_URL: 'http://127.0.0.1:4191/index.html',
+  const hostRuntimeConfig = {
+    SUPABASE_URL: 'https://reset-host.example.test',
+    SUPABASE_ANON_KEY: 'synthetic-reset-host-anon-key',
+    SUPABASE_MEDIA_BUCKET: 'reset-host-media',
+    SUPABASE_AUTH_REDIRECT_URL: `${FIXTURE_ORIGIN}/index.html`,
     SUPABASE_PUBLIC_BUCKETS: 'public'
   };
   const blendPage = new BlendAppPage(page);
-  await blendPage.boot('/index.html', { runtimeConfigOverrides: runtimeConfig });
+  await blendPage.boot('/index.html', { runtimeConfigOverrides: hostRuntimeConfig });
+  const savedRuntimeConfig = {
+    SUPABASE_URL: 'https://pending-reset.example.test',
+    SUPABASE_ANON_KEY: 'synthetic-pending-reset-anon-key',
+    SUPABASE_MEDIA_BUCKET: 'pending-reset-media',
+    SUPABASE_AUTH_REDIRECT_URL: `${FIXTURE_ORIGIN}/index.html`,
+    SUPABASE_PUBLIC_BUCKETS: 'public'
+  };
+  await page.evaluate(({ configKey, tabKey, reviewKey, config }) => {
+    localStorage.setItem(configKey, JSON.stringify(config));
+    sessionStorage.setItem(tabKey, JSON.stringify(config));
+    sessionStorage.setItem(reviewKey, 'synthetic-review-state');
+  }, {
+    configKey: RUNTIME_CONFIG_STORAGE_KEY,
+    tabKey: RUNTIME_CONFIG_TAB_STORAGE_KEY,
+    reviewKey: RUNTIME_CONFIG_REVIEW_STORAGE_KEY,
+    config: savedRuntimeConfig
+  });
 
   await page.evaluate(storageKey => {
     localStorage.setItem(storageKey, JSON.stringify({
@@ -891,6 +910,8 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
   await page.reload();
   await page.waitForFunction(() => !!window.Blend?.state);
   await expect(page.locator('#supabase-auth-status')).toContainText('Supabase API token connected for private media.');
+  await expect(page.locator('#supabase-config-status'))
+    .toHaveText(`Supabase is configured for project ${hostRuntimeConfig.SUPABASE_URL}.`);
 
   await blendPage.openConfig();
   await confirmResetWithKeyboard(page);
@@ -909,16 +930,20 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), PUBLIC_GIT_CATALOG_STORAGE_KEY)).toBeNull();
   expect(afterReset.values.join('\n')).not.toContain('synthetic-reset-access-token');
   expect(afterReset.values.join('\n')).not.toContain('synthetic-reset-refresh-token');
-  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
-    .toEqual(runtimeConfig);
+  expect(await page.evaluate(key => localStorage.getItem(key), RUNTIME_CONFIG_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_TAB_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_REVIEW_STORAGE_KEY)).toBeNull();
   expect(authRequests).toBe(0);
 
   await page.reload();
   await page.waitForFunction(() => !!window.Blend?.state);
   await expect(page.locator('#supabase-auth-status')).toContainText('Provide API token to access private Supabase media.');
+  await expect(page.locator('#supabase-config-status'))
+    .toHaveText(`Supabase is configured for project ${hostRuntimeConfig.SUPABASE_URL}.`);
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
-  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
-    .toEqual(runtimeConfig);
+  expect(await page.evaluate(key => localStorage.getItem(key), RUNTIME_CONFIG_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_TAB_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_REVIEW_STORAGE_KEY)).toBeNull();
   const emptyAfterReload = await page.evaluate(() => ({
     library: window.Blend.state.library.size,
     playlist: window.Blend.state.playlist.length,
@@ -954,6 +979,51 @@ test('reset removes the saved Supabase session, preserves runtime config, and ke
   expect(playback.playlistCurrentSource || playback.playlistElementSrc).toContain('/samples/nyc-01.mp4');
   expect(playback.slideshowCurrentSource || playback.slideshowElementSrc).toContain('/samples/IL.jpeg');
   expect(authRequests).toBe(0);
+});
+
+test('reset removes active browser-stored connection settings for the next load', async ({ page }) => {
+  const supabaseRequests = [];
+  page.on('request', request => {
+    if (/\/(?:auth|storage)\/v1\//.test(new URL(request.url()).pathname)) {
+      supabaseRequests.push(request.url());
+    }
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('blend-welcome-v4', '1');
+    localStorage.setItem('blend-install-banner-hidden-v4', '1');
+    localStorage.setItem('blend-analytics-consent-v1', '0');
+    window.BLEND_RUNTIME_CONFIG = {};
+    delete window.__BLEND_RUNTIME_CONFIG__;
+  });
+  await page.goto('/index.html');
+  await page.waitForFunction(() => Boolean(window.Blend?.state));
+  const origin = new URL(page.url()).origin;
+  await page.locator('#config-gear').click();
+  await page.locator('#supabase-runtime-project-url').fill(origin);
+  await page.locator('#supabase-runtime-anon-key').fill('synthetic-reset-active-anon-key');
+  await page.locator('#supabase-runtime-redirect-url').fill(`${origin}/index.html`);
+  await page.locator('#supabase-runtime-config-confirm').check();
+  await page.locator('#supabase-runtime-config-save').click();
+  await expect(page.locator('#supabase-config-status'))
+    .toHaveText(`Supabase is configured for project ${origin}.`);
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
+    .toMatchObject({ SUPABASE_URL: origin, SUPABASE_ANON_KEY: 'synthetic-reset-active-anon-key' });
+  expect(supabaseRequests).toEqual([]);
+
+  await page.locator('#config-gear').click();
+  await confirmResetWithKeyboard(page);
+  const toastContainer = page.locator('#toast-container');
+  await expect(toastContainer).toContainText(RESET_SUCCESS);
+  expect(await page.evaluate(key => localStorage.getItem(key), RUNTIME_CONFIG_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_TAB_STORAGE_KEY)).toBeNull();
+  expect(await page.evaluate(key => sessionStorage.getItem(key), RUNTIME_CONFIG_REVIEW_STORAGE_KEY)).toBeNull();
+
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.Blend?.state));
+  await expect(page.locator('#supabase-config-status'))
+    .toContainText('Supabase is not configured for this copy of Blend.');
+  await expect(page.locator('#supabase-sign-in')).toBeDisabled();
+  expect(supabaseRequests).toEqual([]);
 });
 
 test('reset reports a saved-session removal failure and keeps existing Blend data', async ({ page }) => {
@@ -1008,6 +1078,81 @@ test('reset reports a saved-session removal failure and keeps existing Blend dat
   expect(await page.evaluate(storageKey => localStorage.getItem(storageKey), AUTH_STORAGE_KEY)).toBeNull();
   expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
   expect(authRequests).toBe(0);
+});
+
+test('reset reports when saved runtime settings cannot be removed', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  await blendPage.createExperience('Reset connection cleanup failure');
+  const savedRuntimeConfig = {
+    SUPABASE_URL: 'https://cleanup-failure.example.test',
+    SUPABASE_ANON_KEY: 'synthetic-cleanup-failure-anon-key'
+  };
+  await page.evaluate(({ configKey, reviewKey, config }) => {
+    localStorage.setItem(configKey, JSON.stringify(config));
+    sessionStorage.setItem(reviewKey, 'synthetic-review-state');
+    const originalRemoveItem = Storage.prototype.removeItem;
+    window.__nativeStorageRemoveItem = originalRemoveItem;
+    Storage.prototype.removeItem = function removeItem(key) {
+      if (key === configKey) throw new DOMException('Storage is unavailable', 'SecurityError');
+      return originalRemoveItem.call(this, key);
+    };
+  }, {
+    configKey: RUNTIME_CONFIG_STORAGE_KEY,
+    reviewKey: RUNTIME_CONFIG_REVIEW_STORAGE_KEY,
+    config: savedRuntimeConfig
+  });
+
+  await blendPage.openConfig();
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer)
+    .toContainText('Saved connection settings could not be confirmed cleared.');
+  await expect(blendPage.toastContainer).not.toContainText(RESET_SUCCESS);
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
+    .toEqual(savedRuntimeConfig);
+  expect(await page.evaluate(() => window.Blend.state.experiences)).toHaveLength(0);
+
+  await page.evaluate(() => {
+    if (window.__nativeStorageRemoveItem) {
+      Storage.prototype.removeItem = window.__nativeStorageRemoveItem;
+      delete window.__nativeStorageRemoveItem;
+    }
+  });
+});
+
+test('reset keeps saved data when it cannot inspect runtime settings before deletion', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  await blendPage.createExperience('Keep data when reset preflight fails');
+  const savedRuntimeConfig = {
+    SUPABASE_URL: 'https://preflight-failure.example.test',
+    SUPABASE_ANON_KEY: 'synthetic-preflight-failure-anon-key'
+  };
+  await page.evaluate(({ configKey, config }) => {
+    localStorage.setItem(configKey, JSON.stringify(config));
+    const originalGetItem = Storage.prototype.getItem;
+    window.__nativeStorageGetItem = originalGetItem;
+    Storage.prototype.getItem = function getItem(key) {
+      if (key === configKey) throw new DOMException('Storage is unavailable', 'SecurityError');
+      return originalGetItem.call(this, key);
+    };
+  }, { configKey: RUNTIME_CONFIG_STORAGE_KEY, config: savedRuntimeConfig });
+
+  await blendPage.openConfig();
+  await confirmResetWithKeyboard(page);
+  await expect(blendPage.toastContainer)
+    .toContainText('Saved connection settings were not confirmed cleared, and no reset data was deleted.');
+  expect(await page.evaluate(() => window.Blend.state.experiences.map(experience => experience.name)))
+    .toContain('Keep data when reset preflight fails');
+
+  await page.evaluate(() => {
+    if (window.__nativeStorageGetItem) {
+      Storage.prototype.getItem = window.__nativeStorageGetItem;
+      delete window.__nativeStorageGetItem;
+    }
+  });
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), RUNTIME_CONFIG_STORAGE_KEY))
+    .toEqual(savedRuntimeConfig);
 });
 
 test('snapshot failure keeps saved data and the local session, then retry completes', async ({ page }) => {

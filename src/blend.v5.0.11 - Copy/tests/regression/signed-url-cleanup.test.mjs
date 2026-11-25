@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   applySignedMediaUrlCleanup,
+  clearSignedMediaCacheStorage,
   clearSignedMediaElements,
+  isSignedSupabaseStorageUrl,
   planSignedMediaUrlCleanup,
   sanitizeSignedMediaPersistenceSnapshot
 } from '../../signed-url-cleanup.js';
@@ -18,6 +20,27 @@ import {
 
 const SIGNED_URL = 'https://project.example.test/storage/v1/object/sign/media/private/clip.mp4?token=synthetic-signed-token';
 const STORAGE_REFERENCE = 'supabase://media/private/clip.mp4';
+const TEST_STORAGE_POLICY_REVISION = 'synthetic-signed-cleanup-policy-v1';
+const TEST_STORAGE_POLICY_SCOPE = Object.freeze({
+  projectUrl: 'https://project.example.test',
+  policyRevision: TEST_STORAGE_POLICY_REVISION,
+  shareableBuckets: Object.freeze(['media'])
+});
+
+test('recognizes only tokenized signed Supabase object URLs', () => {
+  assert.equal(isSignedSupabaseStorageUrl(SIGNED_URL), true);
+  assert.equal(isSignedSupabaseStorageUrl('https://project.example.test/storage/v1/object/public/media/clip.mp4?token=synthetic-public-token'), false);
+  assert.equal(isSignedSupabaseStorageUrl('https://project.example.test/storage/v1/object/sign/media/private/clip.mp4?signature=synthetic-signature'), false);
+  assert.equal(isSignedSupabaseStorageUrl('/storage/v1/object/sign/media/private/clip.mp4?token=synthetic-relative-token'), false);
+
+  const relativeUrl = '/storage/v1/object/sign/media/private/clip.mp4?token=synthetic-relative-token';
+  const plan = planSignedMediaUrlCleanup({
+    library: [{ id: 'relative-signed-url', sourceUrl: relativeUrl, metadata: { signedUrlExpiresAt: Date.now() + 60_000 } }]
+  });
+  assert.equal(plan.unrecognizedSignedUrlCount, 1);
+  assert.equal(applySignedMediaUrlCleanup(plan), 0);
+  assert.equal(plan.signedUrls.size, 0);
+});
 
 function createAuth(token = 'signed-in-token') {
   return { getAccessToken: () => token };
@@ -48,6 +71,8 @@ test('uses the approved one-hour signed URL default and preserves explicit TTL o
 
   let defaultRequestBody = null;
   const defaultResolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_STORAGE_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_STORAGE_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://project.example.test',
       supabaseAnonKey: 'synthetic-anon-key',
@@ -198,6 +223,8 @@ test('clears signed URLs from library, active lists, and saved experiences while
   let signingRequests = 0;
   let signingRequestBody = null;
   const resolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_STORAGE_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_STORAGE_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://project.example.test',
       supabaseAnonKey: 'anon',
@@ -283,4 +310,52 @@ test('clears expired signed URLs and continues after a media pause failure witho
   assert.doesNotMatch(JSON.stringify(diagnostics), /pause-error-secret|private\/expired/);
   assert.doesNotMatch(JSON.stringify(diagnostics), /https?:\/\/|storage\/v1\/object\/sign|[?&]token=/i);
   assert.equal(state.library.get('expired').sourceUrl, null);
+});
+
+test('clears signed responses only from Blend Cache Storage and preserves unrelated entries', async () => {
+  const signedRequest = { url: SIGNED_URL };
+  const nonSignedRequest = { url: 'https://project.example.test/storage/v1/object/sign/media/private/clip.mp4?signature=synthetic-signature' };
+  const blendEntries = [signedRequest, nonSignedRequest];
+  const otherEntries = [{ url: SIGNED_URL }];
+  const makeCache = entries => ({
+    keys: async () => [...entries],
+    delete: async request => {
+      const index = entries.indexOf(request);
+      if (index < 0) return false;
+      entries.splice(index, 1);
+      return true;
+    }
+  });
+  const caches = new Map([
+    ['blend-api-test', makeCache(blendEntries)],
+    ['other-app-cache-v1', makeCache(otherEntries)]
+  ]);
+  const cacheStorage = {
+    keys: async () => [...caches.keys()],
+    open: async name => caches.get(name)
+  };
+
+  const result = await clearSignedMediaCacheStorage(cacheStorage, {
+    isBlendCacheName: name => String(name).startsWith('blend-')
+  });
+
+  assert.deepEqual(result, { complete: true, clearedEntryCount: 1 });
+  assert.deepEqual(blendEntries, [nonSignedRequest]);
+  assert.equal(otherEntries.length, 1);
+});
+
+test('reports Cache Storage cleanup failures using a safe operation and error name', async () => {
+  const diagnostics = [];
+  const failure = Object.assign(new Error(SIGNED_URL), { name: 'SecurityError' });
+  const result = await clearSignedMediaCacheStorage({
+    async keys() { throw failure; },
+    async open() { throw failure; }
+  }, {
+    isBlendCacheName: name => String(name).startsWith('blend-'),
+    onCleanupError: detail => diagnostics.push(detail)
+  });
+
+  assert.deepEqual(result, { complete: false, clearedEntryCount: 0 });
+  assert.deepEqual(diagnostics, [{ operation: 'cache_list', errorName: 'SecurityError' }]);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /project\.example|private\/clip|synthetic-signed-token|[?&]token=/);
 });

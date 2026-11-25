@@ -8,6 +8,15 @@ These changes are present in the current review checkout. The app version remain
 
 ### Added
 
+- Added optional cross-browser profile synchronization with one-use recovery keys, device enrollment, explicit conflict choices, private PostgreSQL storage, and a durable GitHub outbox. The API, database migration, Render Blueprint, and restricted admin page are included; a live deployment is not implied.
+- Add URL now reads an accessible HTML folder listing, including extensionless paths and paths without a trailing slash, and imports supported same-origin media links.
+- Add URL can enumerate public YouTube and YouTube Music playlists with a referrer-restricted YouTube Data API key saved in Configuration. It stores canonical watch URLs as link-only entries and can copy selected links; these URLs are not playable in Blend.
+- Account-only YouTube and YouTube Music playlists can be imported after an explicit Google OAuth connection; the read-only access token stays in memory and is not persisted.
+- Add URL can enumerate public Internet Archive collections through its official metadata and search APIs, storing canonical item URLs as link-only entries.
+- Add URL can enumerate Spotify playlist tracks and episodes through Spotify's official Web API using PKCE sign-in, storing canonical links as link-only entries. Spotify credentials stay in tab storage; the API returns playlist contents only for playlists owned by or collaborative with the connected account.
+- Added an optional Node playlist API service for public Apple Music and SoundCloud playlists, Vimeo showcases, and Dailymotion playlists. Vimeo, Dailymotion, and account-only SoundCloud imports use provider OAuth; provider secrets stay on the server and imports store canonical links only.
+- Added bounded provider API reads, encrypted HTTP-only OAuth session cookies, exact-origin checks, request limits, and static serving from the built `dist/` folder.
+- Private Storage signing now fails closed unless a source-controlled project, policy revision, and bucket scope is verified. The current build has no scope, so saved Storage references remain unavailable for private playback while local files, direct public media URLs, and JSON export stay available.
 - Compressed Share URLs now require a trusted scope bound to the exact Supabase project and policy revision. This build has no verified scope, so Supabase Storage references remain blocked while direct public URLs and portable JSON exports remain available.
 - Added a shared 250-file ceiling for direct Add Files selections, with accessible selected/accepted/remaining counts for oversized batches and retry for unreadable selected files.
 - Added deterministic save-performance fixtures and Node/browser benchmarks for large experiences, plus regression and browser coverage for changed-row writes and save recovery.
@@ -30,13 +39,15 @@ These changes are present in the current review checkout. The app version remain
 - Deleting the current experience now carries its deletion through the next atomic snapshot so a failed save uses the existing Retry and Export Backup recovery path.
 - Browser reset recovery snapshots omit regenerable thumbnail blobs, prepare before local sign-out or database deletion, and report incomplete reset outcomes accurately.
 - The Information dialog uses the installed README by default. Online documentation is an explicit source, carries version and cache-age information, and refreshes while the installed guide stays visible.
-- Signing out cancels private playback and clears signed Storage URLs from transient in-app media references while retaining portable `supabase://` references for retry. The status distinguishes the provider result from local cleanup and discloses the default global scope; copied URLs remain independent of local cleanup, and cached responses may remain available beyond token expiry.
+- Signing out cancels private playback, clears signed Storage URLs from transient in-app media references and Blend Cache Storage, and retains portable `supabase://` references for retry. The accessible status distinguishes the provider result from local cleanup and explains that copied URLs remain usable until expiry (3,600 seconds by default); copies in other apps and caches outside Blend remain outside local cleanup.
 - Opted-in Supabase sessions now share the cross-tab lock with consented analytics. If persistence cannot safely complete, a valid session remains available in the current tab, while saved or unreadable credential storage keeps analytics off.
 - Removed the shipped Supabase project URL and anon key. Auth and Storage now require both operator-supplied values; local files and direct public media URLs remain available without Supabase configuration.
+- Browser-stored Supabase settings stay pending until reviewed in the current tab; host-injected deployment settings take precedence, and Clear Browser Storage removes saved and tab-scoped connection settings.
 - Expired signed media already marked as requiring authentication offers a direct Connect action again when playback is retried. URL-share imports keep the source link and current experience intact after rejection or failed persistence, with recovery through a smaller link or JSON backup. The 8 MiB decompression cap and bounded allocation strategy are unchanged.
 - The Storage policy release checklist records the authorized owner, policy revision, rollback artifact, and expected outcomes for all six principal/object cases. Its staging matrix checks direct and resolver results without retaining signed URLs or credentials.
 - Clarified local-copy instructions, browser compatibility claims, reset behavior, and offline documentation behavior.
 - Clarified browser, mobile, and screen-reader verification records; unavailable branded-browser, physical-device, and human speech checks remain explicitly Not run.
+- Documented the supported provider APIs, server configuration, OAuth callback setup, and playlist services that remain unconnected.
 
 ## 5.0.11 — 2026-10-06
 

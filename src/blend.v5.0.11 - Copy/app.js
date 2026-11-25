@@ -5,25 +5,28 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './indexeddb-open.js?v=20261125-v5.0.11-profile-sync';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './experience-persistence.js?v=20261125-v5.0.11-profile-sync';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261125-v5.0.11-profile-sync';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261125-v5.0.11-profile-sync';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261125-v5.0.11-profile-sync';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261125-v5.0.11-profile-sync';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
+  clearBlendRuntimeConfig,
   getBlendRuntimeConfig,
+  readPendingBlendRuntimeConfig,
+  saveBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './supabase-config.js?v=20261125-v5.0.11-profile-sync';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261125-v5.0.11-profile-sync';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -33,26 +36,33 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './storage-url-resolver.js?v=20261125-v5.0.11-profile-sync';
+import {
+  CURRENT_STORAGE_POLICY_REVISION,
+  PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE,
+  TRUSTED_STORAGE_POLICY_SCOPE,
+  hasVerifiedStoragePolicyScope
+} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
 import {
   applySignedMediaUrlCleanup,
+  clearSignedMediaCacheStorage,
   clearSignedMediaElements,
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './signed-url-cleanup.js?v=20261125-v5.0.11-profile-sync';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './transition-manager.js?v=20261125-v5.0.11-profile-sync';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './playback-clock.js?v=20261125-v5.0.11-profile-sync';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
@@ -64,9 +74,45 @@ import {
   compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { renderMarkdown } from './markdown.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { fetchReadme } from './readme-fetcher.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './playback-mode.js?v=20261125-v5.0.11-profile-sync';
+import { renderMarkdown } from './markdown.js?v=20261125-v5.0.11-profile-sync';
+import { fetchReadme } from './readme-fetcher.js?v=20261125-v5.0.11-profile-sync';
+import {
+  SPOTIFY_CLIENT_ID_STORAGE_KEY,
+  SPOTIFY_TOKEN_SESSION_STORAGE_KEY,
+  SPOTIFY_OAUTH_TRANSACTION_SESSION_STORAGE_KEY,
+  beginSpotifyAuthorization,
+  clearSpotifySession,
+  consumeSpotifyAuthorizationCallback,
+  fetchSpotifyPlaylistCanonicalLinks,
+  getSpotifyAccessToken,
+  getSpotifySessionStatus,
+  isSpotifyPlaylistUrl,
+  readSpotifyClientId,
+  removeSpotifyClientId,
+  saveSpotifyClientId
+} from './spotify-playlist-import.js?v=20261125-v5.0.11-profile-sync';
+import {
+  fetchOfficialPlaylistCanonicalLinks,
+  officialPlaylistProviderFromUrl,
+  beginProviderPlaylistOAuth,
+  consumeProviderPlaylistOAuthCallback,
+  clearProviderPlaylistOAuthPendingImport,
+  disconnectProviderPlaylistOAuth,
+  getProviderPlaylistOAuthStatus
+} from './playlist-provider-import.js?v=20261125-v5.0.11-profile-sync';
+import {
+  YOUTUBE_OAUTH_CLIENT_ID_STORAGE_KEY,
+  clearYouTubeOAuthSession,
+  getYouTubeAccessToken,
+  getYouTubeOAuthSessionStatus,
+  isGoogleIdentityServicesReady,
+  loadGoogleIdentityServices,
+  readYouTubeOAuthClientId,
+  removeYouTubeOAuthClientId,
+  requestYouTubeAccessToken,
+  saveYouTubeOAuthClientId
+} from './youtube-oauth.js?v=20261125-v5.0.11-profile-sync';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -82,33 +128,34 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './url-share.js?v=20261125-v5.0.11-profile-sync';
 import {
   isUnsupportedImportScheme,
   resolveHttpShareUrl,
   resolvePlatformShareUrl
-} from './share-destination-safety.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './share-destination-safety.js?v=20261125-v5.0.11-profile-sync';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './url-share-diagnostics.js?v=20261125-v5.0.11-profile-sync';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './timeline-analysis.js?v=20261125-v5.0.11-profile-sync';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261125-v5.0.11-profile-sync';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './shared-experience-download.js?v=20261125-v5.0.11-profile-sync';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261125-v5.0.11-profile-sync';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261125-v5.0.11-profile-sync';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261125-v5.0.11-profile-sync';
+import { createProfileSyncClient } from './profile-sync-client.js?v=20261125-v5.0.11-profile-sync';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -119,7 +166,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './git-playlist-catalog.js?v=20261125-v5.0.11-profile-sync';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -130,7 +177,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './git-playlist-storage.js?v=20261125-v5.0.11-profile-sync';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -143,17 +190,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './local-import-limits.js?v=20261125-v5.0.11-profile-sync';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './directory-scan-yield.js?v=20261125-v5.0.11-profile-sync';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults';
+} from './resume-on-load.js?v=20261125-v5.0.11-profile-sync';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -248,7 +295,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261112-v5.0.11-issue-05-inert-supabase-defaults';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261125-v5.0.11-profile-sync';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -419,6 +466,8 @@ const supabaseAuthClient = createSupabaseAuthClient({
 const storageUrlResolver = createStorageUrlResolver({
   config: RUNTIME_CONFIG,
   authClient: supabaseAuthClient,
+  trustedStoragePolicyScope: TRUSTED_STORAGE_POLICY_SCOPE,
+  currentStoragePolicyRevision: CURRENT_STORAGE_POLICY_REVISION,
   logger: log
 });
 
@@ -510,14 +559,15 @@ let isMuted = false;
 let lastNonZeroMasterVolume = DEFAULT_SETTINGS.masterVolume;
 let browserStorageResetting = false;
 let browserStorageRecoveryPromise = null;
+let signedOutDisclosureActive = false;
 const objectUrls = new Set();
 const objectUrlRevokeTimers = new Map();
 const slideshowPreload = new Map();
 const playlistPreload = new Map();
 const activePlaybackRequests = { playlist: null, slideshow: null };
 const STORAGE_REQUEST_TIMEOUT_COPY = 'The storage request timed out. Check your connection and retry.';
-const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.';
-const PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY = 'Local cleanup is incomplete. Retry to clear remaining sources and save private references. A copied link may still work until its provider and cache lifetime ends.';
+const PRIVATE_MEDIA_SIGNED_OUT_COPY = 'You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
+const PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY = 'Local cleanup is incomplete. Retry to clear remaining media sources, cached responses, and save private references. You are signed out on this device. Links you already copied can still open private media until they expire (by default, up to one hour). Blend cannot remove those copies from other apps or unread messages.';
 const thumbUrlCache = new Map();
 const thumbRequests = new Map();
 const thumbElementState = new WeakMap();
@@ -1404,6 +1454,20 @@ function isExpiredStoredSignedUrl(url, metadata = {}) {
   return !!url && hasStoredSignedUrlExpiry(metadata) && !isSignedUrlFresh(metadata.signedUrlExpiresAt);
 }
 
+function storageBucketForReference(reference = '') {
+  const normalized = sanitizeSupabaseStorageReference(reference);
+  if (!normalized) return '';
+  return normalized.slice('supabase://'.length).split('/')[0].toLowerCase();
+}
+
+function showPrivateStorageSigningUnavailable() {
+  if ($all('#toast-container .toast[role="alert"]').some(toast => toast.textContent === PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE)) return;
+  showToast(PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE, {
+    timeout: 10_000,
+    role: 'alert'
+  });
+}
+
 function showPrivateMediaAuthPrompt(expiredSignedUrl = false) {
   if ((Date.now() - lastAuthPromptAt) <= 4000) return false;
   lastAuthPromptAt = Date.now();
@@ -1472,6 +1536,21 @@ function beginPlaybackRequest(which, preservePreloadId = '') {
 async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
   const metadata = normalizeStorageMetadata(item, ref);
   const directUrl = remoteUrlForItem(item, ref);
+  const reference = storageReferenceForItem(item, ref);
+  const signedUrlBucket = metadata.storageBucket || metadata.bucket || storageBucketForReference(reference);
+  const signedUrlScopeVerified = hasVerifiedStoragePolicyScope(TRUSTED_STORAGE_POLICY_SCOPE, {
+    projectUrl: RUNTIME_CONFIG.supabaseUrl,
+    policyRevision: CURRENT_STORAGE_POLICY_REVISION,
+    bucket: signedUrlBucket
+  });
+  if (directUrl && isSignedSupabaseStorageUrl(directUrl) && !signedUrlScopeVerified) {
+    if (item) {
+      item.metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+      item.metadata.lastStorageError = 'storage_policy_unverified';
+    }
+    if (opts.showErrorToast !== false) showPrivateStorageSigningUnavailable();
+    return '';
+  }
   const hasExpiry = hasStoredSignedUrlExpiry(metadata);
   const expiredSignedUrl = !!directUrl && hasExpiry && !isSignedUrlFresh(metadata.signedUrlExpiresAt);
   if (directUrl && (!hasExpiry || !expiredSignedUrl)) return directUrl;
@@ -1479,7 +1558,6 @@ async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
   // A direct URL without expiry metadata may be an explicitly imported public
   // URL. Only replace an expired cached signed URL when its portable reference
   // is available; never persist the signed URL as the sole source of truth.
-  const reference = storageReferenceForItem(item, ref);
   if (!reference) return '';
   const bucket = metadata.storageBucket || metadata.bucket || state.settings.storageDefaultBucket || RUNTIME_CONFIG.defaultBucket;
   try {
@@ -1526,7 +1604,9 @@ async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
       item.metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
       item.metadata.lastStorageError = String(error?.code || error?.message || 'storage_error');
     }
-    if (shouldPromptForAuth(error)) {
+    if (error?.code === 'storage_policy_unverified') {
+      if (opts.showErrorToast !== false) showPrivateStorageSigningUnavailable();
+    } else if (shouldPromptForAuth(error)) {
       if (opts.showErrorToast !== false) showPrivateMediaAuthPrompt(expiredSignedUrl);
     } else if (opts.showErrorToast !== false) {
       showToast(error?.code === 'storage_request_timeout' ? STORAGE_REQUEST_TIMEOUT_COPY : (error?.message || 'Could not resolve media URL'), { timeout: 3200 });
@@ -1535,7 +1615,12 @@ async function resolvePlayableUrlForItem(item = null, ref = null, opts = {}) {
   }
 }
 
+function isLinkOnlyExternalItem(item = null) {
+  return item?.metadata?.youtubeLinkOnly === true || item?.metadata?.externalLinkOnly === true;
+}
+
 function isRemotePlayableItem(item = null, ref = null) {
+  if (isLinkOnlyExternalItem(item)) return false;
   return hasResolvableRemoteReference(item, ref) && ['video', 'audio', 'image'].includes(item?.type || ref?.type || '');
 }
 
@@ -2638,8 +2723,385 @@ function syncSupabaseConfigurationStatus() {
     statusEl.dataset.state = 'enabled';
     return;
   }
+  if (RUNTIME_CONFIG.runtimeConfigReviewRequired) {
+    statusEl.textContent = 'Saved connection settings are pending review in Configuration. Auth and Storage requests are blocked until you confirm the project.';
+    statusEl.dataset.state = 'error';
+    return;
+  }
+  const warnings = RUNTIME_CONFIG.runtimeConfigWarnings || [];
+  if (warnings.length) {
+    statusEl.textContent = warnings.join(' ');
+    statusEl.dataset.state = 'error';
+    return;
+  }
   statusEl.textContent = `${SUPABASE_UNCONFIGURED_MESSAGE}${projectUrl ? ` Current project URL: ${projectUrl}.` : ''}`;
   statusEl.dataset.state = 'error';
+}
+
+function setRuntimeConfigReviewStatus(message, state = 'idle') {
+  const status = $('#supabase-runtime-config-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = state;
+}
+
+function initializeRuntimeConfigReviewControls() {
+  const projectUrlInput = $('#supabase-runtime-project-url');
+  const anonKeyInput = $('#supabase-runtime-anon-key');
+  const redirectUrlInput = $('#supabase-runtime-redirect-url');
+  const confirmInput = $('#supabase-runtime-config-confirm');
+  const saveButton = $('#supabase-runtime-config-save');
+  if (!projectUrlInput || !anonKeyInput || !redirectUrlInput || !confirmInput || !saveButton) return;
+
+  const pending = readPendingBlendRuntimeConfig();
+  const fields = pending.config || {};
+  const runtimeWarnings = [...new Set([
+    ...(pending.warnings || []),
+    ...(RUNTIME_CONFIG.runtimeConfigWarnings || [])
+  ])];
+  projectUrlInput.value = fields.SUPABASE_URL || RUNTIME_CONFIG.supabaseUrl || '';
+  anonKeyInput.value = fields.SUPABASE_ANON_KEY || RUNTIME_CONFIG.supabaseAnonKey || '';
+  redirectUrlInput.value = fields.SUPABASE_AUTH_REDIRECT_URL || RUNTIME_CONFIG.authRedirectUrl || '';
+  confirmInput.checked = !pending.reviewRequired && Boolean(
+    fields.SUPABASE_URL || fields.SUPABASE_ANON_KEY || fields.SUPABASE_AUTH_REDIRECT_URL
+  );
+  saveButton.disabled = !confirmInput.checked;
+
+  if (!pending.readable) {
+    const hostConfigIsActive = RUNTIME_CONFIG.runtimeConfigSource === 'host-injected';
+    setRuntimeConfigReviewStatus(hostConfigIsActive
+      ? 'Saved connection settings could not be read. Blend is using its host-injected configuration for this tab.'
+      : 'Saved connection settings could not be read. Blend is using the built-in unconfigured defaults for this tab. Re-enter your project URL from Configuration if you use private Storage.', 'error');
+  } else if (pending.reviewRequired) {
+    const pendingUrl = fields.SUPABASE_URL ? ` Pending project URL: ${fields.SUPABASE_URL}.` : '';
+    const additionalWarnings = runtimeWarnings
+      .filter(warning => !warning.includes('pending operator review'))
+      .join(' ');
+    setRuntimeConfigReviewStatus(`Saved connection settings need review. Inspect the project URL and redirect above, then confirm before Auth or Storage requests can use them.${pendingUrl}${additionalWarnings ? ` ${additionalWarnings}` : ''}`, 'error');
+  } else if (pending.tabOnly) {
+    setRuntimeConfigReviewStatus('These connection settings are active for this tab only. They were not saved to LocalStorage.', 'error');
+  } else if (runtimeWarnings.length) {
+    setRuntimeConfigReviewStatus(runtimeWarnings.join(' '), 'error');
+  } else if (RUNTIME_CONFIG.runtimeConfigSource === 'host-injected') {
+    setRuntimeConfigReviewStatus(`Host-injected settings are active for ${getSupabaseProjectDisplayUrl() || 'this deployment'} and take precedence over browser-stored settings.`, 'enabled');
+  } else if (RUNTIME_CONFIG.runtimeConfigSource === 'localStorage') {
+    setRuntimeConfigReviewStatus(`Saved connection settings were reviewed for this tab. Active project: ${getSupabaseProjectDisplayUrl() || 'unconfigured'}.`, 'enabled');
+  } else {
+    setRuntimeConfigReviewStatus('Review the project URL and redirect destination before saving connection settings.', 'idle');
+  }
+
+  confirmInput.addEventListener('change', () => {
+    saveButton.disabled = !confirmInput.checked;
+    if (!confirmInput.checked) setRuntimeConfigReviewStatus('Confirm only after reviewing the project URL and redirect destination.', 'idle');
+  });
+  for (const input of [projectUrlInput, anonKeyInput, redirectUrlInput]) {
+    input.addEventListener('input', () => {
+      if (confirmInput.checked) {
+        confirmInput.checked = false;
+        setRuntimeConfigReviewStatus('Connection settings changed. Review the project URL and redirect again before saving.', 'idle');
+      }
+      saveButton.disabled = true;
+    });
+  }
+  saveButton.addEventListener('click', () => {
+    const result = saveBlendRuntimeConfig({
+      SUPABASE_URL: projectUrlInput.value,
+      SUPABASE_ANON_KEY: anonKeyInput.value,
+      SUPABASE_AUTH_REDIRECT_URL: redirectUrlInput.value
+    }, { confirmed: confirmInput.checked });
+    if (!result.active) {
+      setRuntimeConfigReviewStatus((result.warnings || []).join(' ') || 'Connection settings were not saved or activated.', 'error');
+      return;
+    }
+    if (result.saved) {
+      setRuntimeConfigReviewStatus('Connection settings saved and reviewed for this tab. Reloading Blend to apply them.', 'enabled');
+    } else {
+      setRuntimeConfigReviewStatus('Connection settings are available for this tab only and were not saved to LocalStorage. Reloading Blend to apply them.', 'error');
+    }
+    window.location.reload();
+  });
+}
+
+function initializeYouTubeApiKeyControls() {
+  const input = $('#youtube-api-key');
+  const saveButton = $('#youtube-api-key-save');
+  const status = $('#youtube-api-key-status');
+  if (!input || !saveButton || !status) return;
+
+  try {
+    input.value = window.localStorage.getItem(YOUTUBE_API_KEY_STORAGE_KEY) || '';
+    status.textContent = input.value
+      ? 'A YouTube API key is saved in this browser.'
+      : 'Add a key to import public YouTube and YouTube Music playlists.';
+    status.dataset.state = input.value ? 'enabled' : 'idle';
+  } catch (_) {
+    input.value = '';
+    status.textContent = 'Browser storage is unavailable. A YouTube API key cannot be saved.';
+    status.dataset.state = 'error';
+    saveButton.disabled = true;
+    return;
+  }
+
+  input.addEventListener('input', () => {
+    status.textContent = 'Key changes are not saved yet.';
+    status.dataset.state = 'idle';
+  });
+  saveButton.addEventListener('click', () => {
+    const value = String(input.value || '').trim();
+    if (/\s/.test(value) || value.length > 512) {
+      status.textContent = 'Enter a valid API key without spaces (maximum 512 characters).';
+      status.dataset.state = 'error';
+      return;
+    }
+    try {
+      if (value) window.localStorage.setItem(YOUTUBE_API_KEY_STORAGE_KEY, value);
+      else window.localStorage.removeItem(YOUTUBE_API_KEY_STORAGE_KEY);
+      input.value = value;
+      status.textContent = value
+        ? 'YouTube API key saved in this browser. It remains visible to browser users; keep its Google Cloud restrictions in place.'
+        : 'Saved YouTube API key removed from this browser.';
+      status.dataset.state = value ? 'enabled' : 'idle';
+    } catch (_) {
+      status.textContent = 'The YouTube API key could not be saved in browser storage.';
+      status.dataset.state = 'error';
+    }
+  });
+}
+
+function setSpotifyImportStatus(message, stateName = 'idle') {
+  const status = $('#spotify-playlist-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function initializeSpotifyPlaylistControls(callbackOutcome = null) {
+  const input = $('#spotify-client-id');
+  const saveButton = $('#spotify-client-id-save');
+  const connectButton = $('#spotify-connect');
+  const disconnectButton = $('#spotify-disconnect');
+  const status = $('#spotify-playlist-status');
+  if (!input || !saveButton || !connectButton || !disconnectButton || !status) return;
+
+  const refreshStatus = () => {
+    const sessionStatus = getSpotifySessionStatus();
+    const clientId = readSpotifyClientId();
+    if (sessionStatus === 'connected') {
+      setSpotifyImportStatus('Spotify is connected in this tab. Playlist contents are available only when this account owns or collaborates on the playlist.', 'enabled');
+    } else if (sessionStatus === 'expired') {
+      setSpotifyImportStatus('Spotify sign-in expired. Connect again to import playlists.', 'idle');
+    } else if (clientId) {
+      setSpotifyImportStatus('Spotify app client ID saved. Connect your account to import playlists.', 'idle');
+    } else {
+      setSpotifyImportStatus('Add your Spotify app client ID to connect and import playlists.', 'idle');
+    }
+    disconnectButton.disabled = sessionStatus === 'disconnected';
+    connectButton.disabled = !String(input.value || '').trim();
+  };
+
+  try {
+    input.value = readSpotifyClientId();
+  } catch (_) {
+    input.value = '';
+  }
+  refreshStatus();
+  if (callbackOutcome?.message) {
+    setSpotifyImportStatus(callbackOutcome.message, callbackOutcome.success ? 'enabled' : 'error');
+  }
+
+  input.addEventListener('input', () => {
+    setSpotifyImportStatus('Client ID changes are not saved yet.', 'idle');
+    connectButton.disabled = !String(input.value || '').trim();
+  });
+  saveButton.addEventListener('click', () => {
+    const value = String(input.value || '').trim();
+    if (!value) {
+      const removed = removeSpotifyClientId();
+      input.value = '';
+      refreshStatus();
+      setSpotifyImportStatus(removed ? 'Spotify app client ID removed from this browser.' : 'The Spotify app client ID could not be removed.', removed ? 'idle' : 'error');
+      return;
+    }
+    try {
+      saveSpotifyClientId(value);
+      input.value = value;
+      refreshStatus();
+      setSpotifyImportStatus('Spotify app client ID saved in this browser. The client ID is public; never enter an app client secret.', 'enabled');
+    } catch (error) {
+      setSpotifyImportStatus(error?.message || 'The Spotify app client ID could not be saved.', 'error');
+    }
+  });
+  connectButton.addEventListener('click', async () => {
+    const value = String(input.value || '').trim();
+    try {
+      saveSpotifyClientId(value);
+      input.value = value;
+      setSpotifyImportStatus('Opening Spotify sign-in…', 'checking');
+      await beginSpotifyAuthorization({ clientId: value });
+    } catch (error) {
+      setSpotifyImportStatus(error?.message || 'Spotify sign-in could not be started.', 'error');
+    }
+  });
+  disconnectButton.addEventListener('click', () => {
+    const cleared = clearSpotifySession();
+    refreshStatus();
+    setSpotifyImportStatus(cleared
+      ? 'Spotify was disconnected from this tab. The provider access token was removed from tab storage.'
+      : 'Spotify tab credentials could not be fully cleared.', cleared ? 'idle' : 'error');
+  });
+}
+
+function initializePlaylistProviderApiControls(callbackOutcome = null) {
+  const status = $('#playlist-provider-api-status');
+  const disconnectButton = $('#playlist-provider-api-disconnect');
+  if (!status || !disconnectButton) return;
+
+  const refreshStatus = async () => {
+    status.textContent = 'Checking the playlist provider service…';
+    status.dataset.state = 'checking';
+    const response = await getProviderPlaylistOAuthStatus();
+    if (!response) {
+      status.textContent = 'The additional playlist provider service is not available on this deployment.';
+      status.dataset.state = 'idle';
+      disconnectButton.disabled = true;
+      return;
+    }
+    const connectedProvider = String(response.connectedProvider || '');
+    const configured = Array.isArray(response.configured) ? response.configured : [];
+    const labels = configured.map(provider => ({
+      'apple-music': 'Apple Music',
+      vimeo: 'Vimeo',
+      soundcloud: 'SoundCloud',
+      dailymotion: 'Dailymotion'
+    }[provider] || '')).filter(Boolean);
+    const configuredText = labels.length
+      ? 'Configured providers: ' + labels.join(', ') + '.'
+      : 'No additional playlist providers are configured.';
+    if (connectedProvider) {
+      const label = ({ vimeo: 'Vimeo', soundcloud: 'SoundCloud', dailymotion: 'Dailymotion' })[connectedProvider] || 'playlist provider';
+      status.textContent = label + ' is connected in this browser session. ' + configuredText;
+      status.dataset.state = 'enabled';
+    } else {
+      status.textContent = configuredText + ' Vimeo imports require the showcase owner account. Dailymotion and account-only SoundCloud imports will ask you to sign in.';
+      status.dataset.state = 'idle';
+    }
+    disconnectButton.disabled = !connectedProvider;
+  };
+
+  disconnectButton.addEventListener('click', async () => {
+    disconnectButton.disabled = true;
+    status.textContent = 'Disconnecting the playlist provider account…';
+    status.dataset.state = 'checking';
+    const disconnected = await disconnectProviderPlaylistOAuth();
+    if (!disconnected) {
+      status.textContent = 'The playlist provider account could not be disconnected from this browser.';
+      status.dataset.state = 'error';
+      disconnectButton.disabled = false;
+      return;
+    }
+    status.textContent = 'Playlist provider account disconnected from this browser.';
+    status.dataset.state = 'idle';
+    await refreshStatus();
+  });
+
+  if (callbackOutcome?.message && !callbackOutcome.success) {
+    status.textContent = callbackOutcome.message;
+    status.dataset.state = 'error';
+  }
+  void refreshStatus();
+}
+
+function setYouTubeOAuthStatus(message, stateName = 'idle') {
+  const status = $('#youtube-oauth-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.state = stateName;
+}
+
+function initializeYouTubeOAuthControls() {
+  const input = $('#youtube-oauth-client-id');
+  const saveButton = $('#youtube-oauth-client-id-save');
+  const connectButton = $('#youtube-oauth-connect');
+  const disconnectButton = $('#youtube-oauth-disconnect');
+  const status = $('#youtube-oauth-status');
+  if (!input || !saveButton || !connectButton || !disconnectButton || !status) return;
+
+  const refreshStatus = () => {
+    const sessionStatus = getYouTubeOAuthSessionStatus();
+    const clientId = readYouTubeOAuthClientId();
+    if (sessionStatus === 'connected') {
+      setYouTubeOAuthStatus('Google is connected for this tab. YouTube playlist requests can include your private playlists.', 'enabled');
+    } else if (sessionStatus === 'expired') {
+      setYouTubeOAuthStatus('Google sign-in expired. Connect again to read account-only playlists.', 'idle');
+    } else if (clientId && isGoogleIdentityServicesReady()) {
+      setYouTubeOAuthStatus('Google OAuth client ID saved. Connect your account when you need private playlist access.', 'idle');
+    } else if (clientId) {
+      setYouTubeOAuthStatus('Loading Google Identity Services…', 'checking');
+    } else {
+      setYouTubeOAuthStatus('Public playlists use the restricted API key above. Add a Google OAuth client ID only for account-only playlists.', 'idle');
+    }
+    disconnectButton.disabled = sessionStatus === 'disconnected';
+    connectButton.disabled = !String(input.value || '').trim();
+  };
+
+  input.value = readYouTubeOAuthClientId();
+  refreshStatus();
+  if (input.value) {
+    void loadGoogleIdentityServices().then(refreshStatus).catch(error => {
+      setYouTubeOAuthStatus(error?.message || 'Google Identity Services could not be loaded.', 'error');
+    });
+  }
+
+  input.addEventListener('input', () => {
+    setYouTubeOAuthStatus('Google OAuth client ID changes are not saved yet.', 'idle');
+    connectButton.disabled = !String(input.value || '').trim();
+  });
+  saveButton.addEventListener('click', async () => {
+    const value = String(input.value || '').trim();
+    if (!value) {
+      const removed = removeYouTubeOAuthClientId();
+      clearYouTubeOAuthSession();
+      input.value = '';
+      refreshStatus();
+      setYouTubeOAuthStatus(removed ? 'Google OAuth client ID and tab token removed from this browser.' : 'The Google OAuth client ID could not be removed.', removed ? 'idle' : 'error');
+      return;
+    }
+    try {
+      saveYouTubeOAuthClientId(value);
+      input.value = value;
+      setYouTubeOAuthStatus('Loading Google Identity Services…', 'checking');
+      await loadGoogleIdentityServices();
+      setYouTubeOAuthStatus('Google OAuth client ID saved. You can connect when you need account-only playlist access.', 'enabled');
+      refreshStatus();
+    } catch (error) {
+      setYouTubeOAuthStatus(error?.message || 'The Google OAuth client ID could not be saved.', 'error');
+    }
+  });
+  connectButton.addEventListener('click', async () => {
+    try {
+      saveYouTubeOAuthClientId(input.value);
+    } catch (error) {
+      setYouTubeOAuthStatus(error?.message || 'Enter a valid Google OAuth client ID.', 'error');
+      return;
+    }
+    if (!isGoogleIdentityServicesReady()) {
+      setYouTubeOAuthStatus('Google sign-in is still loading. Wait a moment, then click Connect Google again.', 'checking');
+      return;
+    }
+    setYouTubeOAuthStatus('Opening Google sign-in…', 'checking');
+    try {
+      await requestYouTubeAccessToken(input.value);
+      setYouTubeOAuthStatus('Google is connected for this tab. YouTube account-only playlists can now be imported.', 'enabled');
+      disconnectButton.disabled = false;
+    } catch (error) {
+      setYouTubeOAuthStatus(error?.message || 'Google sign-in could not be completed.', 'error');
+    }
+  });
+  disconnectButton.addEventListener('click', () => {
+    clearYouTubeOAuthSession();
+    refreshStatus();
+    setYouTubeOAuthStatus('Google was disconnected from this tab. The access token was removed from memory.', 'idle');
+  });
 }
 
 function ipfsConfigFromState(overrides = {}) {
@@ -2804,7 +3266,9 @@ function syncIpfsControls() {
   if (ttlInput) ttlInput.value = String(config.signedUrlTtlSeconds);
   if (privateToggle) privateToggle.checked = config.privateMediaRequiresAuth;
   if (statusEl) {
-    statusEl.textContent = readiness.message;
+    statusEl.textContent = signedOutDisclosureActive
+      ? `${readiness.message} ${PRIVATE_MEDIA_SIGNED_OUT_COPY}`
+      : readiness.message;
     statusEl.dataset.state = readiness.statusState || readiness.state;
   }
   if (retryBtn) retryBtn.hidden = readiness.statusState !== 'temporarily-unavailable';
@@ -3006,7 +3470,7 @@ async function shareExperienceViaUrl() {
       projectUrl: RUNTIME_CONFIG.supabaseUrl,
       policyRevision: null
     })) {
-      showToast('Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.', {
+      showToast(`Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. ${PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE}`, {
         timeout: 6000,
         role: 'alert'
       });
@@ -3068,7 +3532,7 @@ function buildExperienceExportPayload(options = {}) {
       })
     }
   );
-  return {
+  const payload = {
     version: VERSION,
     schema: EXPERIENCE_EXPORT_SCHEMA,
     type: 'experience',
@@ -3089,6 +3553,40 @@ function buildExperienceExportPayload(options = {}) {
     library: libraryPayload,
     playlist: makeListExportPayload('playlist', playlistRefs, options),
     slideshow: makeListExportPayload('slideshow', slideshowRefs, options)
+  };
+  return preserveExperienceDocumentExtensions(currentExperienceRecord()?.syncDocument, payload);
+}
+
+function preserveExperienceDocumentExtensions(sourceDocument, currentDocument) {
+  if (!sourceDocument || typeof sourceDocument !== 'object' || Array.isArray(sourceDocument)) return currentDocument;
+  const mergeBranch = (sourceBranch, currentBranch) => {
+    if (!sourceBranch || typeof sourceBranch !== 'object' || Array.isArray(sourceBranch)) return currentBranch;
+    const previousItems = Array.isArray(sourceBranch.items) ? sourceBranch.items : [];
+    const previousById = new Map(previousItems
+      .filter(item => item && typeof item === 'object' && item.id != null)
+      .map(item => [String(item.id), item]));
+    const items = Array.isArray(currentBranch?.items)
+      ? currentBranch.items.map(item => {
+        const previous = item?.id == null ? null : previousById.get(String(item.id));
+        return previous ? { ...previous, ...item } : item;
+      })
+      : currentBranch?.items;
+    return { ...sourceBranch, ...currentBranch, ...(items ? { items } : {}) };
+  };
+  return {
+    ...sourceDocument,
+    ...currentDocument,
+    version: sourceDocument.version ?? currentDocument.version,
+    id: sourceDocument.id ?? currentDocument.id,
+    ...(sourceDocument.settings && typeof sourceDocument.settings === 'object'
+      ? { settings: { ...sourceDocument.settings, ...currentDocument.settings } }
+      : {}),
+    ...(sourceDocument.ui && typeof sourceDocument.ui === 'object'
+      ? { ui: { ...sourceDocument.ui, ...currentDocument.ui } }
+      : {}),
+    ...(sourceDocument.library ? { library: mergeBranch(sourceDocument.library, currentDocument.library) } : {}),
+    ...(sourceDocument.playlist ? { playlist: mergeBranch(sourceDocument.playlist, currentDocument.playlist) } : {}),
+    ...(sourceDocument.slideshow ? { slideshow: mergeBranch(sourceDocument.slideshow, currentDocument.slideshow) } : {})
   };
 }
 
@@ -3488,14 +3986,41 @@ function clearSignedMediaElementsForSignOut(signedUrls) {
   return cleanupComplete;
 }
 
+async function clearSignedMediaCachesForSignOut() {
+  let cacheStorage;
+  try {
+    cacheStorage = window.caches;
+  } catch (error) {
+    const candidate = typeof error?.name === 'string' ? error.name : 'Error';
+    const errorName = /^[A-Za-z][A-Za-z0-9]{0,47}$/.test(candidate) ? candidate : 'Error';
+    log.warn('signed media Cache Storage cleanup failed', { operation: 'cache_access', errorName });
+    return false;
+  }
+  try {
+    const result = await clearSignedMediaCacheStorage(cacheStorage, {
+      isBlendCacheName: name => PWA_CONFIG?.isBlendCacheName?.(name) === true,
+      onCleanupError: ({ operation, errorName }) => {
+        log.warn('signed media Cache Storage cleanup failed', { operation, errorName });
+      }
+    });
+    return result.complete;
+  } catch (error) {
+    const candidate = typeof error?.name === 'string' ? error.name : 'Error';
+    const errorName = /^[A-Za-z][A-Za-z0-9]{0,47}$/.test(candidate) ? candidate : 'Error';
+    log.warn('signed media Cache Storage cleanup failed', { operation: 'cache_cleanup', errorName });
+    return false;
+  }
+}
+
 function showSignedOutCleanupStatus(signedUrls, cleanupComplete) {
   const retryCleanup = () => {
     void (async () => {
       const mediaCleanupComplete = clearSignedMediaElementsForSignOut(signedUrls);
+      const cacheCleanupComplete = await clearSignedMediaCachesForSignOut();
       saveStateDebounced();
       let snapshotSaved = false;
       try { snapshotSaved = await flushSaveState(); } catch (_) {}
-      showSignedOutCleanupStatus(signedUrls, mediaCleanupComplete && snapshotSaved);
+      showSignedOutCleanupStatus(signedUrls, mediaCleanupComplete && cacheCleanupComplete && snapshotSaved);
     })();
   };
   showToast(cleanupComplete ? PRIVATE_MEDIA_SIGNED_OUT_COPY : PRIVATE_MEDIA_SIGNED_OUT_INCOMPLETE_COPY, {
@@ -3515,35 +4040,47 @@ async function clearSignedPrivateMediaForSignedOut() {
     slideshow: state.slideshow,
     experiences: state.experiences
   });
+  if (cleanupPlan.unrecognizedSignedUrlCount > 0) {
+    log.warn('signed media sign-out cleanup found an unrecognized URL shape', {
+      reasonCode: 'unrecognized_signed_storage_url_shape',
+      count: cleanupPlan.unrecognizedSignedUrlCount
+    });
+  }
   const clearedFieldCount = applySignedMediaUrlCleanup(cleanupPlan);
-  if (!clearedFieldCount) return false;
-
-  const unavailableUntil = Date.now() + REMOTE_MEDIA_RETRY_COOLDOWN_MS;
-  for (const list of [state.playlist, state.slideshow]) {
-    for (const ref of list) {
-      if (!cleanupPlan.clearedIds.has(String(ref?.id ?? ''))) continue;
-      const stillHasPublicUrl = [ref?.sourceUrl, ref?.path]
-        .some(value => isRemoteUrl(value) && !cleanupPlan.signedUrls.has(String(value).trim()));
-      if (stillHasPublicUrl) continue;
-      ref.available = false;
-      ref.retryAfter = unavailableUntil;
-      ref.reason = 'You are signed out. Sign in, then retry this private media item.';
+  if (clearedFieldCount) {
+    const unavailableUntil = Date.now() + REMOTE_MEDIA_RETRY_COOLDOWN_MS;
+    for (const list of [state.playlist, state.slideshow]) {
+      for (const ref of list) {
+        if (!cleanupPlan.clearedIds.has(String(ref?.id ?? ''))) continue;
+        const stillHasPublicUrl = [ref?.sourceUrl, ref?.path]
+          .some(value => isRemoteUrl(value) && !cleanupPlan.signedUrls.has(String(value).trim()));
+        if (stillHasPublicUrl) continue;
+        ref.available = false;
+        ref.retryAfter = unavailableUntil;
+        ref.reason = 'You are signed out. Sign in, then retry this private media item.';
+      }
     }
+
+    renderLibrary();
+    renderListEditor();
+    updateHUD();
+    saveStateDebounced();
   }
 
   const mediaCleanupComplete = clearSignedMediaElementsForSignOut(cleanupPlan.signedUrls);
-
-  renderLibrary();
-  renderListEditor();
-  updateHUD();
-  saveStateDebounced();
-  let snapshotSaved = false;
-  try { snapshotSaved = await flushSaveState(); } catch (_) {}
-  showSignedOutCleanupStatus(cleanupPlan.signedUrls, mediaCleanupComplete && snapshotSaved);
-  return mediaCleanupComplete && snapshotSaved;
+  const cacheCleanupComplete = await clearSignedMediaCachesForSignOut();
+  let snapshotSaved = true;
+  if (clearedFieldCount) {
+    snapshotSaved = false;
+    try { snapshotSaved = await flushSaveState(); } catch (_) {}
+  }
+  showSignedOutCleanupStatus(cleanupPlan.signedUrls, mediaCleanupComplete && cacheCleanupComplete && snapshotSaved);
+  return mediaCleanupComplete && cacheCleanupComplete && snapshotSaved;
 }
 
 supabaseAuthClient.onAuthStateChange(({ event }) => {
+  if (event === 'SIGNED_OUT') signedOutDisclosureActive = true;
+  else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') signedOutDisclosureActive = false;
   syncIpfsControls();
   updateIpfsShareButtonState();
   if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
@@ -3552,7 +4089,12 @@ supabaseAuthClient.onAuthStateChange(({ event }) => {
   if (event === 'SIGNED_OUT') {
     cancelPlaybackRequest('playlist');
     cancelPlaybackRequest('slideshow');
-    void clearSignedPrivateMediaForSignedOut();
+    void clearSignedPrivateMediaForSignedOut().catch(error => {
+      const candidate = typeof error?.name === 'string' ? error.name : 'Error';
+      const errorName = /^[A-Za-z][A-Za-z0-9]{0,47}$/.test(candidate) ? candidate : 'Error';
+      log.warn('signed media sign-out cleanup failed', { reasonCode: 'unexpected_cleanup_failure', errorName });
+      showSignedOutCleanupStatus(new Set(), false);
+    });
   }
   if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
     storageUrlResolver.clearCache();
@@ -4243,11 +4785,15 @@ installThumbnailTestHooks();
 const SAVE_FAILURE_MESSAGE = 'Changes are not saved yet. Retry or export a backup before closing.';
 const SAVE_CONFLICT_MESSAGE = 'This experience changed in another tab. Reload or export a backup before saving.';
 let saveFailureNotice = null;
+let profileSyncClient = null;
 const pendingExperienceDeletes = new Set();
 const saveRevisionCoordinator = createSaveRevisionCoordinator({
   delayMs: 850,
   persist: () => persistCurrentStateSnapshot(),
-  onStatus: updateSaveStatus
+  onStatus: status => {
+    updateSaveStatus(status);
+    if (!status.dirty && !status.saving && !status.failed) profileSyncClient?.onLocalSaved();
+  }
 });
 
 function updateSaveStatus(status) {
@@ -4640,7 +5186,10 @@ function makeExperienceRecord(snapshot, opts = {}) {
     name: opts.uniqueName ? ensureUniqueExperienceName(name, id) : name,
     createdAt,
     updatedAt,
-    payload: normalized
+    payload: normalized,
+    ...(opts.syncDocument && typeof opts.syncDocument === 'object' && !Array.isArray(opts.syncDocument)
+      ? { syncDocument: clonePlain(opts.syncDocument) }
+      : {})
   };
 }
 
@@ -4832,7 +5381,8 @@ function serializeActiveExperience(existing = null) {
     id: current?.id || state.activeExperienceId || `exp-${uid()}`,
     name: state.projectName,
     createdAt: current?.createdAt,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    syncDocument: current?.syncDocument
   });
 }
 
@@ -5338,6 +5888,586 @@ async function addRemoteMediaUrl(url, meta = {}, options = {}) {
   });
   if (existing && existing.handle && !existing.stale) return { id: existing.id, status: 'existing', item: existing };
   return await ensureRemoteUrlInLibrary(normalized, meta, options);
+}
+
+const MAX_REMOTE_DIRECTORY_HTML_BYTES = 2 * 1024 * 1024;
+const MAX_REMOTE_DIRECTORY_MEDIA_URLS = 500;
+const REMOTE_DIRECTORY_FETCH_TIMEOUT_MS = 15_000;
+const YOUTUBE_API_KEY_STORAGE_KEY = 'blend-youtube-api-key-v1';
+const MAX_YOUTUBE_PLAYLIST_ITEMS = 5_000;
+const YOUTUBE_API_REQUEST_TIMEOUT_MS = 15_000;
+const INTERNET_ARCHIVE_API_REQUEST_TIMEOUT_MS = 15_000;
+const MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS = 5_000;
+
+class RemoteMediaDirectoryImportError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'RemoteMediaDirectoryImportError';
+    this.code = code;
+  }
+}
+
+function isRemoteMediaDirectoryUrl(value) {
+  if (!isRemoteUrl(value)) return false;
+  try {
+    const pathname = new URL(value).pathname;
+    const finalSegment = pathname.split('/').filter(Boolean).at(-1) || '';
+    return pathname.endsWith('/')
+      || /(?:^|\/)index\.(?:html?|xhtml?)$/i.test(pathname)
+      || !/\.[a-z0-9]{1,12}$/i.test(finalSegment);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function readRemoteDirectoryHtml(response) {
+  const contentLength = response.headers.get('content-length');
+  if (contentLength && Number.isFinite(Number(contentLength))
+      && Number(contentLength) > MAX_REMOTE_DIRECTORY_HTML_BYTES) {
+    throw new RemoteMediaDirectoryImportError('directory_too_large', 'The folder listing is too large to import.');
+  }
+
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    const html = await response.text();
+    if (new Blob([html]).size > MAX_REMOTE_DIRECTORY_HTML_BYTES) {
+      throw new RemoteMediaDirectoryImportError('directory_too_large', 'The folder listing is too large to import.');
+    }
+    return html;
+  }
+
+  const decoder = new TextDecoder();
+  const chunks = [];
+  let bytesRead = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytesRead += value?.byteLength || 0;
+    if (bytesRead > MAX_REMOTE_DIRECTORY_HTML_BYTES) {
+      try { await reader.cancel(); } catch (_) {}
+      throw new RemoteMediaDirectoryImportError('directory_too_large', 'The folder listing is too large to import.');
+    }
+    chunks.push(decoder.decode(value, { stream: true }));
+  }
+  chunks.push(decoder.decode());
+  return chunks.join('');
+}
+
+async function discoverRemoteDirectoryMediaUrls(directoryUrl) {
+  let parsedDirectoryUrl;
+  try {
+    parsedDirectoryUrl = new URL(directoryUrl);
+  } catch (_) {
+    throw new RemoteMediaDirectoryImportError('directory_invalid_url', 'Enter a valid HTTP or HTTPS folder URL.');
+  }
+  if (!['http:', 'https:'].includes(parsedDirectoryUrl.protocol)) {
+    throw new RemoteMediaDirectoryImportError('directory_invalid_url', 'Enter a valid HTTP or HTTPS folder URL.');
+  }
+  if (parsedDirectoryUrl.username || parsedDirectoryUrl.password) {
+    throw new RemoteMediaDirectoryImportError('directory_invalid_url', 'Folder URLs cannot contain credentials.');
+  }
+  if (typeof DOMParser !== 'function') {
+    throw new RemoteMediaDirectoryImportError('directory_parser_unavailable', 'This browser cannot read folder listings.');
+  }
+
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  let timeoutHandle = null;
+  let timedOut = false;
+  const timeout = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      controller?.abort();
+      reject(new RemoteMediaDirectoryImportError('directory_timeout', 'The folder listing took too long to load.'));
+    }, REMOTE_DIRECTORY_FETCH_TIMEOUT_MS);
+  });
+
+  const load = (async () => {
+    const response = await fetch(parsedDirectoryUrl.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: { Accept: 'text/html,application/xhtml+xml;q=0.9' },
+      ...(controller ? { signal: controller.signal } : {})
+    });
+    if (!response.ok) {
+      throw new RemoteMediaDirectoryImportError('directory_http_error', 'The folder listing could not be loaded.');
+    }
+    const contentType = String(response.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
+    if (!['text/html', 'application/xhtml+xml'].includes(contentType)) {
+      throw new RemoteMediaDirectoryImportError('directory_not_html', 'This URL does not provide an HTML folder listing.');
+    }
+
+    const html = await readRemoteDirectoryHtml(response);
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    const responseUrl = response.url || parsedDirectoryUrl.toString();
+    const directoryOrigin = new URL(responseUrl).origin;
+    const declaredBase = document.querySelector('base[href]')?.getAttribute('href') || '';
+    let baseUrl = responseUrl;
+    if (declaredBase) {
+      try { baseUrl = new URL(declaredBase, responseUrl).toString(); } catch (_) {}
+    }
+    const seen = new Set();
+    const mediaUrls = [];
+    for (const anchor of document.querySelectorAll('a[href]')) {
+      const href = String(anchor.getAttribute('href') || '').trim();
+      if (!href) continue;
+      let mediaUrl;
+      try {
+        mediaUrl = new URL(href, baseUrl);
+      } catch (_) {
+        continue;
+      }
+      if (!['http:', 'https:'].includes(mediaUrl.protocol)
+          || mediaUrl.origin !== directoryOrigin
+          || mediaUrl.username
+          || mediaUrl.password) continue;
+      if (!getMediaType(mediaUrl.pathname)) continue;
+      mediaUrl.hash = '';
+      const normalizedUrl = mediaUrl.toString();
+      if (seen.has(normalizedUrl)) continue;
+      if (mediaUrls.length >= MAX_REMOTE_DIRECTORY_MEDIA_URLS) {
+        throw new RemoteMediaDirectoryImportError('directory_too_many_media', 'This folder has too many media links to import at once.');
+      }
+      seen.add(normalizedUrl);
+      mediaUrls.push(normalizedUrl);
+    }
+
+    if (!mediaUrls.length) {
+      throw new RemoteMediaDirectoryImportError('directory_no_media', 'This folder listing has no supported media links.');
+    }
+    return mediaUrls;
+  })();
+
+  try {
+    return await Promise.race([load, timeout]);
+  } catch (error) {
+    if (error instanceof RemoteMediaDirectoryImportError) throw error;
+    throw new RemoteMediaDirectoryImportError(
+      timedOut ? 'directory_timeout' : 'directory_unavailable',
+      'Could not read this folder listing. The server must allow access from this app.'
+    );
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
+class YouTubePlaylistImportError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'YouTubePlaylistImportError';
+    this.code = code;
+  }
+}
+
+class InternetArchivePlaylistImportError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'InternetArchivePlaylistImportError';
+    this.code = code;
+  }
+}
+
+function isYouTubePlaylistUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(url.hostname.toLowerCase())
+      && (url.pathname === '/playlist' || (url.pathname === '/watch' && url.searchParams.has('list')));
+  } catch (_) {
+    return false;
+  }
+}
+
+function unsupportedPlaylistProviderFromUrl(value) {
+  let url;
+  try { url = new URL(String(value || '')); } catch (_) { return ''; }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '');
+  const path = url.pathname.toLowerCase();
+  const providerRules = [
+    { name: 'Vimeo', hosts: ['vimeo.com'], pattern: /\/(?:showcase|albums)\// },
+    { name: 'TikTok', hosts: ['tiktok.com'], pattern: /\/playlist(?:\/|$)/ },
+    { name: 'Dailymotion', hosts: ['dailymotion.com', 'dai.ly'], pattern: /\/playlist(?:\/|$)/ },
+    { name: 'Spotify', hosts: ['open.spotify.com', 'spotify.com'], pattern: /\/playlist(?:\/|$)/ },
+    { name: 'Apple Music', hosts: ['music.apple.com'], pattern: /\/playlist(?:\/|$)/ },
+    { name: 'SoundCloud', hosts: ['soundcloud.com'], pattern: /\/sets\// },
+    { name: 'Amazon Music', hosts: ['music.amazon.com'], pattern: /\/playlists?\// },
+    { name: 'Tidal', hosts: ['tidal.com', 'listen.tidal.com'], pattern: /\/(?:browse\/)?playlist(?:\/|$)/ },
+    { name: 'Deezer', hosts: ['deezer.com'], pattern: /\/playlist(?:\/|$)/ },
+    { name: 'Mixcloud', hosts: ['mixcloud.com'], pattern: /\/playlists?\// },
+    { name: 'Letterboxd', hosts: ['letterboxd.com'], pattern: /\/(?:list\/|watchlist(?:\/|$))/ },
+    { name: 'Bandcamp', hosts: ['bandcamp.com'], pattern: /\/(?:wishlist|collection)(?:\/|$)/ },
+    { name: 'Soundiiz', hosts: ['soundiiz.com'], pattern: /\/(?:playlist|share|transfer)/ },
+    { name: 'Great.dj', hosts: ['great.dj'], pattern: /\/(?:playlist|list)/ },
+    { name: 'theplaylist.fm', hosts: ['theplaylist.fm'], pattern: /\/(?:playlist|list)/ },
+    { name: 'Free Your Music', hosts: ['freeyourmusic.com'], pattern: /\/(?:playlist|transfer)/ },
+    { name: 'Crates', hosts: ['crates.app'], pattern: /\/(?:playlist|list)/ },
+    { name: 'Apple Podcasts', hosts: ['podcasts.apple.com'], pattern: /\/(?:playlist|list)/ },
+    { name: 'Pocket Casts', hosts: ['pocketcasts.com', 'pca.st'], pattern: /\/(?:playlist|queue|list)/ },
+    { name: 'Overcast', hosts: ['overcast.fm'], pattern: /\/(?:playlist|list)/ },
+    { name: 'Castro', hosts: ['castro.fm'], pattern: /\/(?:playlist|queue|list)/ }
+  ];
+  return providerRules.find(rule => (
+    rule.hosts.some(candidate => host === candidate || host.endsWith(`.${candidate}`))
+    && rule.pattern.test(path)
+  ))?.name || '';
+}
+
+function internetArchiveCollectionIdFromUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || ''));
+  } catch (_) {
+    return '';
+  }
+  if (!['http:', 'https:'].includes(url.protocol)
+      || url.username || url.password
+      || !['archive.org', 'www.archive.org'].includes(url.hostname.toLowerCase())) return '';
+  const match = url.pathname.match(/^\/details\/([^/]+)\/?$/i);
+  if (!match) return '';
+  let identifier = '';
+  try { identifier = decodeURIComponent(match[1]); } catch (_) { return ''; }
+  return /^[A-Za-z0-9._-]{1,128}$/.test(identifier) ? identifier : '';
+}
+
+function isInternetArchiveCollectionUrl(value) {
+  return !!internetArchiveCollectionIdFromUrl(value);
+}
+
+async function fetchInternetArchiveJson(url, timeoutMessage) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  let timeoutHandle = 0;
+  let timedOut = false;
+  const timeout = new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      controller?.abort();
+      reject(new InternetArchivePlaylistImportError('internet_archive_timeout', timeoutMessage));
+    }, INTERNET_ARCHIVE_API_REQUEST_TIMEOUT_MS);
+  });
+  try {
+    const request = (async () => {
+      const response = await fetch(url, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        ...(controller ? { signal: controller.signal } : {})
+      });
+      if (!response.ok) {
+        throw new InternetArchivePlaylistImportError('internet_archive_http_error', 'Internet Archive could not read this collection.');
+      }
+      try {
+        return await response.json();
+      } catch (_) {
+        throw new InternetArchivePlaylistImportError('internet_archive_invalid_response', 'Internet Archive returned an unreadable response.');
+      }
+    })();
+    return await Promise.race([request, timeout]);
+  } catch (error) {
+    if (error instanceof InternetArchivePlaylistImportError) throw error;
+    throw new InternetArchivePlaylistImportError(
+      timedOut ? 'internet_archive_timeout' : 'internet_archive_unavailable',
+      timedOut ? timeoutMessage : 'Could not reach the Internet Archive API from this browser.'
+    );
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
+async function fetchInternetArchiveCollectionCanonicalLinks(collectionUrl) {
+  const collectionId = internetArchiveCollectionIdFromUrl(collectionUrl);
+  if (!collectionId) {
+    throw new InternetArchivePlaylistImportError('internet_archive_invalid_url', 'Enter an Internet Archive collection URL.');
+  }
+
+  const itemMetadata = await fetchInternetArchiveJson(
+    `https://archive.org/metadata/${encodeURIComponent(collectionId)}`,
+    'Internet Archive collection lookup timed out. Try again.'
+  );
+  const metadataType = String(itemMetadata?.metadata?.mediatype || '').toLowerCase();
+  if (itemMetadata?.is_collection !== true && !['collection', 'collections'].includes(metadataType)) {
+    throw new InternetArchivePlaylistImportError('internet_archive_not_collection', 'This Internet Archive page is not a public collection.');
+  }
+
+  const links = [];
+  const seenIdentifiers = new Set();
+  const rowsPerPage = 100;
+  let page = 1;
+  let total = 0;
+  do {
+    const endpoint = new URL('https://archive.org/advancedsearch.php');
+    endpoint.searchParams.set('q', `collection:${collectionId}`);
+    endpoint.searchParams.append('fl[]', 'identifier');
+    endpoint.searchParams.append('fl[]', 'title');
+    endpoint.searchParams.append('fl[]', 'mediatype');
+    endpoint.searchParams.set('rows', String(rowsPerPage));
+    endpoint.searchParams.set('page', String(page));
+    endpoint.searchParams.set('output', 'json');
+
+    const payload = await fetchInternetArchiveJson(
+      endpoint.toString(),
+      'Internet Archive collection listing timed out. Try again.'
+    );
+    const response = payload?.response;
+    const docs = response?.docs;
+    const numFound = Number(response?.numFound);
+    if (!Array.isArray(docs) || !Number.isFinite(numFound) || numFound < 0) {
+      throw new InternetArchivePlaylistImportError('internet_archive_invalid_response', 'Internet Archive returned an unreadable collection listing.');
+    }
+    if (numFound > MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS) {
+      throw new InternetArchivePlaylistImportError(
+        'internet_archive_collection_too_large',
+        `This collection exceeds the ${MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS.toLocaleString()} item import limit.`
+      );
+    }
+    total = numFound;
+    for (const doc of docs) {
+      const identifier = String(doc?.identifier || '').trim();
+      if (!/^[A-Za-z0-9._-]{1,128}$/.test(identifier) || seenIdentifiers.has(identifier)) continue;
+      seenIdentifiers.add(identifier);
+      const title = sanitizeDisplayText(doc?.title || '', 180) || identifier;
+      links.push({
+        url: `https://archive.org/details/${encodeURIComponent(identifier)}`,
+        title,
+        identifier,
+        collectionId,
+        mediaType: String(doc?.mediatype || '')
+      });
+      if (links.length > MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS) {
+        throw new InternetArchivePlaylistImportError(
+          'internet_archive_collection_too_large',
+          `This collection exceeds the ${MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS.toLocaleString()} item import limit.`
+        );
+      }
+    }
+    if (!docs.length) break;
+    page++;
+  } while (links.length < total && page <= Math.ceil(MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS / rowsPerPage) + 1);
+
+  if (total > MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS || links.length < total) {
+    throw new InternetArchivePlaylistImportError(
+      'internet_archive_collection_too_large',
+      `This collection exceeds the ${MAX_INTERNET_ARCHIVE_COLLECTION_ITEMS.toLocaleString()} item import limit.`
+    );
+  }
+  if (!links.length) {
+    throw new InternetArchivePlaylistImportError('internet_archive_collection_empty', 'This Internet Archive collection has no public items to import.');
+  }
+  return links;
+}
+
+function youtubePlaylistIdFromUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || ''));
+  } catch (_) {
+    throw new YouTubePlaylistImportError('invalid_playlist_url', 'Enter a valid YouTube playlist URL.');
+  }
+  if (!['http:', 'https:'].includes(url.protocol)
+      || url.username || url.password
+      || !isYouTubePlaylistUrl(url.toString())) {
+    throw new YouTubePlaylistImportError('invalid_playlist_url', 'Enter a valid YouTube playlist URL.');
+  }
+  const playlistId = String(url.searchParams.get('list') || '').trim();
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(playlistId)) {
+    throw new YouTubePlaylistImportError('invalid_playlist_id', 'This YouTube link does not contain a valid playlist ID.');
+  }
+  return playlistId;
+}
+
+function readYouTubeApiKey() {
+  try {
+    return String(window.localStorage.getItem(YOUTUBE_API_KEY_STORAGE_KEY) || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+async function fetchYouTubePlaylistCanonicalLinks(playlistUrl) {
+  const playlistId = youtubePlaylistIdFromUrl(playlistUrl);
+  const apiKey = readYouTubeApiKey();
+  const accessToken = getYouTubeAccessToken(readYouTubeOAuthClientId());
+  if (!apiKey && !accessToken) {
+    throw new YouTubePlaylistImportError('youtube_credentials_missing', 'Add a restricted YouTube Data API key for public playlists, or connect Google in Configuration for account-only playlists.');
+  }
+
+  const links = [];
+  const seenVideoIds = new Set();
+  const seenPageTokens = new Set();
+  let pageToken = '';
+  do {
+    const endpoint = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+    endpoint.searchParams.set('part', 'snippet');
+    endpoint.searchParams.set('playlistId', playlistId);
+    endpoint.searchParams.set('maxResults', '50');
+    if (!accessToken && apiKey) endpoint.searchParams.set('key', apiKey);
+    if (pageToken) endpoint.searchParams.set('pageToken', pageToken);
+
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    let timedOut = false;
+    let timeoutHandle = 0;
+    const timeout = new Promise((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        controller?.abort();
+        reject(new YouTubePlaylistImportError('youtube_timeout', 'YouTube playlist lookup timed out. Try again.'));
+      }, YOUTUBE_API_REQUEST_TIMEOUT_MS);
+    });
+
+    try {
+      const request = (async () => {
+        const response = await fetch(endpoint.toString(), {
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-store',
+          referrerPolicy: 'strict-origin',
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+          ...(controller ? { signal: controller.signal } : {})
+        });
+        if (!response.ok) {
+          const message = response.status === 403
+            ? 'YouTube could not read this playlist. Check that it is public and your API key restrictions are correct, or connect the Google account that can access it.'
+            : response.status === 401
+              ? 'Google sign-in expired or could not access this playlist. Connect the Google account that can access it and try again.'
+            : response.status === 404
+              ? 'YouTube could not find this playlist or the selected credentials cannot access it. Connect Google for an account-only playlist.'
+              : 'YouTube playlist lookup failed. Check the API key and try again.';
+          throw new YouTubePlaylistImportError(`youtube_http_${response.status}`, message);
+        }
+        let payload;
+        try {
+          payload = await response.json();
+        } catch (_) {
+          throw new YouTubePlaylistImportError('youtube_invalid_response', 'YouTube returned an unreadable playlist response.');
+        }
+        if (!Array.isArray(payload?.items)) {
+          throw new YouTubePlaylistImportError('youtube_invalid_response', 'YouTube returned an unreadable playlist response.');
+        }
+        for (const playlistItem of payload.items) {
+          const videoId = String(playlistItem?.snippet?.resourceId?.videoId || '').trim();
+          if (!/^[A-Za-z0-9_-]{1,128}$/.test(videoId) || seenVideoIds.has(videoId)) continue;
+          seenVideoIds.add(videoId);
+          const title = sanitizeDisplayText(playlistItem?.snippet?.title || '', 180);
+          links.push({
+            videoId,
+            title: title || `YouTube video ${videoId}`,
+            url: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`,
+            playlistId
+          });
+          if (links.length > MAX_YOUTUBE_PLAYLIST_ITEMS) {
+            throw new YouTubePlaylistImportError('youtube_playlist_too_large', `This playlist exceeds the ${MAX_YOUTUBE_PLAYLIST_ITEMS.toLocaleString()} video import limit.`);
+          }
+        }
+        return String(payload.nextPageToken || '').trim();
+      })();
+      pageToken = await Promise.race([request, timeout]);
+    } catch (error) {
+      if (error instanceof YouTubePlaylistImportError) throw error;
+      throw new YouTubePlaylistImportError(
+        timedOut ? 'youtube_timeout' : 'youtube_unavailable',
+        timedOut
+          ? 'YouTube playlist lookup timed out. Try again.'
+          : 'Could not reach the YouTube Data API. Check the browser connection and API key restrictions.'
+      );
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+
+    if (pageToken && seenPageTokens.has(pageToken)) {
+      throw new YouTubePlaylistImportError('youtube_pagination_loop', 'YouTube returned a repeated playlist page. Import stopped safely.');
+    }
+    if (pageToken) seenPageTokens.add(pageToken);
+    if (links.length >= MAX_YOUTUBE_PLAYLIST_ITEMS && pageToken) {
+      throw new YouTubePlaylistImportError('youtube_playlist_too_large', `This playlist exceeds the ${MAX_YOUTUBE_PLAYLIST_ITEMS.toLocaleString()} video import limit.`);
+    }
+  } while (pageToken);
+
+  if (!links.length) {
+    throw new YouTubePlaylistImportError('youtube_playlist_empty', 'This playlist has no available video links to import.');
+  }
+  return links;
+}
+
+function addExternalLinkToLibrary(link, library = state.library) {
+  let parsedUrl;
+  try { parsedUrl = new URL(String(link?.url || '')); } catch (_) { parsedUrl = null; }
+  if (!parsedUrl || !['http:', 'https:'].includes(parsedUrl.protocol) || parsedUrl.username || parsedUrl.password) {
+    throw new Error('External playlist item did not contain a safe HTTP(S) URL.');
+  }
+  parsedUrl.hash = '';
+  const url = sanitizeImportPath(parsedUrl.toString());
+  if (!url) throw new Error('External playlist item did not contain a safe HTTP(S) URL.');
+  const provider = String(link?.provider || '').trim().toLowerCase();
+  const providerLabel = sanitizeDisplayText(link?.providerLabel || provider || 'External', 48) || 'External';
+  const title = sanitizeDisplayText(link?.title || '', 180) || url;
+  const name = `${providerLabel} - ${title}`;
+  const providerMetadata = provider === 'internet-archive' ? {
+    internetArchiveIdentifier: String(link?.identifier || ''),
+    internetArchiveCollectionId: String(link?.collectionId || ''),
+    internetArchiveMediaType: String(link?.mediaType || '')
+  } : provider === 'spotify' ? {
+    spotifyItemId: String(link?.itemId || ''),
+    spotifyItemType: String(link?.itemType || ''),
+    spotifyPlaylistId: String(link?.playlistId || '')
+  } : {};
+  const metadata = {
+    ...(link?.metadata || {}),
+    ...providerMetadata,
+    sourceUrl: url,
+    storageReference: url,
+    externalLinkOnly: true,
+    externalProvider: provider,
+    externalProviderLabel: providerLabel
+  };
+  const existing = Array.from(library.values()).find(item => (
+    sanitizeImportPath(item?.metadata?.storageReference || '') === url
+    || sanitizeImportPath(item?.sourceUrl || '') === url
+  ));
+  if (existing) {
+    existing.metadata = { ...(existing.metadata || {}), ...metadata };
+    existing.sourceUrl = url;
+    existing.pathHint = url;
+    existing.name = name;
+    existing.type = ['audio', 'image', 'video'].includes(link?.type) ? link.type : 'video';
+    existing.handle = remoteHandleFromUrl(url, name);
+    existing.stale = false;
+    return { id: existing.id, status: 'existing', item: existing };
+  }
+
+  const item = {
+    id: uid(),
+    handle: remoteHandleFromUrl(url, name),
+    name,
+    size: 0,
+    type: ['audio', 'image', 'video'].includes(link?.type) ? link.type : 'video',
+    duration: null,
+    pathHint: url,
+    sourceUrl: url,
+    metadata,
+    addedAt: Date.now(),
+    lastVerified: Date.now(),
+    stale: false,
+    importedFromExperience: false
+  };
+  item.handle.remote = true;
+  library.set(item.id, item);
+  return { id: item.id, status: 'added', item };
+}
+
+function addYouTubeLinkToLibrary(link, library = state.library) {
+  return addExternalLinkToLibrary({
+    url: link.url,
+    title: link.title,
+    type: 'video',
+    provider: 'youtube',
+    providerLabel: 'YouTube',
+    metadata: {
+      youtubeLinkOnly: true,
+      youtubeVideoId: link.videoId,
+      youtubePlaylistId: link.playlistId,
+      youtubeTitle: link.title
+    }
+  }, library);
 }
 
 function inputAcceptForMedia() {
@@ -6084,9 +7214,12 @@ function renderLibraryRow(index, row) {
   row = row || document.createElement('div');
   const selected = state.ui.selectedLibrary.has(id);
   const path = bestPathForItem(item);
-  const signature = `${id}|${item.name}|${path}|${item.size}|${item.type}|${item.stale ? 1 : 0}`;
+  const youtubeLinkOnly = item.metadata?.youtubeLinkOnly === true;
+  const externalLinkOnly = isLinkOnlyExternalItem(item);
+  const externalProviderLabel = sanitizeDisplayText(item.metadata?.externalProviderLabel || (youtubeLinkOnly ? 'YouTube' : 'External'), 48) || 'External';
+  const signature = `${id}|${item.name}|${path}|${item.size}|${item.type}|${item.stale ? 1 : 0}|${externalLinkOnly ? 1 : 0}|${externalProviderLabel}`;
 
-  row.className = `lib-card virtual-row ${item.stale ? 'stale' : ''} ${selected ? 'selected' : ''}`;
+  row.className = `lib-card virtual-row ${item.stale ? 'stale' : ''} ${selected ? 'selected' : ''} ${externalLinkOnly ? 'link-only' : ''}`;
   row.dataset.id = id;
   row.dataset.idx = index;
   row.tabIndex = 0;
@@ -6095,7 +7228,9 @@ function renderLibraryRow(index, row) {
   row.setAttribute('aria-selected', selected ? 'true' : 'false');
   row.setAttribute('aria-posinset', String(index + 1));
   row.setAttribute('aria-setsize', String(state.ui.visibleLibraryIds.length));
-  row.setAttribute('aria-label', `${item.name}, ${item.type}, ${formatBytes(item.size)}`);
+  row.setAttribute('aria-label', externalLinkOnly
+    ? `${item.name}, ${externalProviderLabel} link, not playable in Blend`
+    : `${item.name}, ${item.type}, ${formatBytes(item.size)}`);
 
   if (row.dataset.signature !== signature) {
     releaseThumbnailElement(row);
@@ -6106,7 +7241,7 @@ function renderLibraryRow(index, row) {
         <div class="name" title="${escapeHtml(path)}">${escapeHtml(item.name)}</div>
         <div class="sub">${escapeHtml(path)} • ${formatBytes(item.size)}</div>
       </div>
-      <div class="badge">${item.type}</div>
+      <div class="badge">${externalLinkOnly ? `${escapeHtml(externalProviderLabel)} link` : item.type}</div>
     `;
     row.dataset.signature = signature;
   }
@@ -6451,8 +7586,11 @@ function selectLibraryItem(id, event = {}) {
 
 function updateSelectedToolbar() {
   const n = state.ui.selectedLibrary.size;
+  const selectedLinkCount = Array.from(state.ui.selectedLibrary)
+    .filter(id => isLinkOnlyExternalItem(state.library.get(id))).length;
   const pl = $('#add-selected-playlist');
   const ss = $('#add-selected-slideshow');
+  const copyLinks = $('#copy-selected-external-urls');
   const del = $('#remove-selected-library');
   if (pl) {
     pl.textContent = n ? `Add Selected (${n}) → Playlist` : 'Add Selected → Playlist';
@@ -6461,6 +7599,10 @@ function updateSelectedToolbar() {
   if (ss) {
     ss.textContent = n ? `Add Selected (${n}) → Slideshow` : 'Add Selected → Slideshow';
     ss.disabled = n === 0;
+  }
+  if (copyLinks) {
+    copyLinks.textContent = selectedLinkCount ? `Copy Selected URLs (${selectedLinkCount})` : 'Copy Selected URLs';
+    copyLinks.disabled = selectedLinkCount === 0;
   }
   if (del) {
     del.textContent = n ? `Remove Selected (${n})` : 'Remove Selected';
@@ -6538,6 +7680,24 @@ function clearLibraryView() {
 
 function removeSelectedLibraryItems() {
   return deleteLibraryItems(Array.from(state.ui.selectedLibrary), { save: true });
+}
+
+async function copySelectedExternalUrls() {
+  const urls = Array.from(state.ui.selectedLibrary)
+    .map(id => state.library.get(id))
+    .filter(item => isLinkOnlyExternalItem(item))
+    .map(item => sanitizeImportPath(item.sourceUrl || item.metadata?.storageReference || ''))
+    .filter(Boolean);
+  const uniqueUrls = Array.from(new Set(urls));
+  if (!uniqueUrls.length) {
+    showToast('Select one or more link-only items first.', { timeout: 2200 });
+    return false;
+  }
+  const copied = await copyToClipboard(uniqueUrls.join('\n'));
+  showToast(copied
+    ? `Copied ${uniqueUrls.length} canonical URL${uniqueUrls.length === 1 ? '' : 's'}.`
+    : 'Could not copy the selected URLs.', { timeout: 2600 });
+  return copied;
 }
 
 async function removeStale() {
@@ -6771,6 +7931,7 @@ function isPlayableListRef(which, ref) {
   }
   const item = state.library.get(ref.id);
   if (!item) return false;
+  if (isLinkOnlyExternalItem(item)) return false;
   if (!isAllowedListType(which, item.type)) return false;
   if (isRemotePlayableItem(item, ref)) return true;
   if (item.stale || !item.handle || typeof item.handle.getFile !== 'function') return false;
@@ -7017,6 +8178,13 @@ async function playSlideshowAtIndex(startIndex, opts = {}) {
     updateHUD();
     return false;
   }
+  const attempted = opts.attempted instanceof Set ? opts.attempted : new Set();
+  if (attempted.size >= state.slideshow.length) {
+    clearSlideshowPlayback();
+    markLayerComplete('slideshow', opts.reason || 'exhausted');
+    updateHUD();
+    return false;
+  }
   const direction = opts.direction ?? 1;
   const allowWrap = opts.allowWrap !== false;
   const requestedIndex = Number.isFinite(startIndex) ? Math.floor(startIndex) : 0;
@@ -7032,6 +8200,13 @@ async function playSlideshowAtIndex(startIndex, opts = {}) {
     return false;
   }
   const ref = state.slideshow[idx];
+  const attemptKey = `${idx}:${ref?.id || ''}`;
+  if (attempted.has(attemptKey)) {
+    clearSlideshowPlayback();
+    updateHUD();
+    return false;
+  }
+  attempted.add(attemptKey);
   const requestContext = opts.requestContext || beginPlaybackRequest('slideshow', ref?.id || '');
   if (!isPlaybackRequestCurrent('slideshow', requestContext)) return false;
   state.runtime.slideshowIndex = idx;
@@ -7043,7 +8218,7 @@ async function playSlideshowAtIndex(startIndex, opts = {}) {
     return true;
   }
   if (opts.strictIndex) return false;
-  return playSlideshowAtIndex(idx + direction, { ...opts, requestContext, allowWrap });
+  return playSlideshowAtIndex(idx + direction, { ...opts, requestContext, attempted, allowWrap });
 }
 
 function showResumeOnLoadNotice(message) {
@@ -8280,9 +9455,10 @@ function addToList(which, ids) {
   const list = which === 'playlist' ? state.playlist : state.slideshow;
   const allowed = which === 'playlist' ? ['video','audio'] : ['video','image'];
 
-  let added = 0, rejected = 0, firstIndex = list.length;
+  let added = 0, rejected = 0, rejectedExternalLinks = 0, firstIndex = list.length;
   ids.forEach(id => {
     const item = state.library.get(id);
+    if (isLinkOnlyExternalItem(item)) { rejected++; rejectedExternalLinks++; return; }
     if (!item || !allowed.includes(item.type)) { rejected++; return; }
     if (list.some(r => r.id === id)) return; // dedupe
     list.push(createListRef(which, item));
@@ -8292,9 +9468,11 @@ function addToList(which, ids) {
     setActiveList(which);
     saveStateDebounced();
     scrollListItemIntoView(firstIndex);
-    showToast(`Added ${added} to ${which}`);
+    showToast(`Added ${added} to ${which}${rejectedExternalLinks ? `. Skipped ${rejectedExternalLinks} external link${rejectedExternalLinks === 1 ? '' : 's'} because Blend stores them as URLs only.` : ''}`);
   } else {
-    showToast(rejected ? (which === 'playlist' ? 'Playlist only accepts video & audio' : 'Slideshow only accepts images & video') : `Already in ${which}`, {timeout: 1800});
+    showToast(rejectedExternalLinks
+      ? 'External playlist URLs are stored as links only and cannot be added to playable lists.'
+      : (rejected ? (which === 'playlist' ? 'Playlist only accepts video & audio' : 'Slideshow only accepts images & video') : `Already in ${which}`), {timeout: 2200});
   }
   return { added, firstIndex };
 }
@@ -8302,16 +9480,23 @@ function addToList(which, ids) {
 function insertIntoListAt(which, ids, atIndex) {
   const list = which === 'playlist' ? state.playlist : state.slideshow;
   const allowed = which === 'playlist' ? ['video','audio'] : ['video','image'];
-  let added = 0, rejected = 0, firstIndex = atIndex;
+  let added = 0, rejected = 0, rejectedExternalLinks = 0, firstIndex = atIndex;
   ids.forEach(id => {
     const item = state.library.get(id);
+    if (isLinkOnlyExternalItem(item)) { rejected++; rejectedExternalLinks++; return; }
     if (!item || !allowed.includes(item.type)) { rejected++; return; }
     if (list.some(r => r.id === id)) return;
     list.splice(atIndex, 0, createListRef(which, item));
     atIndex++;
     added++;
   });
-  if (!added && rejected) showToast(which === 'playlist' ? 'Playlist only accepts video & audio' : 'Slideshow only accepts images & video', { timeout: 1800 });
+  if (rejectedExternalLinks) {
+    showToast(added
+      ? `Skipped ${rejectedExternalLinks} external link${rejectedExternalLinks === 1 ? '' : 's'} because Blend stores them as URLs only.`
+      : 'External playlist URLs are stored as links only and cannot be added to playable lists.', { timeout: 2200 });
+  } else if (!added && rejected) {
+    showToast(which === 'playlist' ? 'Playlist only accepts video & audio' : 'Slideshow only accepts images & video', { timeout: 1800 });
+  }
   setActiveList(which);
   saveStateDebounced();
   if (added) scrollListItemIntoView(firstIndex);
@@ -8926,6 +10111,12 @@ async function loadPlaylistItem(itemRef, useB = false, opts = {}) {
       return loadPlaylistItem(itemRef, useB, { ...opts, retryAttempt: (Number(opts.retryAttempt) || 0) + 1 });
     } else if (failure.transient) {
       markRemoteMediaFailure('playlist', item, itemRef, failure);
+    } else if (item?.metadata?.lastStorageError === 'storage_policy_unverified') {
+      item.stale = false;
+      clearRemoteMediaFailure(itemRef);
+      itemRef.available = true;
+      delete itemRef.reason;
+      showPrivateStorageSigningUnavailable();
     } else if (item?.metadata?.lastStorageError === 'auth_required') {
       markMediaAuthRequired(item, itemRef);
       showPrivateMediaAuthPrompt(isExpiredStoredSignedUrl(
@@ -9073,6 +10264,12 @@ async function loadSlideshowItem(itemRef, withCrossfade = true, opts = {}) {
     }
     if (failure.transient) {
       markRemoteMediaFailure('slideshow', item, itemRef, failure);
+    } else if (item?.metadata?.lastStorageError === 'storage_policy_unverified') {
+      item.stale = false;
+      clearRemoteMediaFailure(itemRef);
+      itemRef.available = true;
+      delete itemRef.reason;
+      showPrivateStorageSigningUnavailable();
     } else if (item?.metadata?.lastStorageError === 'auth_required') {
       markMediaAuthRequired(item, itemRef);
       showPrivateMediaAuthPrompt(isExpiredStoredSignedUrl(
@@ -9857,15 +11054,49 @@ async function waitForDatabaseRecovery() {
   return result === true;
 }
 
+function getBrowserResetStorageAccessError() {
+  try {
+    const storage = window.localStorage;
+    if (!storage || typeof storage.getItem !== 'function') return 'LocalStorage';
+    storage.getItem(RUNTIME_CONFIG.runtimeConfigKey);
+    storage.getItem(YOUTUBE_API_KEY_STORAGE_KEY);
+    storage.getItem(SPOTIFY_CLIENT_ID_STORAGE_KEY);
+    storage.getItem(YOUTUBE_OAUTH_CLIENT_ID_STORAGE_KEY);
+  } catch (_) {
+    return 'LocalStorage';
+  }
+  try {
+    const storage = window.sessionStorage;
+    if (storage && typeof storage.getItem === 'function') {
+      storage.getItem('blend-runtime-config-tab-v1');
+      storage.getItem('blend-runtime-config-review-v1');
+      storage.getItem(SPOTIFY_TOKEN_SESSION_STORAGE_KEY);
+      storage.getItem(SPOTIFY_OAUTH_TRANSACTION_SESSION_STORAGE_KEY);
+      storage.getItem('blend-playlist-provider-oauth-pending-v1');
+    }
+  } catch (_) {
+    return 'session storage';
+  }
+  return '';
+}
+
 async function clearBrowserStorage() {
   const confirmed = await showExperienceDialog({
     title: 'Clear browser storage',
     mode: 'confirm',
-    message: 'This removes Blend browser data only: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings and any remembered Git credential, and the saved Supabase session. Operator-managed runtime configuration (blend-runtime-config-v1) is preserved so its connection settings remain available. Your media files on disk are not touched.',
+    message: 'This removes Blend browser data: library entries, playlists, slideshows, experiences, settings, cached thumbnails, saved media access handles, public Git catalog settings, Git repository settings, remembered Git credentials, the saved Supabase session and its runtime connection settings, YouTube API and OAuth client IDs and its tab access token, Spotify app client ID and tab session, pending provider playlist URLs, and this tab’s connection review state. It also disconnects any Vimeo, Dailymotion, or SoundCloud playlist provider session. Your media files on disk are not touched.',
     okText: '✓ Clear Browser Storage',
     okDanger: true
   });
   if (!confirmed) return false;
+
+  const storageAccessError = getBrowserResetStorageAccessError();
+  if (storageAccessError) {
+    showToast(storageAccessError === 'LocalStorage'
+      ? 'Browser reset could not access LocalStorage. Saved connection settings were not confirmed cleared, and no reset data was deleted.'
+      : 'Browser reset could not access session storage. Tab-scoped connection settings were not confirmed cleared, and no reset data was deleted.', { timeout: 6500 });
+    return false;
+  }
 
   if (!(await waitForDatabaseRecovery())) {
     showToast('Browser reset could not continue. The local session was not changed by this attempt, and saved Blend data recovery could not be confirmed. Close other Blend tabs and try again.', { timeout: 6500 });
@@ -9953,11 +11184,10 @@ async function clearBrowserStorage() {
     currentSlideshowItem = null;
     isMuted = false;
     lastNonZeroMasterVolume = DEFAULT_SETTINGS.masterVolume;
-    setActiveExperienceId(null);
-
     const cleanupFailures = [];
     const cleanupResults = {
       indexedDB: 'deleted',
+      runtimeConfig: 'not attempted',
       serviceWorkerRuntimeCaches: 'not attempted',
       cacheStorage: 'not attempted',
       serviceWorkerRegistrations: 'not attempted',
@@ -10020,12 +11250,80 @@ async function clearBrowserStorage() {
       cleanupFailures.push('the Blend database');
     }
 
-    localStorage.removeItem(EXPERIENCE_ACTIVE_KEY);
-    localStorage.removeItem(INSTALL_BANNER_KEY);
-    localStorage.removeItem(WELCOME_KEY);
-    localStorage.removeItem(ANALYTICS_CONSENT_KEY);
-    localStorage.removeItem(MASTODON_INSTANCE_KEY);
-    localStorage.removeItem(publicCatalogConfigKey());
+    try {
+      const storage = window.localStorage;
+      for (const key of [
+        EXPERIENCE_ACTIVE_KEY,
+        INSTALL_BANNER_KEY,
+        WELCOME_KEY,
+        ANALYTICS_CONSENT_KEY,
+        MASTODON_INSTANCE_KEY,
+        publicCatalogConfigKey(),
+        YOUTUBE_API_KEY_STORAGE_KEY,
+        SPOTIFY_CLIENT_ID_STORAGE_KEY,
+        YOUTUBE_OAUTH_CLIENT_ID_STORAGE_KEY
+      ]) {
+        storage.removeItem(key);
+      }
+    } catch (error) {
+      log.warn('browser storage clear: selected LocalStorage cleanup failed', error);
+      cleanupFailures.push('Blend LocalStorage settings');
+    }
+    try {
+      const spotifySessionCleared = clearSpotifySession();
+      if (!spotifySessionCleared) cleanupFailures.push('Spotify tab credentials');
+    } catch (_) {
+      cleanupFailures.push('Spotify tab credentials');
+    }
+    if (!clearProviderPlaylistOAuthPendingImport()) cleanupFailures.push('pending playlist import URLs');
+    clearYouTubeOAuthSession();
+    try {
+      const providerOAuthStatus = await getProviderPlaylistOAuthStatus();
+      if (providerOAuthStatus && !(await disconnectProviderPlaylistOAuth())) {
+        cleanupFailures.push('playlist provider account session');
+      }
+    } catch (_) {
+      cleanupFailures.push('playlist provider account session');
+    }
+    try {
+      if (!window.localStorage.getItem(YOUTUBE_API_KEY_STORAGE_KEY)) {
+        const apiKeyInput = $('#youtube-api-key');
+        const apiKeyStatus = $('#youtube-api-key-status');
+        if (apiKeyInput) apiKeyInput.value = '';
+        if (apiKeyStatus) {
+          apiKeyStatus.textContent = 'Saved YouTube API key removed from this browser.';
+          apiKeyStatus.dataset.state = 'idle';
+        }
+      }
+    } catch (_) {}
+    try {
+      const googleOAuthClientIdInput = $('#youtube-oauth-client-id');
+      if (!window.localStorage.getItem(YOUTUBE_OAUTH_CLIENT_ID_STORAGE_KEY)) {
+        if (googleOAuthClientIdInput) googleOAuthClientIdInput.value = '';
+      }
+      setYouTubeOAuthStatus('YouTube OAuth client ID and tab token removed from this browser.', 'idle');
+      const googleConnect = $('#youtube-oauth-connect');
+      const googleDisconnect = $('#youtube-oauth-disconnect');
+      if (googleConnect) googleConnect.disabled = true;
+      if (googleDisconnect) googleDisconnect.disabled = true;
+    } catch (_) {}
+    try {
+      const spotifyClientIdInput = $('#spotify-client-id');
+      if (!window.localStorage.getItem(SPOTIFY_CLIENT_ID_STORAGE_KEY)) {
+        if (spotifyClientIdInput) spotifyClientIdInput.value = '';
+      }
+      setSpotifyImportStatus('Spotify app client ID and tab credentials removed from this browser.', 'idle');
+      const spotifyConnect = $('#spotify-connect');
+      const spotifyDisconnect = $('#spotify-disconnect');
+      if (spotifyConnect) spotifyConnect.disabled = true;
+      if (spotifyDisconnect) spotifyDisconnect.disabled = true;
+    } catch (_) {}
+    const runtimeConfigCleared = clearBlendRuntimeConfig();
+    cleanupResults.runtimeConfig = runtimeConfigCleared ? 'completed' : 'failed';
+    if (!runtimeConfigCleared) {
+      log.warn('browser storage clear: saved connection settings cleanup was not confirmed');
+      cleanupFailures.push('saved Supabase connection settings');
+    }
     const hadRememberedGitCredential = getGitPlaylistClient().hasRememberedCredential();
     const gitCredentialRemoved = getGitPlaylistClient().forgetCredential();
     const gitSettingsRemoved = removeGitPlaylistSettings(gitPlaylistStorage());
@@ -10064,10 +11362,13 @@ async function clearBrowserStorage() {
     updateHUD();
     syncIpfsControls();
     if (cleanupFailures.length) {
-      showToast(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${cleanupFailures.join(', ')}.`, { timeout: 7000 });
+      const connectionSettingsFailure = cleanupFailures.includes('saved Supabase connection settings')
+        ? ' Saved connection settings could not be confirmed cleared.'
+        : '';
+      showToast(`Saved Blend data and the local Supabase session were cleared from this browser. Cleanup still needs attention: ${cleanupFailures.join(', ')}.${connectionSettingsFailure}`, { timeout: 7000 });
       return false;
     }
-    showToast('Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.', { timeout: 5000 });
+    showToast('Browser data cleared. Saved Supabase, YouTube, and Spotify settings, YouTube and Spotify tab credentials, Git credentials, Git repository settings, public Git catalog settings, and saved connection settings were removed. Host-injected deployment settings remain available, and other apps on this site were left alone.', { timeout: 5000 });
     return true;
   } catch (_) {
     showToast('Browser reset incomplete. The saved Supabase session and Blend database were cleared from this browser, but some other browser data could not be cleared.', { timeout: 6000 });
@@ -11843,7 +13144,7 @@ function wireGitPlaylistControls() {
   updateGitPlaylistControls();
 }
 
-function wireConfig() {
+function wireConfig({ spotifyCallbackOutcome = null, providerOAuthCallbackOutcome = null } = {}) {
   const experienceSelect = $('#experience-select');
   experienceSelect.onchange = async (e) => {
     const targetId = String(e.target.value || '');
@@ -11872,6 +13173,11 @@ function wireConfig() {
   const shareUrlBtn = $('#experience-share-url');
   if (shareUrlBtn) shareUrlBtn.onclick = () => { void shareExperienceViaUrl(); };
   $('#clear-browser-storage').onclick = clearBrowserStorage;
+  initializeRuntimeConfigReviewControls();
+  initializeYouTubeApiKeyControls();
+  initializeYouTubeOAuthControls();
+  initializeSpotifyPlaylistControls(spotifyCallbackOutcome);
+  initializePlaylistProviderApiControls(providerOAuthCallbackOutcome);
   wirePublicCatalogControls();
   wireGitPlaylistControls();
 
@@ -11893,6 +13199,7 @@ function wireConfig() {
     addToList('slideshow', ids);
     clearLibrarySelection({ render: true });
   };
+  $('#copy-selected-external-urls').onclick = () => { void copySelectedExternalUrls(); };
   $('#remove-selected-library').onclick = removeSelectedLibraryItems;
 
   // search
@@ -12313,6 +13620,7 @@ function parseExperienceImportPayload(parsed) {
   const slideshowBranch = parsed.slideshow ? parseJsonImportPayload(parsed.slideshow) : { entries: [], meta: null };
   return {
     name: normalizeExperienceName(parsed.name || parsed.project || parsed.projectName || parsed.experienceName || parsed.title || DEFAULT_EXPERIENCE_NAME),
+    sourceDocument: clonePlain(parsed),
     settings: {
       ...DEFAULT_SETTINGS,
       ...(parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {})
@@ -13412,9 +14720,9 @@ async function promptExperienceName(title, initialValue, ignoreId = null, messag
 async function promptMediaUrl() {
   const value = await showExperienceDialog({
     title: 'Add media URL',
-    message: 'Paste an http(s), supabase://, or legacy ipfs:// media reference.',
+    message: 'Paste direct media URLs, an accessible HTML folder listing, or a YouTube, Spotify, Apple Music, Vimeo showcase, Dailymotion, SoundCloud, or public Internet Archive playlist or collection. YouTube requires a restricted API key or Google sign-in. Spotify requires account sign-in. Apple Music and public SoundCloud playlists require the Blend provider API service. Vimeo requires the showcase owner to sign in; Dailymotion requires provider sign-in. Playlist entries are stored as links only.',
     labelText: 'Media URL',
-    placeholder: 'supabase://media/path/to/media.mp4',
+    placeholder: 'A playlist link, Internet Archive collection, or https://example.com/media/',
     okText: 'Add',
     normalizeInput: false,
     validateInput: inputValue => {
@@ -13430,31 +14738,187 @@ async function promptMediaUrl() {
     .filter(part => isPortableRemoteRef(part, { allowSupabaseBucketPath: true }));
 }
 
+function safeAddUrlErrorCode(error) {
+  if (typeof error?.code === 'string' && error.code) return error.code;
+  if (error?.message === 'URL does not point to supported media') return 'unsupported_media_type';
+  if (String(error?.message || '').startsWith('Please enter an http(s), supabase://, or ipfs://')) return 'invalid_media_reference';
+  return 'unexpected_error';
+}
+
 async function addUrlsFromPrompt() {
   const urls = await promptMediaUrl();
   if (!urls.length) return null;
+  return processUrlImports(urls);
+}
 
+async function processUrlImports(urls) {
+  if (!Array.isArray(urls) || !urls.length) return null;
   let added = 0;
   let existing = 0;
   let failed = 0;
-  for (const url of urls) {
+  let folderFailures = 0;
+  let unsupportedPlaylistFailures = 0;
+  const playlistFailures = new Map();
+  const linkAddedByProvider = new Map();
+  const unsupportedPlaylistProviders = new Set();
+  let playlistLinksProcessed = 0;
+
+  const importPlaylist = async (url, provider, providerLabel, fetchLinks, pendingUrls = []) => {
     try {
-      const result = await addRemoteMediaUrl(url, { pathHint: url, metadata: { sourceUrl: url } });
-      if (result?.status === 'existing') existing++;
-      else if (result?.id) added++;
+      const links = await fetchLinks(url);
+      for (const link of links) {
+        playlistLinksProcessed++;
+        const result = provider === 'youtube'
+          ? addYouTubeLinkToLibrary(link)
+          : addExternalLinkToLibrary({ ...link, provider, providerLabel });
+        if (result?.status === 'existing') {
+          existing++;
+        } else if (result?.id) {
+          added++;
+          linkAddedByProvider.set(providerLabel, (linkAddedByProvider.get(providerLabel) || 0) + 1);
+        }
+      }
     } catch (error) {
+      if (provider === 'spotify' && error?.code === 'spotify_auth_required') {
+        const spotifyClientId = readSpotifyClientId();
+        if (spotifyClientId) {
+          try {
+            await beginSpotifyAuthorization({
+              clientId: spotifyClientId,
+              pendingUrls: pendingUrls.length ? pendingUrls : [url]
+            });
+            return true;
+          } catch (authError) {
+            error = authError;
+          }
+        }
+      }
+      if (error?.code === 'playlist_provider_auth_required') {
+        try {
+          await beginProviderPlaylistOAuth({ provider, pendingUrls: pendingUrls.length ? pendingUrls : [url] });
+          return true;
+        } catch (authError) {
+          error = authError;
+        }
+      }
       failed++;
-      const code = error && typeof error.code === 'string' ? error.code : 'unexpected_error';
+      playlistFailures.set(providerLabel, (playlistFailures.get(providerLabel) || 0) + 1);
+      const code = safeAddUrlErrorCode(error);
       log.warn('Add URL failed', { code });
+    }
+    return false;
+  };
+
+  for (let urlIndex = 0; urlIndex < urls.length; urlIndex++) {
+    const url = urls[urlIndex];
+    if (isYouTubePlaylistUrl(url)) {
+      await importPlaylist(url, 'youtube', 'YouTube', fetchYouTubePlaylistCanonicalLinks);
+      continue;
+    }
+
+    if (isSpotifyPlaylistUrl(url)) {
+      const redirecting = await importPlaylist(url, 'spotify', 'Spotify', playlistUrl => fetchSpotifyPlaylistCanonicalLinks(playlistUrl, {
+        clientId: readSpotifyClientId()
+      }), urls.slice(urlIndex));
+      if (redirecting) return { added, existing, failed, redirecting: true };
+      continue;
+    }
+
+    if (isInternetArchiveCollectionUrl(url)) {
+      await importPlaylist(url, 'internet-archive', 'Internet Archive', fetchInternetArchiveCollectionCanonicalLinks);
+      continue;
+    }
+
+    const officialPlaylistProvider = officialPlaylistProviderFromUrl(url);
+    if (officialPlaylistProvider) {
+      const redirecting = await importPlaylist(
+        url,
+        officialPlaylistProvider.provider,
+        officialPlaylistProvider.label,
+        fetchOfficialPlaylistCanonicalLinks,
+        urls.slice(urlIndex)
+      );
+      if (redirecting) return { added, existing, failed, redirecting: true };
+      continue;
+    }
+
+    const unsupportedProvider = unsupportedPlaylistProviderFromUrl(url);
+    if (unsupportedProvider) {
+      failed++;
+      unsupportedPlaylistFailures++;
+      unsupportedPlaylistProviders.add(unsupportedProvider);
+      log.warn('Add URL failed', { code: 'playlist_provider_unavailable' });
+      continue;
+    }
+
+    let mediaUrls = [url];
+    if (isRemoteMediaDirectoryUrl(url)) {
+      try {
+        mediaUrls = await discoverRemoteDirectoryMediaUrls(url);
+      } catch (error) {
+        failed++;
+        folderFailures++;
+        const code = safeAddUrlErrorCode(error);
+        log.warn('Add URL failed', { code });
+        continue;
+      }
+    }
+
+    for (const mediaUrl of mediaUrls) {
+      try {
+        const result = await addRemoteMediaUrl(mediaUrl, { pathHint: mediaUrl, metadata: { sourceUrl: mediaUrl } });
+        if (result?.status === 'existing') existing++;
+        else if (result?.id) added++;
+      } catch (error) {
+        failed++;
+        const code = safeAddUrlErrorCode(error);
+        log.warn('Add URL failed', { code });
+      }
     }
   }
 
   renderLibrary();
   const saved = await saveStateNow();
   if (saved && (added || existing)) {
-    showToast(`Added ${added} URL item${added === 1 ? '' : 's'}${existing ? ` (${existing} already present)` : ''}`);
+    const externalLinksAdded = Array.from(linkAddedByProvider.values()).reduce((sum, count) => sum + count, 0);
+    const mediaAdded = added - externalLinksAdded;
+    const summaries = [];
+    if (mediaAdded) summaries.push(`Added ${mediaAdded} media item${mediaAdded === 1 ? '' : 's'}`);
+    for (const [providerLabel, count] of linkAddedByProvider) {
+      summaries.push(`Stored ${count} ${providerLabel} link${count === 1 ? '' : 's'}`);
+    }
+    if (existing) summaries.push(`${existing} already present`);
+    const playlistLinksWereImported = playlistLinksProcessed > 0;
+    showToast(`${summaries.join('; ')}${playlistLinksWereImported ? '. Playlist URLs are saved as links and are not playable in Blend.' : ''}`, { timeout: playlistLinksWereImported ? 5000 : 3200 });
   }
-  if (failed) showToast(`Skipped ${failed} URL${failed === 1 ? '' : 's'} that could not be fetched`, { timeout: 3200 });
+  if (folderFailures) {
+    showToast(`Could not import ${folderFailures} folder listing${folderFailures === 1 ? '' : 's'}. Check that each page has supported same-origin media links and is accessible from this app.`, { timeout: 5000 });
+  }
+  const youtubeFailures = playlistFailures.get('YouTube') || 0;
+  if (youtubeFailures) {
+    showToast(`Could not import ${youtubeFailures} YouTube playlist${youtubeFailures === 1 ? '' : 's'}. Check the restricted API key for public playlists, or connect the Google account that can access an account-only playlist.`, { timeout: 6000 });
+  }
+  const internetArchiveFailures = playlistFailures.get('Internet Archive') || 0;
+  if (internetArchiveFailures) {
+    showToast(`Could not import ${internetArchiveFailures} Internet Archive collection${internetArchiveFailures === 1 ? '' : 's'}. Check that each collection is public and available through the Internet Archive API.`, { timeout: 5000 });
+  }
+  const spotifyFailures = playlistFailures.get('Spotify') || 0;
+  if (spotifyFailures) {
+    showToast(`Could not import ${spotifyFailures} Spotify playlist${spotifyFailures === 1 ? '' : 's'}. Check the client ID, Spotify sign-in, registered redirect URL, and whether the connected account owns or collaborates on each playlist.`, { timeout: 6500 });
+  }
+  for (const [providerLabel, count] of playlistFailures) {
+    if (providerLabel === 'YouTube' || providerLabel === 'Internet Archive' || providerLabel === 'Spotify') continue;
+    showToast(`Could not import ${count} ${providerLabel} playlist${count === 1 ? '' : 's'}. Check the playlist access and provider connection.`, { timeout: 5000 });
+  }
+  if (unsupportedPlaylistFailures) {
+    const providers = Array.from(unsupportedPlaylistProviders).join(', ');
+    showToast('Playlist import for ' + providers + ' is not connected in this build. Blend supports YouTube/YouTube Music, Spotify playlists available to the connected account, public Internet Archive collections, and configured Apple Music, Vimeo, Dailymotion, and SoundCloud playlists.', { timeout: 6500 });
+  }
+  const failedPlaylistUrls = Array.from(playlistFailures.values()).reduce((sum, count) => sum + count, 0);
+  const failedMediaUrls = failed - folderFailures - failedPlaylistUrls - unsupportedPlaylistFailures;
+  if (failedMediaUrls) {
+    showToast(`Skipped ${failedMediaUrls} media URL${failedMediaUrls === 1 ? '' : 's'} that could not be added`, { timeout: 3200 });
+  }
   return { added, existing, failed };
 }
 
@@ -13617,6 +15081,7 @@ async function importExperienceFromFile(file, importOpts = {}) {
   let previousActiveMarker = null;
   let previousPersistRecords = null;
   let importedRecordId = null;
+  let replacedActiveExperience = false;
   let initialStateFingerprint = null;
   let storageCommitCompleted = false;
   let liveStateChanged = false;
@@ -13701,7 +15166,12 @@ async function importExperienceFromFile(file, importOpts = {}) {
     });
 
     if (onProgress) onProgress(90, 'Saving to storage…');
-    const name = ensureUniqueExperienceName(payload.name || basenameFromPath(file.name) || DEFAULT_EXPERIENCE_NAME);
+    const replaceActiveId = importOpts.replaceActive === true ? state.activeExperienceId : null;
+    replacedActiveExperience = !!replaceActiveId;
+    const name = ensureUniqueExperienceName(
+      payload.name || basenameFromPath(file.name) || DEFAULT_EXPERIENCE_NAME,
+      replaceActiveId
+    );
     const snapshot = createBlankExperienceSnapshot(name, payload.settings);
     snapshot.playlist = playlist.items;
     snapshot.slideshow = slideshow.items;
@@ -13712,20 +15182,26 @@ async function importExperienceFromFile(file, importOpts = {}) {
     snapshot.ui = payload.ui;
 
     const record = makeExperienceRecord(snapshot, {
-      id: `exp-${uid()}`,
+      id: replaceActiveId || `exp-${uid()}`,
       name,
+      syncDocument: payload.sourceDocument,
       uniqueName: true
     });
-    importedRecordId = record.id;
+    importedRecordId = replacedActiveExperience ? null : record.id;
 
     const currentActiveRecord = serializeActiveExperience();
-    stagedExperiences = state.experiences.map(exp =>
-      exp.id === currentActiveRecord.id ? currentActiveRecord : exp
-    );
-    if (!stagedExperiences.some(exp => exp.id === currentActiveRecord.id)) {
-      stagedExperiences.push(currentActiveRecord);
+    if (replacedActiveExperience) {
+      stagedExperiences = state.experiences.map(exp => exp.id === record.id ? record : exp);
+      if (!stagedExperiences.some(exp => exp.id === record.id)) stagedExperiences.push(record);
+    } else {
+      stagedExperiences = state.experiences.map(exp =>
+        exp.id === currentActiveRecord.id ? currentActiveRecord : exp
+      );
+      if (!stagedExperiences.some(exp => exp.id === currentActiveRecord.id)) {
+        stagedExperiences.push(currentActiveRecord);
+      }
+      stagedExperiences.push(record);
     }
-    stagedExperiences.push(record);
     stagedExperiences = sortExperienceRecords(stagedExperiences);
     const stagedRecords = experiencePersistenceRecords(record, {
       snapshot: record.payload,
@@ -13861,6 +15337,16 @@ async function importExperienceFromFile(file, importOpts = {}) {
     }
     return null;
   }
+}
+
+async function importExperiencePayload(payload, importOpts = {}) {
+  let serialized;
+  try { serialized = JSON.stringify(payload); } catch (_) {
+    throw new Error('The saved Experience could not be serialized for local import.');
+  }
+  if (typeof serialized !== 'string') throw new Error('The saved Experience is invalid.');
+  const file = new File([serialized], 'blend-profile-experience.json', { type: 'application/json' });
+  return importExperienceFromFile(file, { ...importOpts, suppressToast: importOpts.suppressToast !== false });
 }
 
 function downloadExampleList() {
@@ -14021,6 +15507,26 @@ function setBootstrapStage(stage) {
 }
 
 async function runBootstrap() {
+  let spotifyCallbackOutcome = null;
+  let providerOAuthCallbackOutcome = null;
+  try {
+    spotifyCallbackOutcome = await consumeSpotifyAuthorizationCallback();
+  } catch (error) {
+    spotifyCallbackOutcome = {
+      success: false,
+      message: error?.message || 'Spotify sign-in could not be completed.'
+    };
+    log.warn('Spotify playlist sign-in failed', { code: safeAddUrlErrorCode(error) });
+  }
+  try {
+    providerOAuthCallbackOutcome = consumeProviderPlaylistOAuthCallback();
+  } catch (error) {
+    providerOAuthCallbackOutcome = {
+      success: false,
+      message: error?.message || 'Playlist provider sign-in could not be completed.'
+    };
+    log.warn('Playlist provider sign-in failed', { code: safeAddUrlErrorCode(error) });
+  }
   setBootstrapStage('read_startup_request');
   pendingDeepLinkRequest = parseDeepLinkRequest();
   pendingIpfsExperienceRequest = parseIpfsExperienceRequest();
@@ -14044,7 +15550,7 @@ async function runBootstrap() {
   setupMediaLayers();
   setupTransitionManager();
   wireTransport();
-  wireConfig();
+  wireConfig({ spotifyCallbackOutcome, providerOAuthCallbackOutcome });
   wireInfoDialog();
   wireKeyboard();
   setConfigStartupState('');
@@ -14063,6 +15569,13 @@ async function runBootstrap() {
   renderListEditor();
   setBlend(state.settings.opacity || 0.5);
   activateExperienceContext(activeExperienceContext || buildProjectContext(), { trackVirtualPage: true, trigger: 'app_bootstrap' });
+
+  if (spotifyCallbackOutcome?.success && spotifyCallbackOutcome.pendingUrls?.length) {
+    window.setTimeout(() => { void processUrlImports(spotifyCallbackOutcome.pendingUrls); }, 0);
+  }
+  if (providerOAuthCallbackOutcome?.success && providerOAuthCallbackOutcome.pendingUrls?.length) {
+    window.setTimeout(() => { void processUrlImports(providerOAuthCallbackOutcome.pendingUrls); }, 0);
+  }
 
   // verify handles (non-blocking)
   setTimeout(() => verifyLibraryHandles(), 1200);
@@ -14114,6 +15627,8 @@ async function runBootstrap() {
     renameCurrentExperience,
     deleteCurrentExperience,
     importExperience,
+    importExperiencePayload,
+    getExperienceExportPayload: buildExperienceExportPayload,
     exportExperience,
     clearBrowserStorage,
     // URL sharing (v5.0.7) + experience load progress (v5.0.8)
@@ -14138,6 +15653,13 @@ async function runBootstrap() {
     transitionManager,
     log
   };
+  profileSyncClient = createProfileSyncClient({
+    windowObject: window,
+    documentObject: document,
+    getExperience: buildExperienceExportPayload,
+    applyExperience: importExperiencePayload
+  });
+  profileSyncClient?.initialize();
   setBootstrapStage('ready');
   log.info('[startup] app ready', configDiagnosticSnapshot());
 }

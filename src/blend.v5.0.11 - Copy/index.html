@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="referrer" content="no-referrer">
   <meta name="description" content="Dual-layer local media playback studio — blend playlists and slideshows with local files. Private, powerful, buttery smooth.">
   <meta name="robots" content="index,follow">
   <meta name="version" content="5.0.11"> <!-- see script comment block for full changelog -->
@@ -25,8 +26,18 @@
   <title>Blend version 5.0.11</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest?v=20261112-v5.0.11-issue-05-inert-supabase-defaults">
-  <link rel="stylesheet" href="./styles.css?v=20261112-v5.0.11-issue-05-inert-supabase-defaults">
+  <link rel="manifest" href="./manifest.webmanifest?v=20261125-v5.0.11-profile-sync">
+  <link rel="stylesheet" href="./styles.css?v=20261125-v5.0.11-profile-sync">
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const token = params.get('blend-profile-share');
+      if (!token) return;
+      window.__BLEND_PROFILE_SHARE_TOKEN__ = token;
+      window.__BLEND_PROFILE_SHARE_GUID__ = params.get('blend-profile-guid') || '';
+      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+    })();
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#config-gear">Go to configuration controls</a>
@@ -130,6 +141,51 @@
             <span id="save-status" class="save-status" role="status" aria-live="polite" aria-atomic="true" data-state="saved">All changes saved</span>
           </div>
         </div>
+        <details id="profile-sync-details" class="profile-sync-panel">
+          <summary>Cross-browser profile sync</summary>
+          <div class="profile-sync-panel__body">
+            <p>Profile IDs identify a public GitHub path. The ID is not authorization. Anyone with an enrolled device credential or one unused recovery key can access and change this profile. The Experience file and its full commit history are public.</p>
+            <p id="profile-sync-local-status" role="status" aria-live="polite">Local Experience saves remain available offline.</p>
+            <p id="profile-sync-remote-status" role="status" aria-live="polite">Remote sync is not connected.</p>
+            <p id="profile-sync-error" role="alert" aria-live="assertive" hidden></p>
+            <div class="profile-sync-panel__identity">
+              <span class="profile-sync-panel__label">Profile GUID</span>
+              <output id="profile-sync-guid" aria-live="polite">Hidden. Use Reveal to view this public identifier.</output>
+              <button id="profile-sync-reveal" type="button" class="list-action" data-profile-sync-action data-revealed="false">Reveal</button>
+              <button id="profile-sync-export-id" type="button" class="list-action" data-profile-sync-action>Export ID</button>
+              <button id="profile-sync-copy-id" type="button" class="list-action" data-profile-sync-action>Copy ID</button>
+              <button id="profile-sync-import-id-file" type="button" class="list-action" data-profile-sync-action>Import ID file</button>
+              <input id="profile-sync-id-file" type="file" accept=".txt,.json,application/json,text/plain" hidden>
+              <label for="profile-sync-import-id-url">HTTPS URL to a profile ID file</label>
+              <input id="profile-sync-import-id-url" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com/profile-id.txt">
+              <button id="profile-sync-import-url" type="button" class="list-action" data-profile-sync-action>Import ID URL</button>
+            </div>
+            <div class="profile-sync-panel__actions">
+              <button id="profile-sync-initialize" type="button" class="list-action" data-profile-sync-action>Create profile and recovery keys</button>
+              <button id="profile-sync-now" type="button" class="list-action" data-profile-sync-action>Sync now</button>
+              <label for="profile-sync-recovery-key">One unused recovery key</label>
+              <input id="profile-sync-recovery-key" type="password" autocomplete="off" spellcheck="false" maxlength="64">
+              <button id="profile-sync-enroll" type="button" class="list-action" data-profile-sync-action>Enroll this browser</button>
+              <button id="profile-sync-share" type="button" class="list-action" data-profile-sync-action>Create one-use share link</button>
+              <input id="profile-sync-share-copy" type="url" readonly hidden aria-label="One-use share link">
+              <button id="profile-sync-rotate" type="button" class="list-action" data-profile-sync-action>Replace recovery keys</button>
+              <div id="profile-sync-recovery-save" class="profile-sync-panel__recovery" hidden>
+                <p id="profile-sync-recovery-message">Save the text file before confirming. New recovery keys are shown only once. A failed download leaves the current keys and enrolled browsers active.</p>
+                <button id="profile-sync-recovery-download" type="button" class="list-action" data-profile-sync-action hidden>Download recovery key file</button>
+                <button id="profile-sync-recovery-confirm" type="button" class="list-action" data-profile-sync-action hidden>I saved and checked the file</button>
+                <button id="profile-sync-recovery-cancel" type="button" class="list-action" data-profile-sync-action hidden>Cancel key update</button>
+              </div>
+              <div id="profile-sync-conflict" class="profile-sync-panel__conflict" hidden>
+                <p role="alert">A newer saved Experience exists. Resubmitting replaces it and creates a later public commit. Cancel loads and saves the current remote Experience before clearing this stale draft.</p>
+                <button id="profile-sync-resubmit" type="button" class="list-action" data-profile-sync-action>Resubmit this draft</button>
+                <button id="profile-sync-cancel-conflict" type="button" class="list-action" data-profile-sync-action>Cancel and load saved version</button>
+              </div>
+              <button id="profile-sync-delete-id" type="button" class="list-action danger" data-profile-sync-action>Delete this browser’s profile ID</button>
+              <button id="profile-sync-start-over" type="button" class="list-action danger" data-profile-sync-action>Start over with a new ID</button>
+            </div>
+            <p>Resetting clears this browser’s local profile ID and asks the server to revoke its device cookie. If the server is offline, the cookie may remain active until it expires or recovery keys are rotated. Reset does not delete the remote profile or public GitHub artifact. This sync transfers the serialized Experience only. It cannot transfer browser file handles or media bytes that are not in the Experience JSON.</p>
+          </div>
+        </details>
         <span id="app-version" class="version-badge" title="Application version">v5.0.11</span>
         <button id="open-info" type="button" class="config-info-btn" title="Information, About myTech.Today &amp; README" aria-label="Open information dialog" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1.1-11.4a1.1 1.1 0 1 1 2.2 0 1.1 1.1 0 0 1-2.2 0zM11 11h2v6h-2v-6z"/></svg>
@@ -197,6 +253,7 @@
         <div class="pane-actions library-actions">
           <button id="add-selected-playlist">Add Selected → Playlist</button>
           <button id="add-selected-slideshow">Add Selected → Slideshow</button>
+          <button id="copy-selected-external-urls" type="button" class="list-action" disabled>Copy Selected URLs</button>
           <button id="remove-selected-library" class="list-action danger">Remove Selected</button>
         </div>
       </div>
@@ -393,8 +450,88 @@
           </div>
           <p id="supabase-config-status" class="setting__status" data-state="checking" role="status" aria-live="polite" aria-atomic="true">Checking Supabase configuration…</p>
           <p id="supabase-auth-signout-description" class="setting__hint">Sign out requests Supabase's default global scope and can revoke refresh tokens for all sessions. Already issued access tokens may remain valid until they expire.</p>
-          <p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.</p>
+          <p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. Private Storage signing is unavailable until the project owner records a reviewed policy revision. You can play local files and direct public media URLs, and you can export JSON.</p>
         </div>
+        <section class="runtime-config-setting" aria-labelledby="supabase-runtime-config-title">
+          <h2 id="supabase-runtime-config-title">Supabase connection settings</h2>
+          <p class="setting__hint" id="supabase-runtime-config-description">Host-injected deployment settings remain active. Browser-stored settings are pending until you review and confirm them in this tab. Auth redirects must stay on this app's origin.</p>
+          <div class="runtime-config-fields">
+            <div class="setting">
+              <label for="supabase-runtime-project-url">Project URL</label>
+              <input id="supabase-runtime-project-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" aria-describedby="supabase-runtime-config-description">
+            </div>
+            <div class="setting">
+              <label for="supabase-runtime-anon-key">Public anon key</label>
+              <input id="supabase-runtime-anon-key" type="password" autocomplete="off" spellcheck="false" aria-describedby="supabase-runtime-config-description">
+            </div>
+            <div class="setting">
+              <label for="supabase-runtime-redirect-url">Auth redirect URL</label>
+              <input id="supabase-runtime-redirect-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" aria-describedby="supabase-runtime-config-description">
+            </div>
+          </div>
+          <label class="setting setting--toggle" for="supabase-runtime-config-confirm">
+            <input id="supabase-runtime-config-confirm" type="checkbox" aria-describedby="supabase-runtime-config-status">
+            <span>I reviewed this project URL and redirect destination and confirm they belong to this Blend deployment.</span>
+          </label>
+          <div>
+            <button id="supabase-runtime-config-save" type="button" class="list-action" disabled>Save and use these settings</button>
+          </div>
+          <p id="supabase-runtime-config-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true">Checking saved connection settings…</p>
+        </section>
+        <section class="runtime-config-setting" aria-labelledby="youtube-api-key-title">
+          <h2 id="youtube-api-key-title">YouTube playlist import</h2>
+          <p class="setting__hint" id="youtube-api-key-description">Public YouTube and YouTube Music playlists are read through the YouTube Data API. Create an API key restricted by HTTP referrer to this Blend deployment and restricted to YouTube Data API v3. The key is visible in this browser and is stored only in this browser. Blend imports canonical watch links; they are not playable in Blend.</p>
+          <div class="runtime-config-fields">
+            <div class="setting setting--wide">
+              <label for="youtube-api-key">YouTube Data API key</label>
+              <input id="youtube-api-key" type="password" maxlength="512" autocomplete="off" spellcheck="false" aria-describedby="youtube-api-key-description">
+            </div>
+          </div>
+          <div>
+            <button id="youtube-api-key-save" type="button" class="list-action">Save API key</button>
+          </div>
+          <p id="youtube-api-key-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true">Checking saved YouTube API key…</p>
+        </section>
+        <section class="runtime-config-setting" aria-labelledby="youtube-oauth-title">
+          <h2 id="youtube-oauth-title">YouTube account-only playlists</h2>
+          <p class="setting__hint" id="youtube-oauth-description">Public playlists use the restricted YouTube Data API key above. For private or account-only playlists, create a Google OAuth web client ID with this app's origin authorized, save it here, then connect Google. Blend requests YouTube read-only access; the short-lived access token stays in memory and is cleared when this page closes.</p>
+          <div class="runtime-config-fields">
+            <div class="setting setting--wide">
+              <label for="youtube-oauth-client-id">Google OAuth web client ID</label>
+              <input id="youtube-oauth-client-id" type="text" maxlength="256" autocomplete="off" spellcheck="false" aria-describedby="youtube-oauth-description">
+            </div>
+          </div>
+          <div>
+            <button id="youtube-oauth-client-id-save" type="button" class="list-action">Save client ID</button>
+            <button id="youtube-oauth-connect" type="button" class="list-action">Connect Google</button>
+            <button id="youtube-oauth-disconnect" type="button" class="list-action">Disconnect</button>
+          </div>
+          <p id="youtube-oauth-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true">Checking Google sign-in…</p>
+        </section>
+        <section class="runtime-config-setting" aria-labelledby="spotify-playlist-title">
+          <h2 id="spotify-playlist-title">Spotify playlist import</h2>
+          <p class="setting__hint" id="spotify-playlist-description">Spotify requires OAuth sign-in for its playlist API. Create a Spotify developer app and register this page URL as its exact redirect URI. Blend uses PKCE and stores the access token only in this browser tab. The current Spotify API returns playlist items only when the connected account owns or collaborates on that playlist. Blend stores canonical track and episode links; they are not playable in Blend.</p>
+          <div class="runtime-config-fields">
+            <div class="setting setting--wide">
+              <label for="spotify-client-id">Spotify app client ID</label>
+              <input id="spotify-client-id" type="text" maxlength="128" autocomplete="off" spellcheck="false" aria-describedby="spotify-playlist-description">
+            </div>
+          </div>
+          <div>
+            <button id="spotify-client-id-save" type="button" class="list-action">Save client ID</button>
+            <button id="spotify-connect" type="button" class="list-action">Connect Spotify</button>
+            <button id="spotify-disconnect" type="button" class="list-action">Disconnect</button>
+          </div>
+          <p id="spotify-playlist-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true">Checking Spotify connection…</p>
+        </section>
+        <section class="runtime-config-setting" aria-labelledby="additional-playlist-provider-title">
+          <h2 id="additional-playlist-provider-title">Additional playlist providers</h2>
+          <p class="setting__hint">Apple Music public catalog playlists and SoundCloud public playlists use the deployment's official API service. Vimeo showcases require sign-in by the showcase owner; Dailymotion playlists and account-only SoundCloud playlists require provider sign-in. Provider app secrets stay on the server; account sessions use an encrypted, HTTP-only browser cookie. All imported playlist entries are canonical links and are not playable in Blend.</p>
+          <div>
+            <button id="playlist-provider-api-disconnect" type="button" class="list-action" disabled>Disconnect provider account</button>
+          </div>
+          <p id="playlist-provider-api-status" class="setting__status" role="status" aria-live="polite" aria-atomic="true">Checking the playlist provider service…</p>
+        </section>
         <section class="setting setting--wide git-catalog-setting" aria-labelledby="git-catalog-title">
           <h2 id="git-catalog-title">Public Git playlist catalog</h2>
           <p class="setting__hint">Browse playlist JSON from a public GitHub or Bitbucket repository. This feature only reads public data. Public playlists and their commit history can be read by others.</p>
@@ -782,6 +919,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261112-v5.0.11-issue-05-inert-supabase-defaults"></script>
+  <script type="module" src="./app.js?v=20261125-v5.0.11-profile-sync"></script>
 </body>
 </html>

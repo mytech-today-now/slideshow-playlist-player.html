@@ -8,7 +8,8 @@ const BEARER_MARKER = 'issue01-e2e-synthetic-bearer-94a7';
 const PORTABLE_REFERENCE = 'supabase://private-media/private/video.mp4';
 const PUBLIC_URL = 'https://cdn.example.test/media/public.mp4?version=3';
 const UNUSED_PRIVATE_STORAGE_REFERENCE = 'supabase://private-media/codex-policy-check/unused-private-video.mp4';
-const PRIVATE_POLICY_WARNING = 'Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. You can share direct public URLs or continue local playback.';
+const PRIVATE_SIGNING_WARNING = 'Private Storage signing is unavailable until the project owner records a reviewed policy revision. You can play local files and direct public media URLs, and you can export JSON.';
+const PRIVATE_POLICY_WARNING = `Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision. ${PRIVATE_SIGNING_WARNING}`;
 const PATH_OMISSION_NOTICE = 'Local file path details were omitted from this export for privacy. Media references and the saved library were not changed.';
 const PATH_CREDENTIAL_MARKER = 'issue05-e2e-synthetic-credential-marker';
 const ABSOLUTE_PATH_SENTINELS = [
@@ -24,20 +25,20 @@ async function boot(page, { publicBuckets = 'public' } = {}) {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     localStorage.setItem('blend-analytics-consent-v1', '0');
-    const key = 'blend-runtime-config-v1';
-    try {
-      const existing = JSON.parse(localStorage.getItem(key) || '{}');
-      localStorage.setItem(key, JSON.stringify({
-        ...existing,
-        SUPABASE_URL: fixtureOrigin,
-        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
-        SUPABASE_MEDIA_BUCKET: 'media',
-        SUPABASE_PUBLIC_BUCKETS: publicBuckets
-      }));
-    } catch (_) {}
+    window.BLEND_RUNTIME_CONFIG = {
+      SUPABASE_URL: fixtureOrigin,
+      SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
+      SUPABASE_AUTH_REDIRECT_URL: `${fixtureOrigin}/index.html`,
+      SUPABASE_MEDIA_BUCKET: 'media',
+      SUPABASE_PUBLIC_BUCKETS: publicBuckets
+    };
   }, { fixtureOrigin: FIXTURE_ORIGIN, publicBuckets });
   await page.goto('/index.html');
-  await page.waitForFunction(() => !!window.Blend?.state);
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('#config-panel');
+    const notice = document.querySelector('#config-startup-notice');
+    return !!window.Blend?.state && panel && !panel.classList.contains('config-startup-locked') && notice?.hidden;
+  });
 }
 
 async function seedPrivateAndPublicRecords(page, {
@@ -233,6 +234,7 @@ test('JSON export preserves private references while compressed sharing blocks t
     await page.locator('#config-gear').click();
     await expect(config).toHaveClass(/open/);
   }
+  await expect(page.locator('#private-media-policy-warning')).toHaveText(PRIVATE_POLICY_WARNING);
   const beforeExperienceExport = await snapshotUserState(page);
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#experience-export').click();
@@ -480,42 +482,56 @@ test('public URL sharing stays readable across viewports and clipboard failure p
   expect(logged).not.toMatch(/[?&](?:access_token|refresh_token|token|signature|sig)=/i);
 });
 
-test('missing auth warning stays keyboard accessible and keeps list entries at 320, 768, and 1366 pixels', async ({ context }) => {
+test('unverified private signing alert stays keyboard accessible and preserves references at 320, 768, and 1366 pixels', async ({ context }) => {
   for (const width of [320, 768, 1366]) {
     const page = await context.newPage();
     try {
       await page.setViewportSize({ width, height: 900 });
       await boot(page);
-      await seedPrivateAndPublicRecords(page, { expiredPrivateUrl: true, includePublic: false });
+      await seedPrivateAndPublicRecords(page, { includePublic: false });
+      const storageRequests = [];
+      await page.route('**/storage/v1/**', async route => {
+        storageRequests.push(route.request().url());
+        await route.abort();
+      });
       const before = await snapshotUserState(page);
-      await page.evaluate(() => window.Blend.play());
+      await page.evaluate(() => {
+        document.body.tabIndex = -1;
+        document.body.focus();
+      });
+      await expect(page.locator('body')).toBeFocused();
+      await page.keyboard.press('Space');
 
       const toast = page.locator('#toast-container .toast')
-        .filter({ hasText: 'This private media link expired. Connect Supabase to refresh access.' }).first();
+        .filter({ hasText: PRIVATE_SIGNING_WARNING }).first();
       await expect(toast).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator('#toast-container .toast[role="alert"]').filter({ hasText: PRIVATE_SIGNING_WARNING })).toHaveCount(1);
       await expect(toast).toHaveAttribute('role', 'alert');
-      const action = toast.getByRole('button', { name: 'Connect' });
-      await expect(action).toBeVisible();
-      expect(await action.evaluate(node => node.tabIndex)).toBeGreaterThanOrEqual(0);
+      await expect(toast).toHaveAttribute('aria-live', 'assertive');
+      await expect(toast).toHaveText(PRIVATE_SIGNING_WARNING);
+      await expect(toast.getByRole('button')).toHaveCount(0);
       const box = await toast.boundingBox();
       expect(box).toBeTruthy();
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
       expect(box.y + box.height).toBeLessThanOrEqual(901);
-      await action.focus();
-      await expect(action).toBeFocused();
-      await page.keyboard.press('Enter');
-      await expect(page.locator('#supabase-auth-modal')).toBeVisible();
 
       const after = await snapshotUserState(page);
       expect(after.playlist.map(ref => ref.id)).toEqual(before.playlist.map(ref => ref.id));
       expect(after.slideshow.map(ref => ref.id)).toEqual(before.slideshow.map(ref => ref.id));
       expect(after.libraryIds).toEqual(before.libraryIds);
+      expect(after.playlist[0].sourceUrl).toBe(before.playlist[0].sourceUrl);
+      expect(after.playlist[0].available).toBe(true);
+      expect(after.playlist[0].metadata.storageReference).toBe(PORTABLE_REFERENCE);
+      const privateLibraryItem = after.library.find(([id]) => id === 'private-video')?.[1];
+      expect(privateLibraryItem?.metadata.storageReference).toBe(PORTABLE_REFERENCE);
+      expect(privateLibraryItem?.metadata.lastStorageError).toBe('storage_policy_unverified');
+      expect(await page.evaluate(() => window.Blend.state.library.get('private-video')?.stale)).toBe(false);
       expect(after.activeList).toBe(before.activeList);
       expect(after.playlistIndex).toBe(before.playlistIndex);
       expect(after.slideshowIndex).toBe(before.slideshowIndex);
       expect(after.isPlaying).toBe(before.isPlaying);
-      await page.locator('#supabase-auth-modal [data-auth-cancel]').click();
+      expect(storageRequests).toEqual([]);
     } finally {
       await page.close();
     }

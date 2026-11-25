@@ -1,3 +1,10 @@
+import {
+  CURRENT_STORAGE_POLICY_REVISION,
+  PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE,
+  TRUSTED_STORAGE_POLICY_SCOPE,
+  hasVerifiedStoragePolicyScope
+} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
+
 const HTTP_URL_RE = /^https?:\/\//i;
 const LEGACY_IPFS_URI_RE = /^ipfs:\/\//i;
 const SUPABASE_URI_RE = /^(supabase|storage):\/\//i;
@@ -354,6 +361,8 @@ async function fetchWithRetry(fetchImpl, url, init = {}, retry = DEFAULT_RETRY, 
 export function createStorageUrlResolver({
   config,
   authClient = null,
+  trustedStoragePolicyScope = TRUSTED_STORAGE_POLICY_SCOPE,
+  currentStoragePolicyRevision = CURRENT_STORAGE_POLICY_REVISION,
   fetchImpl = globalThis.fetch?.bind(globalThis),
   now = nowMs,
   logger = null,
@@ -395,7 +404,21 @@ export function createStorageUrlResolver({
     return value;
   }
 
+  function assertPrivateStorageSigningAvailable(bucket) {
+    if (hasVerifiedStoragePolicyScope(trustedStoragePolicyScope, {
+      projectUrl: config?.supabaseUrl,
+      policyRevision: currentStoragePolicyRevision,
+      bucket
+    })) return;
+
+    throw new StorageResolverError(PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE, {
+      code: 'storage_policy_unverified',
+      retryable: false
+    });
+  }
+
   async function signPrivateUrl(bucket, path, options = {}) {
+    assertPrivateStorageSigningAvailable(bucket);
     if (typeof fetchImpl !== 'function') {
       throw new StorageResolverError('Fetch is not available in this environment.', {
         code: 'fetch_unavailable',
@@ -509,6 +532,8 @@ export function createStorageUrlResolver({
         retryable: false
       });
     }
+
+    if (normalized.mode === 'private') assertPrivateStorageSigningAvailable(normalized.bucket);
 
     const key = cacheKeyFromReference(normalized);
     const cached = readFromCache(key);

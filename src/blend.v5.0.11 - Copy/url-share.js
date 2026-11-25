@@ -22,13 +22,17 @@ import {
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
 } from './storage-url-resolver.js';
+import {
+  TRUSTED_STORAGE_POLICY_SCOPE,
+  hasVerifiedStoragePolicyScope
+} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
 
 export const URL_SHARE_PARAM = 'experience';
 export const URL_SHARE_PARAM_ALIAS = 'data';
 
-// This build has no owner-reviewed project and policy revision. Keep the
-// release scope null so runtime configuration cannot approve Storage sharing.
-export const TRUSTED_STORAGE_SHARE_SCOPE = null;
+// Keep this public name for existing share callers; the same source-controlled
+// scope also governs private signing. This checkout intentionally exports null.
+export const TRUSTED_STORAGE_SHARE_SCOPE = TRUSTED_STORAGE_POLICY_SCOPE;
 
 // Warn (but don't block) if the Base64URL payload exceeds this many bytes.
 // Most experiences compress to well under 100 KB; 500 KB is a generous ceiling
@@ -71,16 +75,7 @@ export function buildExperienceLibraryPayload(entries, {
  * current revision from user-editable runtime configuration.
  */
 export function hasVerifiedStorageShareScope(scope, { projectUrl = '', policyRevision = '' } = {}) {
-  if (!isRecord(scope) || !Array.isArray(scope.shareableBuckets)) return false;
-  const approvedProject = normalizeShareScopeProjectUrl(scope.projectUrl);
-  const currentProject = normalizeShareScopeProjectUrl(projectUrl);
-  const approvedRevision = typeof scope.policyRevision === 'string' ? scope.policyRevision.trim() : '';
-  const currentRevision = typeof policyRevision === 'string' ? policyRevision.trim() : '';
-  const buckets = scope.shareableBuckets.map(bucket => String(bucket || '').trim().toLowerCase());
-  return !!approvedProject && approvedProject === currentProject
-    && !!approvedRevision && approvedRevision === currentRevision
-    && buckets.length > 0
-    && buckets.every(bucket => /^[a-z0-9][a-z0-9._-]{1,62}$/.test(bucket));
+  return hasVerifiedStoragePolicyScope(scope, { projectUrl, policyRevision });
 }
 
 /**
@@ -102,17 +97,6 @@ export function hasUnverifiedSupabaseStorageReference(payload, {
       .filter(Boolean)
   );
   return references.buckets.some(bucket => !shareableBuckets.has(bucket));
-}
-
-function normalizeShareScopeProjectUrl(value) {
-  try {
-    const url = new URL(String(value || '').trim());
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return '';
-    const path = url.pathname.replace(/\/+$/, '');
-    return `${url.origin.toLowerCase()}${path}`;
-  } catch (_) {
-    return '';
-  }
 }
 
 function collectSupabaseShareReferences(payload) {

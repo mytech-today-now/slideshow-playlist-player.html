@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-13
+goal: Disable private Storage signing in builds without a verified
+  source-controlled scope while preserving portable references and public/local
+  media paths.

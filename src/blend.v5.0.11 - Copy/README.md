@@ -88,7 +88,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261112-v5.0.11-issue-05-inert-supabase-defaults`
+- **Cache/app shell version key:** `20261125-v5.0.11-profile-sync`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -114,7 +114,7 @@ Latest source location:
 3. Add media using one of these actions:
    - `Add Files` for individual files
    - `Add Folder` for recursive folder scan
-   - `Add URL` for `http(s)`, `supabase://`, or legacy `ipfs://` references
+   - `Add URL` for direct `http(s)` media URLs, accessible HTML folder listings, YouTube/YouTube Music and Spotify playlists, public Internet Archive collections, configured Apple Music, Vimeo, Dailymotion, and SoundCloud playlists, `supabase://`, or legacy `ipfs://` references
 4. Select items in Media Library and add to Playlist/Slideshow.
 5. In the configuration panel, press `Play` and adjust `Blend`, volume, and transitions.
 
@@ -168,7 +168,7 @@ http://localhost:5173/src/blend.v5.0.11%20-%20Copy/index.html
 | Playback | Fullscreen | Browser-dependent | `requestFullscreen()` on viewport; playback controls remain available when fullscreen cannot start. Mobile device behavior is unverified. |
 | Library | Add files | Browser-dependent | File System Access API where available, otherwise file-input fallback. Named iOS and Android import/persistence runs are unverified. |
 | Library | Add folder (recursive) | Browser-dependent | Directory picker + supported input fallback; Add Files remains available when folder selection is unavailable. Mobile device behavior is unverified; depth limit 6; 250 supported media files per selection; native directory-picker scans stop after 2,000 visited entries |
-| Library | Add URL | Yes | `http(s)`, `supabase://`, legacy `ipfs://` refs |
+| Library | Add URL | Yes | Direct `http(s)` media URLs, accessible HTML folder listings, YouTube/YouTube Music playlists, Spotify playlists available to the connected account, public Internet Archive collections, and configured Apple Music, Vimeo, Dailymotion, and SoundCloud playlists; playlist entries are canonical links only |
 | Library | Drag-and-drop import | Yes | Files/directories/list files |
 | Library | Search/filter/sort | Yes | Type + source filters, worker projection for large sets |
 | Lists | Playlist editor | Yes | Drag reorder, sort, shuffle, reverse, import/export |
@@ -298,8 +298,8 @@ Supported external reference forms:
 
 1. Open config panel.
 2. Click `Add URL`.
-3. Paste one or more references (space/comma separated).
-4. App validates and stores resolvable media references.
+3. Paste one or more references (space/comma separated). For a folder, use a URL with or without a trailing slash that serves an HTML listing with links to supported media files. Public YouTube or YouTube Music playlists use the referrer-restricted YouTube Data API key in Configuration; private or account-only playlists need a Google OAuth client ID and Connect Google. Spotify needs its app client ID and Connect Spotify; Spotify returns item data only for playlists owned by or collaborative with the connected account. Public Internet Archive collections use their official metadata APIs. Apple Music, Vimeo, Dailymotion, and SoundCloud imports need the optional provider server described below. Vimeo and Dailymotion require provider sign-in; SoundCloud asks for sign-in for private playlists.
+4. App stores direct media references, adds supported media links found in an accessible folder listing, or stores canonical playlist item URLs as link-only library entries. Select link entries and choose `Copy Selected URLs` to copy their clean URLs. Playlist links are not playable in Blend and cannot be added to playable lists. Folder listing and Internet Archive API servers must allow this app to fetch their pages.
 
 #### Drag-and-drop to Media Library
 
@@ -325,7 +325,7 @@ Supported external reference forms:
 
 - Use `Add Files` for one-off selection.
 - Use `Add Folder` for event/session content batches.
-- Use `Add URL` for remote references.
+- Use `Add URL` for remote references or an accessible HTML folder listing.
 - Use source filters (`All`, `Local`, `URL`) to manage mixed libraries.
 
 ### Creating Slideshows
@@ -611,7 +611,7 @@ The Playwright DOM checks in `tests/e2e/list-playback-accessibility.e2e.spec.mjs
 |---|---|---|
 | IndexedDB object stores | Yes | Main persistent application state |
 | LocalStorage key-values | Yes | UI/session flags, consent, runtime overrides |
-| Runtime config JSON (`blend-runtime-config-v1`) | Yes | Operator-managed override path for Supabase/runtime settings; preserved by Clear Browser Storage |
+| Runtime config JSON (`blend-runtime-config-v1`) | Yes | Supabase/runtime settings; browser-stored values require per-tab review and are removed by Clear Browser Storage |
 
 ### Export Formats
 
@@ -684,6 +684,11 @@ Import behavior rules:
 | Supabase default bucket | `#supabase-default-bucket` | IndexedDB settings | Default storage bucket |
 | Signed URL TTL | `#supabase-signed-url-ttl` | IndexedDB settings; 3,600 seconds by default, with owner-selected overrides | Seconds |
 | Require auth for private media | `#private-media-auth-required` | IndexedDB settings | Controls auth expectation |
+| YouTube playlist API key | `#youtube-api-key` | LocalStorage `blend-youtube-api-key-v1` | Browser-visible Google API key; restrict it by HTTP referrer and to YouTube Data API v3; removed by Clear Browser Storage |
+| Google OAuth client ID | `#youtube-oauth-client-id` | LocalStorage `blend-youtube-oauth-client-id-v1` | Public web client ID; removed by Clear Browser Storage |
+| Google OAuth access token | Google OAuth controls | In memory | Short-lived YouTube read-only token; disconnect or closing the page clears it |
+| Spotify app client ID | `#spotify-client-id` | LocalStorage `blend-spotify-client-id-v1` | Public app identifier; removed by Clear Browser Storage |
+| Spotify OAuth session | Spotify controls | SessionStorage `blend-spotify-session-v1` | Access and refresh tokens stay in the current browser tab; cleared by Disconnect and Clear Browser Storage |
 | Public Git catalog | `#git-catalog-*` controls | LocalStorage `blend-public-git-catalog-v1` | Stores provider and public repository location only; never stores credentials |
 | User Git repository | `#git-playlist-*` controls | LocalStorage `blend-git-playlist-repository-v1` | Provider, repository, branch, and path only |
 | Remembered Git credential | `#git-playlist-remember` | LocalStorage `blend-git-playlist-credential-v1` | Provider-tagged token only after explicit opt-in and shared-lock acquisition; remains session-only while analytics is active |
@@ -693,16 +698,43 @@ Import behavior rules:
 
 ### Supabase project configuration
 
-The static app starts with Supabase disconnected and does not load `.env` files. An operator must supply both the project URL and public anon key through `globalThis.BLEND_RUNTIME_CONFIG` before `app.js` runs, or through the operator-managed LocalStorage object `blend-runtime-config-v1`:
+The static app starts with Supabase disconnected and does not load `.env` files. A controlled deployment can inject `BLEND_RUNTIME_CONFIG` (or `__BLEND_RUNTIME_CONFIG__`) before `app.js` runs. Without a rebuild, operators can use the **Supabase connection settings** fields in Configuration; saving requires checking the labelled review control. Blend stores those settings in `blend-runtime-config-v1`, but does not use a browser-stored entry until it has been reviewed in the current tab. Configuration precedence is explicit app overrides, host-injected settings, reviewed browser settings, then inert defaults.
 
 ```js
 globalThis.BLEND_RUNTIME_CONFIG = {
   SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: ''
+  SUPABASE_ANON_KEY: '',
+  SUPABASE_AUTH_REDIRECT_URL: ''
 };
 ```
 
-Fill in values for the deployment's intended project. The anon key is browser-visible configuration, not a service-role secret. The app shows the configured project URL in Supabase settings and refuses Auth or Storage requests until both values are present. Local files and direct public media URLs continue to work while Supabase is disconnected.
+Use the intended project URL and browser-public anon key; never use a service-role key. The active project URL appears in Configuration. Project URLs must use HTTP(S), and Auth redirect URLs must use the current app origin. Invalid saved URLs are ignored and reported. If the browser cannot save a reviewed configuration to LocalStorage but session storage remains available, it is active only in that tab and the app says it was not saved. Local files and direct public media URLs continue to work while Supabase is disconnected.
+
+### YouTube playlist import
+
+Public YouTube and YouTube Music playlists are enumerated through the official YouTube Data API `playlistItems.list` endpoint. Save a Google API key in Configuration after restricting it to this app's HTTP referrer and the YouTube Data API v3. The key is browser-visible and stored in this browser; use a browser key, never a server-side secret. For a private or account-only playlist, configure a Google OAuth web client ID with this app's origin authorized and use **Connect Google**. Blend requests YouTube read-only access through Google Identity Services, holds the short-lived token in memory only, and asks the user to reconnect after the token expires or the page is closed. Playlist results are stored as canonical `https://www.youtube.com/watch?v=...` links only, not as playable media. Clear Browser Storage removes both saved client IDs and the API key.
+
+Spotify playlist items are enumerated through Spotify's official Web API after Authorization Code with PKCE sign-in. Save a Spotify app client ID and connect in Configuration; register the exact Blend page URL as the app's redirect URI. No Spotify client secret is used by the browser. Access and refresh tokens stay in tab session storage, and Disconnect clears them from Blend. Spotify's current playlist-items API only returns items for playlists owned by or collaborative with the connected account, even when a different playlist is public. Track and episode URLs are saved as link-only entries and are not playable in Blend.
+
+Public Internet Archive collections are enumerated through the official Advanced Search and Item Metadata APIs. Blend stores each item as a canonical `https://archive.org/details/{identifier}` URL. Collection entries are link-only and are not playable in Blend.
+
+The optional provider server adds public Apple Music catalog playlists and SoundCloud public playlists, plus Vimeo showcases, Dailymotion playlists, and SoundCloud account playlists through provider sign-in. Vimeo access is authorized by the account that owns the showcase. Dailymotion's current playlist API requires a signed-in account token with the read-only `playlist.read` scope. Provider entries are saved as canonical links only and are not playable in Blend.
+
+TikTok Research API access requires an eligible researcher with an approved research project. Several other services in the request list do not expose a verified public playlist enumeration endpoint for this app. Blend does not scrape provider pages, and those integrations are not connected yet. Account-only access will require each provider's official sign-in flow when an integration is available.
+
+### Optional playlist provider server
+
+The static app remains usable without this service. The optional Node server keeps Apple, Vimeo, SoundCloud, and Dailymotion app secrets on the server and serves the built app and its playlist API from one origin. It uses Node's built-in modules and fetch; Node.js 20 or newer is recommended. The provider server is not deployed with this source checkout.
+
+1. Install the development dependencies and build the static app with `npm ci` and `npm run build`.
+2. Set the provider values from `.env.example` in the server's process environment or deployment secret store. The server does not load `.env` files. Set `BLEND_PLAYLIST_SESSION_SECRET` to at least 32 random bytes to enable encrypted sign-in sessions.
+3. Set `BLEND_BASE_PATH` when serving under a path such as `/tools/m/v/separation`. Leave it empty when serving at the host root.
+4. Register the exact callback URL for each enabled provider. At the host root, use `/api/playlist-import/oauth/vimeo/callback`, `/api/playlist-import/oauth/soundcloud/callback`, and `/api/playlist-import/oauth/dailymotion/callback` as applicable. Put the configured `BLEND_BASE_PATH` before each path when the app is mounted below the root.
+5. Start the service with `npm run start:server`. It serves files from `dist/` and listens on the `PORT` environment variable, defaulting to `4173`.
+
+Apple Music needs an issuer ID, key ID, and private key PEM for a server-generated catalog token. Vimeo, SoundCloud, and Dailymotion need their registered app client ID and secret. SoundCloud's public playlist access also uses its server-held client credentials. Dailymotion requires the registered callback and the account's consent to the read-only `playlist.read` scope. The provider app secrets never belong in browser storage.
+
+Use the same origin for the app and Node server. If a separate static origin is required, configure `BLEND_PLAYLIST_ALLOWED_ORIGINS` with exact allowed origins and inject `globalThis.BLEND_PLAYLIST_API_URL` before `app.js` runs. Cross-origin provider cookies depend on browser third-party cookie policy, so same-origin hosting is the reliable option. A reverse proxy should set the correct `X-Forwarded-Proto`; set `BLEND_PLAYLIST_TRUST_PROXY=1` only when that trusted proxy replaces client-supplied `X-Forwarded-For` headers. The in-memory request limits and SoundCloud token cache are per process, so this starter service is intended for one server instance.
 
 Random chooses among playable items and excludes the current item when another playable choice exists; a one-item playable list stays on that item. Previous returns through recorded random navigation history for each layer.
 
@@ -735,11 +767,19 @@ When the stored database version is newer than this app's requested version, Ble
 - `blend-welcome-v4`
 - `blend-analytics-consent-v1`
 - `blend-share-mastodon-instance-v1`
-- `blend-runtime-config-v1` (operator-managed connection settings; preserved by Clear Browser Storage)
+- `blend-runtime-config-v1` (browser-stored connection settings; pending until reviewed in the current tab and cleared by Clear Browser Storage)
+- `blend-youtube-api-key-v1` (browser-visible YouTube Data API key for public playlist import; cleared by Clear Browser Storage)
+- `blend-youtube-oauth-client-id-v1` (public Google OAuth client ID for private YouTube playlist access; cleared by Clear Browser Storage)
+- `blend-spotify-client-id-v1` (public Spotify app client ID; cleared by Clear Browser Storage)
+- `blend-spotify-session-v1` (tab-scoped Spotify access and refresh tokens; cleared by Disconnect and Clear Browser Storage)
+- `blend-spotify-oauth-transaction-v1` (tab-scoped PKCE verifier and pending URLs during sign-in; cleared after callback and by Clear Browser Storage)
+- `blend-runtime-config-tab-v1` and `blend-runtime-config-review-v1` (session-scoped reviewed settings and review state for the current tab)
 - `blend-public-git-catalog-v1` (public Git provider, repository, branch, and path only; contains no credentials)
 - `blend-git-playlist-repository-v1` (authenticated repository coordinates only; contains no credentials)
 - `blend-git-playlist-credential-v1` (only after explicit opt-in to remember the Git token on this device)
 - `blend-supabase-auth-session-v2` (only after opting in to save the session)
+- `blend-profile-sync-guid-v1` (public profile GUID only)
+- `blend-profile-sync-state-v1` (revision, sync status, and local queue metadata only; no device or recovery credentials)
 - `blend-debug-log-v1`
 
 ### Privacy and security notes
@@ -754,7 +794,19 @@ When the stored database version is newer than this app's requested version, Ble
 - GitHub updates use the reviewed Contents blob SHA and a stale SHA returns a conflict. Bitbucket branch writes are disabled because the documented Source API does not promise atomic compare-and-set. After an uncertain GitHub submission, the review stays visible and Blend requires a successful remote read and comparison before allowing another attempt.
 - Supabase sessions stay in memory by default. Selecting **Save session in this browser** explicitly saves only `access_token`, `refresh_token`, and `expires_at` under `blend-supabase-auth-session-v2`; the previous `v1` entry is removed and never restored. LocalStorage is not a secure vault: any same-origin script can read an opted-in session. If the shared browser lock is unavailable or held by analytics, Blend keeps the connection in memory for this tab and shows: “The connection is available for this tab only. Do not save credentials on this device.”
 - Supabase refresh tokens have no fixed expiry and are normally single-use, with a default 10-second reuse interval. Project Auth settings can still end sessions through inactivity or maximum-lifetime rules. The current logout request uses Supabase's default global scope and can revoke refresh tokens for all sessions; already issued access tokens may remain valid until expiry. If the provider request fails, the interface distinguishes an unknown remote result from local storage cleanup, and it does not claim remote revocation. See [Supabase session documentation](https://supabase.com/docs/guides/auth/sessions) and [Supabase sign-out scopes](https://supabase.com/docs/guides/auth/signout).
-- New private signed Storage URLs use a default TTL of 3,600 seconds (one hour). The owner-controlled Config value applies to newly issued URLs; the previous saved IndexedDB default of 1,209,600 seconds migrates once, while explicit overrides remain in effect. Signing out stops private playback and clears app-managed signed URLs from transient media references in the current tab while preserving portable `supabase://` references for retry after sign-in. Signed URLs are excluded from IndexedDB snapshots. The local-reset broadcast also triggers cleanup in peer tabs that receive it. This local cleanup does not revoke a copied URL. A copied URL keeps its own expiry, and Smart CDN may serve a cached response beyond token expiry until its cache duration ends. See [signed URL behavior](https://supabase.com/docs/guides/storage/serving/downloads) and [Smart CDN caching](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+- New private signed Storage URLs use a default TTL of 3,600 seconds (one hour). The owner-controlled Config value applies to newly issued URLs; the previous saved IndexedDB default of 1,209,600 seconds migrates once, while explicit overrides remain in effect. Signing out stops private playback, clears signed URLs from transient media references and Blend Cache Storage, and preserves portable `supabase://` references for retry after sign-in. Signed URLs are excluded from IndexedDB snapshots. The local-reset broadcast also triggers cleanup in peer tabs that receive it. The accessible sign-out status explains that copied URLs may remain usable until expiry, by default up to one hour, and Blend cannot remove copies from other apps or unread messages. Sign-out does not revoke copied links or control browser and intermediary caches outside Blend. See [signed URL behavior](https://supabase.com/docs/guides/storage/serving/downloads) and [Smart CDN caching](https://supabase.com/docs/guides/storage/cdn/smart-cdn).
+
+### Cross-browser profile sync
+
+The **Cross-browser profile sync** panel is hidden under the active Experience row. A profile GUID identifies the public GitHub path and is not authorization. Protected API requests require a server-issued, high-entropy device credential in a Secure, HttpOnly cookie. The browser does not store that credential in LocalStorage.
+
+Creating a profile returns ten one-use recovery keys. Download and check the text file before confirming setup. Replacing the keys is staged until the file is downloaded and confirmed; a successful rotation revokes all earlier recovery keys and device credentials. A ten-minute share link has one use and enrolls one browser. Keep recovery files secure because a person with one unused key or enrolled device access can change the profile.
+
+The only public GitHub artifact is `experiences/{guid}/experience.json` in `BlendPlayer/BlendPlayer`. The file and its full commit history are public. Updates create commits, and deletion removes the current file with a new commit while preserving history. The confirmed admin deletion also clears the server Experience, recovery records, share links, and device sessions. The serialized Experience transfers settings, snapshots, references, and metadata. Browser file handles and media bytes that are not in the JSON do not transfer. Local playback and edits remain available offline, and pending remote changes wait for connectivity.
+
+The Render Blueprint requests `https://api.mytech.today`; this does not mean DNS, TLS, or a live deployment is configured. Set the exact cPanel app origin in the Render environment. The API does not use wildcard CORS. Use `SameSite=Strict` when the app and API are same-site. If they are cross-site, `SameSite=None` requires Secure cookies and may still be blocked by browser third-party cookie controls; hosting the app on a `mytech.today` origin is the reliable arrangement.
+
+The restricted admin interface is `admin.html`. It accepts an admin key in memory for the tab and supports health checks, metadata inspection, eligible synchronization retry, and a two-step artifact deletion by GUID. Generate an admin key with `node scripts/generate-profile-sync-admin-key.mjs`; store the plaintext in a password manager, and configure only its SHA-256 hash in Render. Configure a GitHub fine-grained token for the `BlendPlayer/BlendPlayer` repository with Contents read and write access only. Never place either credential in this static app, a LocalStorage value, or source control. See [server/PROFILE_SYNC.md](server/PROFILE_SYNC.md) and [render.yaml](render.yaml).
 - To restore cross-reload access for a session, select **Save session in this browser** when connecting; that checkbox is the explicit acceptance of the LocalStorage disclosure. To return to tab-only access, sign out and reconnect with the checkbox cleared.
 - Manual fresh-profile check: in a new browser profile, confirm no Supabase session key exists; connect synthetic access and refresh tokens with the checkbox cleared; verify neither token is saved, reload, and confirm private media remains gated while public/local playback still works. Then repeat with the checkbox selected, confirm only the documented fields are saved, and sign out to clear them. Keyboard to the checkbox and confirm its adjacent disclosure is announced by a screen reader without hover.
 - Threat assumption: any script executing on this site can read an opted-in LocalStorage session. This describes the browser boundary and does not claim that this checkout contains an injection.
@@ -770,6 +822,7 @@ When the stored database version is newer than this app's requested version, Ble
 ### Offline behavior
 
 - Service worker caches the shell, static assets, docs, API/config responses, and alias metadata in separate versioned cache namespaces.
+- Profile sync API responses bypass Cache Storage. The profile sync client is part of the offline app shell; remote synchronization requires connectivity.
 - Alias rules are stored durably in IndexedDB and mirrored into the service worker for offline-friendly friendly/legacy routes.
 - Media and HTTP `Range` requests bypass Cache Storage and go to network/local handles.
 - Remote media URLs still require connectivity unless a future explicit offline-media pack is added.
@@ -780,12 +833,12 @@ Use **Clear Browser Storage** to remove browser-side data:
 
 - IndexedDB data, including saved media access handles
 - selected LocalStorage keys, including saved Supabase sessions, public Git catalog coordinates, user Git repository settings and any remembered Git credential, and any legacy session entry
-- operator-managed runtime configuration (`blend-runtime-config-v1`) is retained, including Supabase endpoint, key, and bucket overrides, so configured service access can be restored after reset
+- saved runtime connection settings (`blend-runtime-config-v1`) and tab-scoped review state are removed; browser-configured operators must review and save settings again, while host-injected deployment settings remain active
 - Blend service worker/cache entries across `blend-shell-*`, `blend-static-*`, `blend-docs-*`, `blend-api-*`, and `blend-alias-*`
 
 Media files on disk are not deleted, and reset does not send a remote logout request. Before changing the saved local Supabase session or deleting IndexedDB, reset prepares a recovery snapshot of every database store except `thumbnails`. Thumbnail Blobs are derived previews; they are generated lazily from retained media handles, while unavailable sources use the existing media icon. Excluding this cache keeps the snapshot's thumbnail record and Blob-byte counts at zero, even for a large cache. Snapshot memory still scales with the user-authored records it protects.
 
-If the recovery snapshot cannot be prepared, deletion does not begin and the current Blend state, saved data, and local Supabase session remain unchanged. The user sees: “Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.” After a snapshot succeeds, the local Supabase session is cleared and IndexedDB deletion begins. The in-memory screen is committed only after IndexedDB confirms deletion. If deletion fails or times out, the session is reported as removed and recovery of saved records is attempted before retry. A timed-out deletion may remove the database before recovery finishes, so the thumbnail cache may be empty afterward; the incomplete-reset message explicitly says the cache may be cleared. Previews can regenerate from retained handles when available. This is cache cleanup, not media-file loss, and the reset reports an incomplete outcome rather than success. The runtime configuration override is connection configuration rather than resettable player data, so the confirmation identifies it as preserved. If session storage cannot be fully cleared, Blend signs out in the current tab, reports that removal of all saved session data could not be confirmed, and keeps the other Blend data. A success message appears only after the requested local cleanup steps finish.
+If LocalStorage cannot be read before reset, Blend stops before deleting saved data and reports that connection settings were not confirmed cleared. If the recovery snapshot cannot be prepared, deletion does not begin and the current Blend state, saved data, and local Supabase session remain unchanged. The user sees: “Browser reset could not create a recovery copy. Your saved Blend data was kept; close other Blend tabs and retry.” After a snapshot succeeds, the local Supabase session is cleared and IndexedDB deletion begins. The in-memory screen is committed only after IndexedDB confirms deletion. If deletion fails or times out, the session is reported as removed and recovery of saved records is attempted before retry. A timed-out deletion may remove the database before recovery finishes, so the thumbnail cache may be empty afterward; the incomplete-reset message explicitly says the cache may be cleared. Previews can regenerate from retained handles when available. After database deletion, Blend removes its LocalStorage connection settings and tab-scoped review state; if that cleanup fails, reset reports an incomplete outcome and does not claim the settings were cleared. This is cache cleanup, not media-file loss, and media files on disk are untouched. If session storage cannot be fully cleared, Blend signs out in the current tab, reports that removal of all saved session data could not be confirmed, and keeps the other Blend data. A success message appears only after the requested local cleanup steps finish.
 
 ## Architecture Documentation
 
@@ -1028,7 +1081,7 @@ Yes. Deep links include `exp`, optional `layer`, optional `item`, and optional `
 
 ### Can I use private Supabase media?
 
-Blend requests signed URLs with the signed-in user's access token. Whether that user may read an object is controlled by the Supabase project's Storage policies, which this app does not configure or verify. This build has no trusted scope bound to an exact project and current policy revision, so **Share URL is blocked for every portable Supabase Storage reference**; changing the LocalStorage public-bucket allowlist cannot enable it. Direct public HTTP media URLs, normal playback, and portable JSON references remain available. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md), have the policy owner review the redacted current and rollback exports, and record all six principal/object outcomes before authorizing a later release change for storage-reference sharing.
+Blend can request signed URLs only when a source-controlled scope matches the exact Supabase project, current policy revision, and bucket. This build has no trusted scope or current policy revision, so **Share URL is blocked and private Storage signing is disabled for every portable Supabase Storage reference**; changing the LocalStorage public-bucket allowlist cannot enable either gate. Local files, direct public HTTP media URLs, and portable JSON references remain available. A signed URL already issued by a provider may remain usable outside Blend until it expires; sign-out cannot revoke it or clear browser/intermediary caches outside Blend. Complete the [staging Storage policy matrix](STORAGE_POLICY_VERIFICATION.md), have the policy owner review the redacted current and rollback exports, and record all six principal/object outcomes before authorizing a later release change for Storage signing or sharing.
 
 ### Are IPFS features still active?
 
@@ -1044,6 +1097,10 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
   slideshow-playlist-player.html
   styles.css
   app.js
+  profile-sync-client.js
+  admin.html
+  admin-profile-sync.js
+  playlist-provider-import.js
   pwa-config.js
   pwa-client.js
   alias-router.js
@@ -1059,6 +1116,16 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
   logger.js
   service-worker.js
   sw.js
+  server/
+    index.mjs
+    providers.mjs
+    profile-sync.mjs
+    profile-sync-core.mjs
+    profile-sync-github.mjs
+    migrations/
+      001-profile-sync.sql
+  scripts/
+    build-dist.mjs
   manifest.json
   manifest.webmanifest
   tests/
@@ -1071,6 +1138,12 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 ### Code Organization
 
 - `app.js`: app state, UI wiring, import/export, playback, persistence
+- `playlist-provider-import.js`: bounded playlist API requests, canonical provider URLs, and OAuth return flow
+- `server/index.mjs`: optional same-origin static server, bounded playlist API, and encrypted OAuth sessions
+- `server/profile-sync.mjs`: credentialed profile API, PostgreSQL transactions, conflict handling, and durable GitHub outbox
+- `server/profile-sync-github.mjs`: fixed-repository GitHub Contents provider for `experiences/{guid}/experience.json`
+- `admin.html` and `admin-profile-sync.js`: in-memory admin key UI for health, metadata, retry, and confirmed deletion
+- `server/providers.mjs`: official Apple Music, Vimeo, SoundCloud, and Dailymotion adapters
 - `readme-fetcher.js`: local-first version guide and an optional online guide limited to 512 KiB of streamed bytes; failed or oversized remote content leaves installed help available
 - `git-playlist-catalog.js`: fixed-host public Git reads, schema checks, and media-reference filtering
 - `git-playlist-storage.js`: fixed-origin BYOT provider requests, credential lifecycle, playlist validation, and conflict-aware publication
@@ -1083,6 +1156,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 - `alias-sync.js`: alias manifest fetch/apply and worker snapshot messaging
 - `transition-manager.js`: transition effect engine + quality heuristics
 - `storage-url-resolver.js`: media reference normalization + public/signed URL resolution
+- `storage-policy-scope.js`: source-controlled project/policy scope for Share and private signing
 - `supabase-auth.js`: Supabase session lifecycle and token flows
 - `STORAGE_POLICY_VERIFICATION.md`: provider-owned private Storage release gate and opt-in staging matrix
 - `drag-sort.js`: pointer reorder fallback for virtualized list rows
@@ -1092,7 +1166,7 @@ Legacy IPFS-compatible reference handling is supported through resolver mapping,
 
 - `window.Blend` exposes debug/integration helpers (switch experience, export/import, share helpers, state access).
 - Share platform registry supports additional platforms via `registerSharePlatform`.
-- Runtime configuration can be overridden via `BLEND_RUNTIME_CONFIG`, `__BLEND_RUNTIME_CONFIG__`, or LocalStorage runtime config key.
+- Runtime configuration can be supplied by host-injected `BLEND_RUNTIME_CONFIG` / `__BLEND_RUNTIME_CONFIG__` or reviewed from the LocalStorage key in Configuration; unreviewed browser values remain inactive.
 
 ### Customization
 

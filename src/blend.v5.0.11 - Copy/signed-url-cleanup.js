@@ -15,6 +15,18 @@ export function isSignedSupabaseStorageUrl(value) {
   }
 }
 
+function isPotentialUnrecognizedSignedStorageUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw || isSignedSupabaseStorageUrl(raw)) return false;
+  try {
+    const url = new URL(raw, 'https://blend-relative-url.invalid');
+    if (!/\/storage\/v\d+\/object\/sign\//i.test(url.pathname)) return false;
+    return Array.from(url.searchParams.keys()).some(key => key.toLowerCase() === 'token');
+  } catch (_) {
+    return false;
+  }
+}
+
 function asRecords(value) {
   if (value instanceof Map) return Array.from(value.values()).filter(Boolean);
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -53,11 +65,10 @@ export function planSignedMediaUrlCleanup(
   const mutations = [];
   const signedUrls = new Set();
   const clearedIds = new Set();
+  let unrecognizedSignedUrlCount = 0;
   for (const record of uniqueRecords) {
     const relatedMetadata = metadataById.get(String(record?.id ?? '')) || [];
     const metadataRecords = [record?.metadata, ...relatedMetadata];
-    if (requireExpiry && !metadataRecords.some(hasSignedUrlExpiry)) continue;
-
     const fields = [
       { owner: record, key: 'sourceUrl', clearWith: null },
       { owner: record?.metadata, key: 'sourceUrl', clearWith: undefined },
@@ -65,6 +76,14 @@ export function planSignedMediaUrlCleanup(
       { owner: record?.handle, key: 'sourceUrl', clearWith: null }
     ];
     let recordChanged = false;
+    const hasExpiry = metadataRecords.some(hasSignedUrlExpiry);
+    for (const field of fields) {
+      if (isPotentialUnrecognizedSignedStorageUrl(field.owner?.[field.key])) {
+        unrecognizedSignedUrlCount++;
+      }
+    }
+    if (requireExpiry && !hasExpiry) continue;
+
     for (const field of fields) {
       const value = field.owner?.[field.key];
       if (!isSignedSupabaseStorageUrl(value)) continue;
@@ -75,7 +94,7 @@ export function planSignedMediaUrlCleanup(
     if (recordChanged && record?.id !== undefined && record?.id !== null) clearedIds.add(String(record.id));
   }
 
-  return { mutations, signedUrls, clearedIds };
+  return { mutations, signedUrls, clearedIds, unrecognizedSignedUrlCount };
 }
 
 export function applySignedMediaUrlCleanup(plan) {
@@ -197,4 +216,79 @@ export function clearSignedMediaElements(elements, { signedUrls, onCleanupError 
     clearedElementCount++;
   }
   return clearedElementCount;
+}
+
+/** Remove recognized signed Storage object responses from Blend-owned Cache Storage. */
+export async function clearSignedMediaCacheStorage(cacheStorage, {
+  isBlendCacheName,
+  onCleanupError
+} = {}) {
+  if (!cacheStorage) {
+    return { complete: true, clearedEntryCount: 0 };
+  }
+  let listCaches;
+  let openCache;
+  try {
+    listCaches = cacheStorage.keys;
+    openCache = cacheStorage.open;
+  } catch (error) {
+    reportCleanupError(onCleanupError, 'cache_access', error);
+    return { complete: false, clearedEntryCount: 0 };
+  }
+  if (typeof listCaches !== 'function' && typeof openCache !== 'function') {
+    return { complete: true, clearedEntryCount: 0 };
+  }
+  if (typeof listCaches !== 'function' || typeof openCache !== 'function') {
+    reportCleanupError(onCleanupError, 'cache_api', new TypeError('Incomplete Cache Storage API'));
+    return { complete: false, clearedEntryCount: 0 };
+  }
+  if (typeof isBlendCacheName !== 'function') {
+    reportCleanupError(onCleanupError, 'cache_filter', new TypeError('Blend cache filter unavailable'));
+    return { complete: false, clearedEntryCount: 0 };
+  }
+
+  let cacheNames;
+  try {
+    cacheNames = await listCaches.call(cacheStorage);
+    cacheNames = Array.from(cacheNames || []);
+  } catch (error) {
+    reportCleanupError(onCleanupError, 'cache_list', error);
+    return { complete: false, clearedEntryCount: 0 };
+  }
+
+  let complete = true;
+  let clearedEntryCount = 0;
+  for (const cacheName of cacheNames) {
+    let isBlendCache = false;
+    try {
+      isBlendCache = isBlendCacheName(cacheName) === true;
+    } catch (error) {
+      reportCleanupError(onCleanupError, 'cache_filter', error);
+      complete = false;
+      continue;
+    }
+    if (!isBlendCache) continue;
+
+    let cache;
+    let requests;
+    try {
+      cache = await openCache.call(cacheStorage, cacheName);
+      requests = await cache.keys();
+    } catch (error) {
+      reportCleanupError(onCleanupError, 'cache_read', error);
+      complete = false;
+      continue;
+    }
+
+    for (const request of Array.from(requests || [])) {
+      if (!isSignedSupabaseStorageUrl(request?.url)) continue;
+      try {
+        if (await cache.delete(request)) clearedEntryCount++;
+      } catch (error) {
+        reportCleanupError(onCleanupError, 'cache_delete', error);
+        complete = false;
+      }
+    }
+  }
+  return { complete, clearedEntryCount };
 }

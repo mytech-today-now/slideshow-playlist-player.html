@@ -2,8 +2,8 @@
   'use strict';
 
   const APP_VERSION = '5.0.11';
-  const ASSET_VERSION = '20261112-v5.0.11-issue-05-inert-supabase-defaults';
-  const CACHE_VERSION = '20261112-v5.0.11-issue-05-inert-supabase-defaults';
+  const ASSET_VERSION = '20261125-v5.0.11-profile-sync';
+  const CACHE_VERSION = '20261125-v5.0.11-profile-sync';
   const DB_NAME = 'player-blend-v1';
   const DB_VERSION = 5;
   const ALIAS_SCHEMA = 'blend.aliases.v1';
@@ -35,6 +35,7 @@
     './slideshow-playlist-player.html',
     asset('./styles.css'),
     asset('./app.js'),
+    asset('./profile-sync-client.js'),
     asset('./git-playlist-catalog.js'),
     asset('./git-playlist-storage.js'),
     asset('./indexeddb-open.js'),
@@ -50,7 +51,11 @@
     asset('./supabase-config.js'),
     asset('./supabase-auth.js'),
     asset('./storage-url-resolver.js'),
+    asset('./storage-policy-scope.js'),
     asset('./signed-url-cleanup.js'),
+    asset('./spotify-playlist-import.js'),
+    asset('./youtube-oauth.js'),
+    asset('./playlist-provider-import.js'),
     asset('./transition-manager.js'),
     asset('./playback-clock.js'),
     asset('./playback-mode.js'),

@@ -39,18 +39,13 @@ async function bootApp(page, { serviceWorkersUnavailable = false } = {}) {
     localStorage.setItem('blend-welcome-v4', '1');
     localStorage.setItem('blend-install-banner-hidden-v4', '1');
     localStorage.setItem('blend-analytics-consent-v1', '0');
-    const runtimeConfigKey = 'blend-runtime-config-v1';
-    try {
-      const current = JSON.parse(localStorage.getItem(runtimeConfigKey) || '{}');
-      localStorage.setItem(runtimeConfigKey, JSON.stringify({
-        ...current,
-        SUPABASE_URL: location.origin,
-        SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
-        SUPABASE_AUTH_REDIRECT_URL: `${location.origin}/index.html`,
-        SUPABASE_MEDIA_BUCKET: 'media',
-        SUPABASE_PUBLIC_BUCKETS: 'public'
-      }));
-    } catch (_) {}
+    window.BLEND_RUNTIME_CONFIG = {
+      SUPABASE_URL: location.origin,
+      SUPABASE_ANON_KEY: 'synthetic-browser-anon-key',
+      SUPABASE_AUTH_REDIRECT_URL: `${location.origin}/index.html`,
+      SUPABASE_MEDIA_BUCKET: 'media',
+      SUPABASE_PUBLIC_BUCKETS: 'public'
+    };
     try {
       Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true, writable: true });
       Object.defineProperty(window, 'showDirectoryPicker', { value: undefined, configurable: true, writable: true });
@@ -320,7 +315,7 @@ test('file and folder picker cancellation preserve library, lists, selection, an
   })).toHaveCount(0);
 });
 
-test('expired private media auth failure preserves its portable reference without leaking private path or bearer URL', async ({ page }) => {
+test('unverified private Storage signing preserves its portable reference without leaking private path or bearer URL', async ({ page }) => {
   const privatePath = String.raw`C:\Users\synthetic-user\Private Media\private-clip.mp4`;
   const bearerToken = 'synthetic-issue10-bearer-secret';
   const storageReference = 'supabase://media/private/private-clip.mp4';
@@ -332,6 +327,11 @@ test('expired private media auth failure preserves its portable reference withou
     window.__issue10E2eClock = { now: () => startTime };
   }, fakeNow);
 
+  let signingRequests = 0;
+  await page.route('**/storage/v1/object/sign/**', async route => {
+    signingRequests += 1;
+    await route.abort();
+  });
   await bootApp(page);
   // Startup validates restored media handles shortly after the app becomes ready.
   await page.waitForTimeout(1300);
@@ -374,9 +374,9 @@ test('expired private media auth failure preserves its portable reference withou
     window.Blend.renderListEditor();
   }, { privatePath, sourceUrl: bearerUrl, storageReference });
 
-  await page.evaluate(() => window.Blend.play());
+  await page.evaluate(() => { void window.Blend.play(); });
   const authToast = page.locator('#toast-container .toast[role="alert"]')
-    .filter({ hasText: 'This private media link expired. Connect Supabase to refresh access.' });
+    .filter({ hasText: 'Private Storage signing is unavailable until the project owner records a reviewed policy revision.' });
   await expect(authToast).toBeVisible();
   const mediaState = await page.evaluate(() => {
     const item = window.Blend.state.library.get('synthetic-private-media');
@@ -394,9 +394,9 @@ test('expired private media auth failure preserves its portable reference withou
     inLibrary: true,
     stale: false,
     storageReference,
-    lastStorageError: 'auth_required',
+    lastStorageError: 'storage_policy_unverified',
     inSlideshow: true,
-    available: false
+    available: true
   });
 
   const visibleStatus = await page.locator('#toast-container').innerText();
@@ -407,6 +407,7 @@ test('expired private media auth failure preserves its portable reference withou
   expect(diagnostics).not.toContain(`token=${bearerToken}`);
   expect(diagnostics).not.toContain(bearerToken);
   expect(diagnostics).not.toMatch(/Bearer\s+\S+/i);
+  expect(signingRequests).toBe(0);
 });
 
 test('directory input absence is announced and Add Files remains available', async ({ page }) => {

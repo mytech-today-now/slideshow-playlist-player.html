@@ -68,8 +68,8 @@ for (const deployment of deployments) {
     const otherIdentity = await installOtherAppWorker(page, baseURL);
     const blendIdentity = await openBlendAndReset(page, deployment, otherIdentity);
 
-    await expect(page.locator('#toast-container .toast').last())
-      .toHaveText('Browser data cleared. Saved Supabase and Git credentials, Git repository settings, and public Git catalog settings were removed. Runtime configuration was preserved, and other apps on this site were left alone.');
+    await expect(page.locator('#toast-container .toast').filter({ hasText: 'Browser data cleared.' }))
+      .toHaveText('Browser data cleared. Saved Supabase, YouTube, and Spotify settings, YouTube and Spotify tab credentials, Git credentials, Git repository settings, public Git catalog settings, and saved connection settings were removed. Host-injected deployment settings remain available, and other apps on this site were left alone.');
 
     const registrationsAfterReset = await page.evaluate(async () => (
       (await navigator.serviceWorker.getRegistrations()).map(registration => registration.scope)
@@ -122,6 +122,41 @@ for (const deployment of deployments) {
     await expect(page.locator('#worker-status')).toContainText(otherIdentity.scriptUrl);
   });
 }
+
+test('signed Storage and Range requests bypass Blend Cache Storage', async ({ page }) => {
+  const baseURL = test.info().project.use.baseURL;
+  const identity = registrationIdentity(baseURL, '/index.html');
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  await waitForController(page, identity.scriptUrl);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForController(page, identity.scriptUrl);
+
+  const signedImageUrl = new URL('/storage/v1/object/sign/media/private/cache-test.jpeg?token=synthetic-sw-image', baseURL).href;
+  const rangeUrl = new URL('/samples/IL.jpeg?range-test=synthetic', baseURL).href;
+  await page.evaluate(url => new Promise(resolve => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = resolve;
+    image.src = url;
+    document.body.append(image);
+  }), signedImageUrl);
+  const rangeStatus = await page.evaluate(async url => (
+    (await fetch(url, { headers: { Range: 'bytes=0-0' } })).status
+  ), rangeUrl);
+  expect(rangeStatus).toBe(200);
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
+
+  const cachedSignedEntryCount = await page.evaluate(async urls => {
+    let count = 0;
+    for (const name of await caches.keys()) {
+      if (!name.startsWith('blend-')) continue;
+      const cache = await caches.open(name);
+      count += (await cache.keys()).filter(request => urls.includes(request.url)).length;
+    }
+    return count;
+  }, [signedImageUrl, rangeUrl]);
+  expect(cachedSignedEntryCount).toBe(0);
+});
 
 test('installed PWA shell reloads from cache after a navigation network failure', {
   tag: '@cross-engine-smoke'

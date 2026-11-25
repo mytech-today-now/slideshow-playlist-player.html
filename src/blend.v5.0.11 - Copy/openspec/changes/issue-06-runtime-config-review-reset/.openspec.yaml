@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-12
+goal: Require an operator-visible review for persisted Supabase connection
+  changes, restrict auth redirects to this app origin, and make Clear Browser
+  Storage remove the saved runtime config by default while preserving controlled
+  host injection and media files.

@@ -48,6 +48,11 @@ function isMediaRequest(request, url) {
     MEDIA_EXTENSIONS.test(url.pathname);
 }
 
+function isSignedSupabaseStorageRequest(url) {
+  return /\/storage\/v\d+\/object\/sign\//i.test(url.pathname) &&
+    Array.from(url.searchParams.keys()).some(key => key.toLowerCase() === 'token');
+}
+
 function shouldBypassWorker(request) {
   return request.cache === 'no-store';
 }
@@ -154,6 +159,7 @@ async function cleanupOldCaches() {
 
 function classifyRequest(request, url) {
   const path = url.pathname.toLowerCase();
+  if (path === '/api/profile-sync' || path.startsWith('/api/profile-sync/')) return ROUTE_POLICIES.networkOnly;
   if (request.mode === 'navigate') return ROUTE_POLICIES.navigation;
   if (path.endsWith('/alias-manifest.json')) return ROUTE_POLICIES.aliasManifest;
   if (DOC_EXTENSIONS.test(path) || path.endsWith('/readme.md')) return ROUTE_POLICIES.docs;
@@ -411,7 +417,7 @@ self.addEventListener('fetch', event => {
 
   if (shouldBypassWorker(request)) return;
 
-  if (isRangeRequest(request) || isMediaRequest(request, url)) {
+  if (isSignedSupabaseStorageRequest(url) || isRangeRequest(request) || isMediaRequest(request, url)) {
     event.respondWith(fetch(request));
     return;
   }

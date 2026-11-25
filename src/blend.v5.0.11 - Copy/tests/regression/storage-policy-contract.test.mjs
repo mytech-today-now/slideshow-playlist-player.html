@@ -4,6 +4,11 @@ import { readFile } from 'node:fs/promises';
 
 import { getBlendRuntimeConfig } from '../../supabase-config.js';
 import { StorageResolverError, createStorageUrlResolver } from '../../storage-url-resolver.js';
+import {
+  CURRENT_STORAGE_POLICY_REVISION,
+  PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE,
+  TRUSTED_STORAGE_POLICY_SCOPE
+} from '../../storage-policy-scope.js';
 import { runStoragePolicyStaging } from '../integration/storage-policy-staging.mjs';
 
 const STORAGE_CONFIG = {
@@ -14,10 +19,26 @@ const STORAGE_CONFIG = {
   signedUrlTtlSeconds: 120
 };
 
-function resolverFor({ token = '', fetchImpl, logger = null } = {}) {
+const TEST_POLICY_REVISION = 'synthetic-policy-revision-1';
+const TEST_POLICY_SCOPE = Object.freeze({
+  projectUrl: 'https://example.supabase.co',
+  policyRevision: TEST_POLICY_REVISION,
+  shareableBuckets: Object.freeze(['private-media'])
+});
+
+function resolverFor({
+  token = '',
+  fetchImpl,
+  logger = null,
+  authClient = null,
+  trustedStoragePolicyScope = TEST_POLICY_SCOPE,
+  currentStoragePolicyRevision = TEST_POLICY_REVISION
+} = {}) {
   return createStorageUrlResolver({
     config: STORAGE_CONFIG,
-    authClient: { getAccessToken: () => token },
+    trustedStoragePolicyScope,
+    currentStoragePolicyRevision,
+    authClient: authClient || { getAccessToken: () => token },
     fetchImpl,
     logger
   });
@@ -50,7 +71,7 @@ test('settings surface the required private-policy verification fallback as a no
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(
     html,
-    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision\. You can share direct public URLs or continue local playback\.<\/p>/
+    /<p id="private-media-policy-warning" class="setting__status" data-state="error" role="note">Supabase Storage reference sharing is blocked until the project owner verifies the exact project and policy revision\. Private Storage signing is unavailable until the project owner records a reviewed policy revision\. You can play local files and direct public media URLs, and you can export JSON\.<\/p>/
   );
 });
 
@@ -63,6 +84,49 @@ test('app share flow uses the source-controlled scope and blocks before compress
   assert.ok(shareFlow.indexOf('hasUnverifiedSupabaseStorageReference') < shareFlow.indexOf('compressExperience(payload)'));
   assert.ok(shareFlow.indexOf('hasUnverifiedSupabaseStorageReference') < shareFlow.indexOf('showUrlShareModal('));
   assert.doesNotMatch(shareFlow, /publicBucketAllowList/);
+  assert.match(shareFlow, /PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE/);
+});
+
+test('playback blocks unverified cached signed URLs and announces the policy gate accessibly', async () => {
+  const app = await readFile(new URL('../../app.js', import.meta.url), 'utf8');
+  const playback = app.slice(app.indexOf('async function resolvePlayableUrlForItem('), app.indexOf('function isRemotePlayableItem('));
+  const playlistPlayback = app.slice(app.indexOf('async function loadPlaylistItem('), app.indexOf('async function getPreloadedPlaylistUrl('));
+  const slideshowPlayback = app.slice(app.indexOf('async function loadSlideshowItem('), app.indexOf('async function getPreloadedSlideshowElement('));
+  const alert = app.slice(app.indexOf('function showPrivateStorageSigningUnavailable()'), app.indexOf('function showPrivateMediaAuthPrompt('));
+
+  assert.ok(playback.indexOf('isSignedSupabaseStorageUrl(directUrl)') < playback.indexOf('if (directUrl && (!hasExpiry || !expiredSignedUrl)) return directUrl;'));
+  assert.match(playback, /hasVerifiedStoragePolicyScope\(TRUSTED_STORAGE_POLICY_SCOPE/);
+  assert.match(playback, /item\.metadata\.lastStorageError = 'storage_policy_unverified'/);
+  for (const loader of [playlistPlayback, slideshowPlayback]) {
+    assert.match(loader, /item\?\.metadata\?\.lastStorageError === 'storage_policy_unverified'[\s\S]*?item\.stale = false;[\s\S]*?itemRef\.available = true;[\s\S]*?showPrivateStorageSigningUnavailable\(\)/);
+  }
+  assert.match(alert, /PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE/);
+  assert.match(alert, /role: 'alert'/);
+  assert.match(alert, /timeout: 10_000/);
+});
+
+test('private signing remains blocked in this build before token or network access', async () => {
+  let tokenReads = 0;
+  let requests = 0;
+  assert.equal(TRUSTED_STORAGE_POLICY_SCOPE, null);
+  assert.equal(CURRENT_STORAGE_POLICY_REVISION, '');
+  const resolver = resolverFor({
+    authClient: { getAccessToken() { tokenReads += 1; return 'synthetic-access-token'; } },
+    trustedStoragePolicyScope: TRUSTED_STORAGE_POLICY_SCOPE,
+    currentStoragePolicyRevision: CURRENT_STORAGE_POLICY_REVISION,
+    fetchImpl: async () => {
+      requests += 1;
+      return new Response('{}', { status: 200 });
+    }
+  });
+  await assert.rejects(
+    () => resolver.resolve('supabase://private-media/codex-policy-check/private-object.txt'),
+    error => error instanceof StorageResolverError
+      && error.code === 'storage_policy_unverified'
+      && error.message === PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE
+  );
+  assert.equal(tokenReads, 0);
+  assert.equal(requests, 0);
 });
 
 test('release evidence records the named owner, policy revision, rollback, and all six matrix cells', async () => {
@@ -100,7 +164,7 @@ test('release evidence records the named owner, policy revision, rollback, and a
 test('policy provenance inventory separates app behavior from placeholders and provider evidence', async () => {
   const verification = await readFile(new URL('../../STORAGE_POLICY_VERIFICATION.md', import.meta.url), 'utf8');
 
-  assert.match(verification, /## Finding assessment[\s\S]*?Private-reference URL sharing remains blocked by the app\./);
+  assert.match(verification, /## Finding assessment[\s\S]*?Private-reference URL sharing remains blocked and private signing is now disabled in this build\./);
   assert.match(verification, /No provider policy defect or exposure was observed; the actual provider policy and authorization behavior remain unknown\./);
   assert.match(verification, /a testable assumption, not an observed incident or a claim that the policy is safe/);
   assert.match(verification, /## Claim provenance inventory/);

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://api.mytech.today http://localhost:4191 http://127.0.0.1:4191; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'">
+  <title>Blend Profile Sync Admin</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./admin-profile-sync.css">
+  <script type="module" src="./admin-profile-sync.js"></script>
+</head>
+<body class="admin-sync-page">
+  <main class="admin-sync" id="admin-sync-app">
+    <h1>Blend Profile Sync Admin</h1>
+    <p>This page can inspect synchronization metadata, retry eligible GitHub writes, and remove the current Experience artifact by GUID. Deletion also clears the server copy, recovery records, share links, and device sessions. Public GitHub commit history remains.</p>
+
+    <section class="admin-sync__card" aria-labelledby="admin-key-heading">
+      <h2 id="admin-key-heading">Administrator access</h2>
+      <label for="admin-sync-key">Admin key</label>
+      <div class="admin-sync__row">
+        <input id="admin-sync-key" type="password" autocomplete="current-password" spellcheck="false" maxlength="64">
+        <button id="admin-sync-connect" type="button" class="btn primary">Connect</button>
+        <button id="admin-sync-disconnect" type="button" class="btn" hidden>Disconnect</button>
+      </div>
+      <p>The key stays in this tab’s memory while connected. It is not saved in browser storage or displayed after connection.</p>
+    </section>
+
+    <section class="admin-sync__card" aria-labelledby="admin-health-heading">
+      <h2 id="admin-health-heading">Integration health</h2>
+      <button id="admin-sync-health-refresh" type="button" class="btn" disabled>Refresh health</button>
+      <dl id="admin-sync-health" class="admin-sync__grid" aria-live="polite"></dl>
+    </section>
+
+    <section class="admin-sync__card" aria-labelledby="admin-profile-heading">
+      <h2 id="admin-profile-heading">Profile operations</h2>
+      <label for="admin-sync-guid">Profile GUID</label>
+      <div class="admin-sync__row">
+        <input id="admin-sync-guid" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="36" placeholder="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx">
+        <button id="admin-sync-inspect" type="button" class="btn primary" disabled>Inspect</button>
+      </div>
+      <dl id="admin-sync-profile" class="admin-sync__grid" aria-live="polite"></dl>
+      <div class="admin-sync__row">
+        <button id="admin-sync-retry" type="button" class="btn" disabled>Retry eligible sync</button>
+        <button id="admin-sync-delete" type="button" class="btn danger" disabled>Delete current Experience artifact</button>
+      </div>
+    </section>
+
+    <p id="admin-sync-status" role="status" aria-live="polite"></p>
+    <p id="admin-sync-error" role="alert" aria-live="assertive" hidden></p>
+    <a href="./index.html">Return to Blend Player</a>
+  </main>
+</body>
+</html>

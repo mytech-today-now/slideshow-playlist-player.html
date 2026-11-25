@@ -44,6 +44,7 @@ test('required precache contains the offline shell and PWA modules', () => {
   assert.ok(required.has('./offline.html'));
   assert.ok(required.has('./alias-manifest.json'));
   assert.ok(required.has('./analytics-consent.js?v=' + config.ASSET_VERSION));
+  assert.ok(required.has('./profile-sync-client.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./analytics-event-params.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./experience-persistence.js?v=' + config.ASSET_VERSION));
   assert.ok(required.has('./share-destination-safety.js?v=' + config.ASSET_VERSION));
@@ -91,6 +92,7 @@ test('both manifests use versioned root icons and the worker skips legacy asset 
 test('HTML shell uses manifest.webmanifest and the configured asset version', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
   const app = await readFile(new URL('app.js', root), 'utf8');
+  const worker = await readFile(new URL('service-worker.js', root), 'utf8');
   assert.ok(html.includes(`<link rel="manifest" href="./manifest.webmanifest?v=${config.ASSET_VERSION}">`));
   assert.match(html, new RegExp(`styles\\.css\\?v=${config.ASSET_VERSION}`));
   assert.match(html, new RegExp(`app\\.js\\?v=${config.ASSET_VERSION}`));
@@ -103,5 +105,7 @@ test('HTML shell uses manifest.webmanifest and the configured asset version', as
   assert.match(app, new RegExp(`share-destination-safety\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`git-playlist-catalog\\.js\\?v=${config.ASSET_VERSION}`));
   assert.match(app, new RegExp(`git-playlist-storage\\.js\\?v=${config.ASSET_VERSION}`));
+  assert.match(app, new RegExp(`profile-sync-client\\.js\\?v=${config.ASSET_VERSION}`));
+  assert.match(worker, /path === '\/api\/profile-sync' \|\| path\.startsWith\('\/api\/profile-sync\/'\)/);
   assert.match(html, new RegExp(`content="${config.APP_VERSION}"`));
 });

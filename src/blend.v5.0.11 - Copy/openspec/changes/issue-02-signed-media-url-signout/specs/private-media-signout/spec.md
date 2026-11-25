@@ -48,11 +48,34 @@ Blend MUST retain a retry path for private media after sign-out and MUST resolve
 - **THEN** it displays the accessible message `Signing out stops playback in this tab. A copied link may still work until its provider and cache lifetime ends.` and provides a path to sign in and retry
 
 ### Requirement: Do not claim copied URLs were revoked
-Blend MUST describe only local cleanup on sign-out and MUST NOT claim to revoke signed URLs copied outside the app.
+After local sign-out, Blend MUST durably show an accessible copied-URL warning near the auth controls, even when it found no signed in-app fields to clear. The warning MUST say that copied links can keep opening private media until they expire, with a default lifetime of up to one hour, and that Blend cannot remove copies from other apps or unread messages. Blend MUST NOT claim to revoke copied URLs or erase clipboard contents.
+
+#### Scenario: Warning is present without in-app signed fields
+- **WHEN** local sign-out completes and there are no signed URL fields in Blend's current media records
+- **THEN** the auth status region and sign-out notice still show the copied-URL warning and do not claim clipboard erasure or provider revocation
 
 #### Scenario: A copied link remains independent
 - **WHEN** a signed URL was copied before local sign-out
-- **THEN** the app does not claim that sign-out revoked the copied URL and explains that the link may remain valid until expiry
+- **THEN** the app explains that the link may remain usable until expiry (3,600 seconds by default) and does not claim sign-out revoked it
+
+### Requirement: Keep signed Storage responses out of Blend Cache Storage
+Blend's service worker MUST bypass Cache Storage for signed Supabase Storage object requests that match `/storage/vN/object/sign/` and include a `token` query parameter. On local sign-out, Blend MUST remove matching signed-object entries from Blend-managed Cache Storage when present.
+
+#### Scenario: Same-origin signed image request
+- **WHEN** a same-origin signed Supabase Storage image request reaches the service worker
+- **THEN** the worker fetches it directly without reading or writing a Blend Cache Storage entry
+
+#### Scenario: Legacy signed response is present
+- **WHEN** a Blend-managed cache contains a recognized signed Supabase Storage object request at local sign-out
+- **THEN** Blend deletes that cache entry while preserving unrelated requests and caches owned by other apps
+
+#### Scenario: Cache cleanup fails
+- **WHEN** Cache Storage cannot be enumerated or a matching entry cannot be deleted during local sign-out
+- **THEN** the local session remains cleared, the status reports incomplete cleanup and offers retry, and diagnostics include only a safe operation and error name
+
+#### Scenario: Non-signed or Range requests
+- **WHEN** a URL lacks either the signed-object path or `token` query parameter, or a media request includes a Range header
+- **THEN** existing classification is preserved and media and Range requests remain network-only
 
 ### Requirement: Bound the default lifetime of newly issued private URLs
 Blend MUST request a signed URL lifetime of 3,600 seconds by default and MUST continue to honor a positive per-player TTL value explicitly selected in Config. Saved IndexedDB player settings that contain the former 1,209,600-second default without a current TTL policy marker MUST migrate to the 3,600-second default once. Imported experience settings with an explicit positive TTL MUST remain intact.

@@ -10,6 +10,18 @@ import {
   isSupabaseStorageReference,
   sanitizeSupabaseStorageReference
 } from '../../storage-url-resolver.js';
+import {
+  CURRENT_STORAGE_POLICY_REVISION,
+  TRUSTED_STORAGE_POLICY_SCOPE,
+  hasVerifiedStoragePolicyScope
+} from '../../storage-policy-scope.js';
+
+const TEST_POLICY_REVISION = 'synthetic-policy-revision-1';
+const TEST_POLICY_SCOPE = Object.freeze({
+  projectUrl: 'https://example.supabase.co',
+  policyRevision: TEST_POLICY_REVISION,
+  shareableBuckets: Object.freeze(['media'])
+});
 
 function createAuth(token = 'access-token') {
   return {
@@ -54,6 +66,8 @@ function createFakeTimers() {
 
 function createResolver({ fetchImpl, ...options } = {}) {
   return createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
@@ -80,10 +94,62 @@ test('signed URL freshness includes the resolver safety margin', () => {
   assert.equal(isSignedUrlFresh('', now), false);
 });
 
+test('private Storage scope requires an exact project, revision, and bucket', () => {
+  assert.equal(TRUSTED_STORAGE_POLICY_SCOPE, null);
+  assert.equal(CURRENT_STORAGE_POLICY_REVISION, '');
+  assert.equal(hasVerifiedStoragePolicyScope(TEST_POLICY_SCOPE, {
+    projectUrl: 'https://example.supabase.co/',
+    policyRevision: TEST_POLICY_REVISION,
+    bucket: 'media'
+  }), true);
+  assert.equal(hasVerifiedStoragePolicyScope(TEST_POLICY_SCOPE, {
+    projectUrl: 'https://other.supabase.co',
+    policyRevision: TEST_POLICY_REVISION,
+    bucket: 'media'
+  }), false);
+  assert.equal(hasVerifiedStoragePolicyScope(TEST_POLICY_SCOPE, {
+    projectUrl: 'https://example.supabase.co',
+    policyRevision: 'stale-revision',
+    bucket: 'media'
+  }), false);
+  assert.equal(hasVerifiedStoragePolicyScope(TEST_POLICY_SCOPE, {
+    projectUrl: 'https://example.supabase.co',
+    policyRevision: TEST_POLICY_REVISION,
+    bucket: 'other'
+  }), false);
+});
+
+test('private signing is refused with the empty build scope before token or fetch access', async () => {
+  let tokenReads = 0;
+  let requests = 0;
+  const resolver = createStorageUrlResolver({
+    config: {
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'synthetic-anon-key',
+      defaultBucket: 'media',
+      publicBucketAllowList: [],
+      signedUrlTtlSeconds: 120
+    },
+    authClient: { getAccessToken() { tokenReads += 1; return 'synthetic-access-token'; } },
+    fetchImpl: async () => { requests += 1; return new Response('{}', { status: 200 }); }
+  });
+
+  await assert.rejects(
+    () => resolver.resolve('supabase://media/private/item.png'),
+    error => error instanceof StorageResolverError
+      && error.code === 'storage_policy_unverified'
+      && /Private Storage signing is unavailable until the project owner records a reviewed policy revision/.test(error.message)
+  );
+  assert.equal(tokenReads, 0);
+  assert.equal(requests, 0);
+});
+
 test('reuses a cached private signed URL until its safety-adjusted expiry', async () => {
   let now = 1_000_000;
   let signingRequests = 0;
   const resolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
@@ -248,6 +314,8 @@ test('rejects empty storage paths with invalid_reference before signing', async 
 test('resolves private bucket with signed URL', async () => {
   const calls = [];
   const resolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
@@ -420,6 +488,8 @@ test('default signing request deadline is explicit and finite', () => {
 
 test('throws auth_required when private media has no token', async () => {
   const resolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
@@ -486,6 +556,8 @@ test('Supabase references fail closed without both settings while direct public 
 
 test('maps legacy ipfs URI into Supabase legacy prefix', async () => {
   const resolver = createStorageUrlResolver({
+    trustedStoragePolicyScope: TEST_POLICY_SCOPE,
+    currentStoragePolicyRevision: TEST_POLICY_REVISION,
     config: {
       supabaseUrl: 'https://example.supabase.co',
       supabaseAnonKey: 'anon',
