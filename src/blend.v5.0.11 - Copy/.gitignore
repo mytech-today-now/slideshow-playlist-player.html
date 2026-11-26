@@ -6,6 +6,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+/.lighthouseci/
 
 # Beads workspace coordination lock.
 .beads.gate.lock

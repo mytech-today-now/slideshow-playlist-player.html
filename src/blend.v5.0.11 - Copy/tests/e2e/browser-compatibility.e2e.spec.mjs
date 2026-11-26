@@ -663,6 +663,8 @@ test('responsive viewport, text scale, and touch targets remain usable', async (
         value: undefined
       });
     });
+    await page.locator('#close-config').click();
+    await page.locator('#viewport').hover();
     await page.getByRole('button', { name: 'Toggle fullscreen viewport' }).click();
     await expect(page.locator('#toast-container .toast[role="status"]').last())
       .toHaveText('Fullscreen is unavailable; playback controls remain on screen.');

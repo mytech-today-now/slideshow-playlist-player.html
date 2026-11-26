@@ -5,17 +5,17 @@ import {
   ensureBlendDatabaseStores,
   IndexedDBOpenError,
   openIndexedDBCompatible
-} from './indexeddb-open.js?v=20261125-v5.0.11-profile-sync';
+} from './indexeddb-open.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   ExperienceSnapshotConflictError,
   persistExperienceSnapshotAtomically,
   readExperienceSnapshotAtomically
-} from './experience-persistence.js?v=20261125-v5.0.11-profile-sync';
+} from './experience-persistence.js?v=20261126-v5.0.11-experience-switch-recovery';
 import { clearRuntimeCaches, registerPwa, unregisterBlendServiceWorker } from './pwa-client.js';
-import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261125-v5.0.11-profile-sync';
-import { createPointerReorderFallback } from './drag-sort.js?v=20261125-v5.0.11-profile-sync';
-import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261125-v5.0.11-profile-sync';
-import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261125-v5.0.11-profile-sync';
+import { attachGlobalErrorHandlers, createLogger } from './logger.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { createPointerReorderFallback } from './drag-sort.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { computeMoveOrder, isIdentityOrder, buildIndexRemap } from './list-reorder.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { findRelinkCandidates, hasPotentialSameLibraryMediaPath, hasSameLibraryMediaIdentity, indexRelinkCandidates, normalizeRelinkPath } from './media-relink.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   DEFAULT_SIGNED_URL_TTL_SECONDS,
   SIGNED_URL_TTL_POLICY_VERSION,
@@ -25,8 +25,8 @@ import {
   saveBlendRuntimeConfig,
   isLegacySignedUrlTtlSetting,
   normalizeSavedSignedUrlTtlSettings
-} from './supabase-config.js?v=20261125-v5.0.11-profile-sync';
-import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261125-v5.0.11-profile-sync';
+} from './supabase-config.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { createSupabaseAuthClient, SupabaseAuthError } from './supabase-auth.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   StorageResolverError,
   createStorageUrlResolver,
@@ -36,13 +36,13 @@ import {
   legacyIpfsCidFromReference,
   sanitizeLegacyIpfsReference,
   sanitizeSupabaseStorageReference
-} from './storage-url-resolver.js?v=20261125-v5.0.11-profile-sync';
+} from './storage-url-resolver.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   CURRENT_STORAGE_POLICY_REVISION,
   PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE,
   TRUSTED_STORAGE_POLICY_SCOPE,
   hasVerifiedStoragePolicyScope
-} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
+} from './storage-policy-scope.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   applySignedMediaUrlCleanup,
   clearSignedMediaCacheStorage,
@@ -50,19 +50,19 @@ import {
   planSignedMediaUrlCleanup,
   isSignedSupabaseStorageUrl,
   sanitizeSignedMediaPersistenceSnapshot
-} from './signed-url-cleanup.js?v=20261125-v5.0.11-profile-sync';
+} from './signed-url-cleanup.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   createTransitionManager,
   defaultTransitionSettings,
   listTransitionEffects,
   normalizeTransitionSettings
-} from './transition-manager.js?v=20261125-v5.0.11-profile-sync';
+} from './transition-manager.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   TRANSPORT,
   transportToggleAction,
   ElapsedClock,
   PausableTimer
-} from './playback-clock.js?v=20261125-v5.0.11-profile-sync';
+} from './playback-clock.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   DEFAULT_EXPERIENCE_END_TARGET,
   isExperienceEndSatisfied,
@@ -74,9 +74,9 @@ import {
   compactPlaybackHistory,
   selectNextLayerIndex,
   selectPreviousLayerIndex
-} from './playback-mode.js?v=20261125-v5.0.11-profile-sync';
-import { renderMarkdown } from './markdown.js?v=20261125-v5.0.11-profile-sync';
-import { fetchReadme } from './readme-fetcher.js?v=20261125-v5.0.11-profile-sync';
+} from './playback-mode.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { renderMarkdown } from './markdown.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { fetchReadme } from './readme-fetcher.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   SPOTIFY_CLIENT_ID_STORAGE_KEY,
   SPOTIFY_TOKEN_SESSION_STORAGE_KEY,
@@ -91,7 +91,7 @@ import {
   readSpotifyClientId,
   removeSpotifyClientId,
   saveSpotifyClientId
-} from './spotify-playlist-import.js?v=20261125-v5.0.11-profile-sync';
+} from './spotify-playlist-import.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   fetchOfficialPlaylistCanonicalLinks,
   officialPlaylistProviderFromUrl,
@@ -100,7 +100,7 @@ import {
   clearProviderPlaylistOAuthPendingImport,
   disconnectProviderPlaylistOAuth,
   getProviderPlaylistOAuthStatus
-} from './playlist-provider-import.js?v=20261125-v5.0.11-profile-sync';
+} from './playlist-provider-import.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   YOUTUBE_OAUTH_CLIENT_ID_STORAGE_KEY,
   clearYouTubeOAuthSession,
@@ -112,7 +112,7 @@ import {
   removeYouTubeOAuthClientId,
   requestYouTubeAccessToken,
   saveYouTubeOAuthClientId
-} from './youtube-oauth.js?v=20261125-v5.0.11-profile-sync';
+} from './youtube-oauth.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   buildExperienceLibraryPayload,
   compressExperience,
@@ -128,34 +128,34 @@ import {
   URL_SHARE_SIZE_LIMIT,
   URL_SHARE_SIZE_LIMIT_ERROR_CODE,
   URL_MAX_LENGTH
-} from './url-share.js?v=20261125-v5.0.11-profile-sync';
+} from './url-share.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   isUnsupportedImportScheme,
   resolveHttpShareUrl,
   resolvePlatformShareUrl
-} from './share-destination-safety.js?v=20261125-v5.0.11-profile-sync';
+} from './share-destination-safety.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   analyzeExperienceSize,
   buildSizeBreakdownHtml
-} from './url-share-diagnostics.js?v=20261125-v5.0.11-profile-sync';
+} from './url-share-diagnostics.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   buildPlaybackTimeline,
   formatTimelineTime,
   getUrlHealth,
   projectionTimeAt,
   startedEntriesAt
-} from './timeline-analysis.js?v=20261125-v5.0.11-profile-sync';
-import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261125-v5.0.11-profile-sync';
+} from './timeline-analysis.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { createExperienceLoadProgress, ITEM_STATUS as LOAD_ITEM_STATUS } from './experience-load-progress.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   fetchSharedExperienceJson,
   SharedExperienceDownloadError,
   SHARED_EXPERIENCE_LIMIT_MESSAGE,
   SHARED_EXPERIENCE_MAX_BYTES
-} from './shared-experience-download.js?v=20261125-v5.0.11-profile-sync';
-import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261125-v5.0.11-profile-sync';
-import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261125-v5.0.11-profile-sync';
-import { createSaveRevisionCoordinator } from './save-state.js?v=20261125-v5.0.11-profile-sync';
-import { createProfileSyncClient } from './profile-sync-client.js?v=20261125-v5.0.11-profile-sync';
+} from './shared-experience-download.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { getAnalyticsConsentDecision } from './analytics-consent.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { buildAnalyticsEventParams } from './analytics-event-params.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { createSaveRevisionCoordinator } from './save-state.js?v=20261126-v5.0.11-experience-switch-recovery';
+import { createProfileSyncClient } from './profile-sync-client.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   GitCatalogError,
   catalogPlaylistPath,
@@ -166,7 +166,7 @@ import {
   parsePublicPlaylistDocument,
   publicCatalogConfigKey,
   savePublicCatalogSettings
-} from './git-playlist-catalog.js?v=20261125-v5.0.11-profile-sync';
+} from './git-playlist-catalog.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   GitPlaylistError,
   createGitPlaylistClient,
@@ -177,7 +177,7 @@ import {
   removeGitPlaylistSettings,
   saveGitPlaylistSettings,
   serializeRemotePlaylist
-} from './git-playlist-storage.js?v=20261125-v5.0.11-profile-sync';
+} from './git-playlist-storage.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   assertLocalImportEntryCount,
   assertLocalImportFileSize,
@@ -190,17 +190,17 @@ import {
   LOCAL_IMPORT_MAX_ENTRIES,
   LOCAL_IMPORT_MAX_LINES,
   getLocalMediaSelectionCounts
-} from './local-import-limits.js?v=20261125-v5.0.11-profile-sync';
+} from './local-import-limits.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   createDirectoryScanYield,
   DIRECTORY_SCAN_PAUSED_MESSAGE
-} from './directory-scan-yield.js?v=20261125-v5.0.11-profile-sync';
+} from './directory-scan-yield.js?v=20261126-v5.0.11-experience-switch-recovery';
 import {
   createResumeOnLoadPlan,
   isResumeOnLoadEnabled,
   normalizeResumeOnLoadSettings,
   RESUME_ON_LOAD_READY_MESSAGE
-} from './resume-on-load.js?v=20261125-v5.0.11-profile-sync';
+} from './resume-on-load.js?v=20261126-v5.0.11-experience-switch-recovery';
 
 const log = createLogger('Blend', {
   level: 'debug',
@@ -295,7 +295,7 @@ if (typeof window !== 'undefined') {
 
 const PWA_CONFIG = globalThis.BlendPwaConfig || {};
 const VERSION = PWA_CONFIG.APP_VERSION || '5.0.11';
-const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261125-v5.0.11-profile-sync';
+const CACHE_VERSION = PWA_CONFIG.CACHE_VERSION || '20261126-v5.0.11-experience-switch-recovery';
 const DB_NAME = PWA_CONFIG.DB_NAME || 'player-blend-v1';
 const DB_VERSION = PWA_CONFIG.DB_VERSION;
 const EXPERIENCE_STORE = 'experiences';
@@ -14432,8 +14432,9 @@ function showExperienceSwitchSaveFailureDialog() {
   const dialog = $('#experience-switch-save-modal');
   const retry = $('#experience-switch-save-retry');
   const exportBackup = $('#experience-switch-save-export');
+  const continueWithoutSaving = $('#experience-switch-save-skip');
   const cancel = $('#experience-switch-save-cancel');
-  if (!dialog || !retry || !exportBackup || !cancel || typeof dialog.showModal !== 'function') {
+  if (!dialog || !retry || !exportBackup || !continueWithoutSaving || !cancel || typeof dialog.showModal !== 'function') {
     return Promise.resolve('cancel');
   }
 
@@ -14442,6 +14443,7 @@ function showExperienceSwitchSaveFailureDialog() {
     const cleanup = () => {
       retry.removeEventListener('click', onRetry);
       exportBackup.removeEventListener('click', onExport);
+      continueWithoutSaving.removeEventListener('click', onSkip);
       cancel.removeEventListener('click', onCancel);
       dialog.removeEventListener('cancel', onDialogCancel);
       dialog.removeEventListener('close', onDialogClose);
@@ -14454,6 +14456,7 @@ function showExperienceSwitchSaveFailureDialog() {
       resolve(action);
     };
     const onRetry = () => finish('retry');
+    const onSkip = () => finish('skip');
     const onCancel = () => finish('cancel');
     const onDialogCancel = event => {
       event.preventDefault();
@@ -14463,17 +14466,19 @@ function showExperienceSwitchSaveFailureDialog() {
     const onExport = () => {
       try {
         exportExperience();
+        finish('export');
       } catch (error) {
         log.warn('experience switch backup export failed', {
           operation: 'experience_switch_backup_export',
           errorName: saveFailureClass(error)
         });
-        showToast('Could not export a backup. Retry the save or cancel the switch.');
+        showToast('Could not export a backup. Retry the save, continue without saving, or cancel the switch.');
       }
     };
 
     retry.addEventListener('click', onRetry);
     exportBackup.addEventListener('click', onExport);
+    continueWithoutSaving.addEventListener('click', onSkip);
     cancel.addEventListener('click', onCancel);
     dialog.addEventListener('cancel', onDialogCancel);
     dialog.addEventListener('close', onDialogClose);
@@ -14531,9 +14536,18 @@ async function switchExperienceById(id, opts = {}) {
             errorName: saveFailureClass(error)
           });
           const recoveryAction = await showExperienceSwitchSaveFailureDialog();
-          if (recoveryAction !== 'retry') {
+          if (recoveryAction === 'cancel') {
             renderExperiencePicker();
             return null;
+          }
+          if (recoveryAction === 'skip' || recoveryAction === 'export') {
+            log.info('[experience] continuing switch without saved outgoing snapshot', {
+              operation: 'experience_switch_outgoing_save',
+              choice: recoveryAction,
+              outgoingId: current.id
+            });
+            outgoing = null;
+            break;
           }
           outgoing = serializeActiveExperience(current);
         }
@@ -15700,7 +15714,7 @@ function setConfigStartupState(message = '') {
   }
   panel?.classList.toggle('config-startup-locked', locked);
   for (const selector of ['#transport', '.experience-panel', '.config-body', '.global-settings', '#open-info']) {
-    const section = panel?.querySelector(selector);
+    const section = selector === '#transport' ? $(selector) : panel?.querySelector(selector);
     if (!section) continue;
     if (locked) {
       section.setAttribute('inert', '');

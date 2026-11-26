@@ -9,12 +9,14 @@
     "test:regression": "node --test --test-isolation=none tests/regression/*.test.mjs",
     "test:regression:isolated": "node --test tests/regression/*.test.mjs",
     "test:e2e": "playwright test --config=playwright.config.mjs",
+    "test:lighthouse": "npm run build && lhci autorun --config=tests/lighthouse/lighthouserc.json",
     "test:git-provider-smoke": "playwright test --config=playwright.config.mjs --project=chromium tests/e2e/git-playlist-provider-smoke.e2e.spec.mjs",
     "test:storage-policy-staging": "node tests/integration/storage-policy-staging.mjs",
     "sanity": "npm run check && npm run test:regression",
     "test": "npm run sanity"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.16.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.3",
     "esbuild": "^0.25.5"

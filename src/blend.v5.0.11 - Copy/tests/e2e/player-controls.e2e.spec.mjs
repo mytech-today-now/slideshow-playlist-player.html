@@ -48,8 +48,7 @@ async function buildVideoExperience(page, testInfo) {
 
 // Starts playback (user gesture) and waits for the active video clock to move.
 async function startAndWaitForProgress(page, blendPage) {
-  await blendPage.openConfig();
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
   await page.waitForFunction(() => {
     const v = Array.from(document.querySelectorAll('#playlist-layer video')).find(el => el.getAttribute('src'));
@@ -127,7 +126,7 @@ test('Pause freezes both layers at the exact position; Play resumes from there',
   const srcWhilePlaying = playing.src;
 
   // --- Pause -------------------------------------------------------------
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'paused', null, { timeout: 5000 });
   const paused = await playlistVideoState(page);
   expect(paused.transport).toBe('paused');
@@ -143,7 +142,7 @@ test('Pause freezes both layers at the exact position; Play resumes from there',
   expect(Math.abs(stillPaused.currentTime - pausedTime)).toBeLessThan(0.25);
 
   // --- Resume ------------------------------------------------------------
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 5000 });
   const resumed = await playlistVideoState(page);
   expect(resumed.paused).toBe(false);
@@ -173,7 +172,7 @@ test('Stop resets to a blank state; Play restarts from the very beginning', asyn
   }, null, { timeout: 12000 });
 
   // --- Stop --------------------------------------------------------------
-  await page.locator('#btn-stop').click();
+  await blendPage.clickTransportControl('btn-stop');
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 5000 });
   const stopped = await page.evaluate(() => {
     const wrapper = document.querySelector('#slideshow-layer .kenburns-wrapper');
@@ -198,7 +197,7 @@ test('Stop resets to a blank state; Play restarts from the very beginning', asyn
   expect(stopped.playButtonText).toBe('▶');
 
   // --- Play again: starts over from the beginning ------------------------
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
   await page.waitForFunction(() => {
     const v = Array.from(document.querySelectorAll('#playlist-layer video')).find(el => el.getAttribute('src'));
@@ -227,7 +226,7 @@ test('rapid Play/Pause/Stop toggles settle into a consistent state', async ({ pa
   const state = await page.evaluate(() => window.Blend?.transport);
   expect(['playing', 'paused', 'stopped']).toContain(state);
   // The app is still responsive: an explicit stop returns to a known state.
-  await page.locator('#btn-stop').click();
+  await blendPage.clickTransportControl('btn-stop');
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 5000 });
   expect(await page.evaluate(() => window.Blend?.transport)).toBe('stopped');
 });
@@ -237,9 +236,8 @@ test('pressing Play with an empty experience stays stopped (no crash)', async ({
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
   await blendPage.createExperience(`Empty ${createRunSuffix(testInfo)}`);
-  await blendPage.openConfig();
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForTimeout(500);
   const state = await page.evaluate(() => ({
     transport: window.Blend?.transport,
@@ -309,8 +307,7 @@ test('enabled resume restores both saved indices paused and survives autoplay re
       return Promise.reject(new DOMException('Playback requires a user gesture', 'NotAllowedError'));
     };
   });
-  await blendPage.openConfig();
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'paused' && /Your last session is ready\. Select Play to resume\./.test(document.querySelector('.toast-resume-on-load')?.textContent || ''));
   restored = await resumePlaybackState(page);
   expect(restored.playlistIndex).toBe(1);
@@ -420,7 +417,6 @@ test('touch help is truthful and supported navigation controls stay accessible',
     expect(helpText).not.toMatch(/Swipe\s*(?:←|↑|→|↓|left|right|up|down)/i);
     await page.keyboard.press('Escape');
 
-    await page.locator('#config-gear').click();
     const previous = page.getByRole('button', { name: 'Previous item' });
     const next = page.getByRole('button', { name: 'Next item' });
     const blend = page.getByRole('slider', { name: 'Blend opacity' });
@@ -452,7 +448,6 @@ test('touch help is truthful and supported navigation controls stay accessible',
     await page.keyboard.press('ArrowRight');
     await expect(blend).toHaveValue(String(startingBlend + 1));
 
-    await page.locator('#close-config').click();
     await page.evaluate(() => document.body.focus());
     await expectNavigationChange(() => page.keyboard.press('ArrowRight'));
     await expectNavigationChange(() => page.keyboard.press('ArrowLeft'));
@@ -548,13 +543,13 @@ test('layer order controls persist and random navigation uses per-layer history'
     state.runtime.historyPlaylist = [];
     state.runtime.historySlideshow = [];
   });
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.playlistIndex)).toBe(2);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.slideshowIndex)).not.toBe(0);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.historyPlaylist.at(-1))).toBe(0);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.historySlideshow.at(-1))).toBe(0);
 
-  await page.locator('#btn-prev').click();
+  await blendPage.clickTransportControl('btn-prev');
   await expect.poll(() => page.evaluate(() => ({
     playlistIndex: window.Blend.state.runtime.playlistIndex,
     slideshowIndex: window.Blend.state.runtime.slideshowIndex
@@ -564,7 +559,7 @@ test('layer order controls persist and random navigation uses per-layer history'
     window.Blend.state.runtime.historySlideshow.length
   ])).toEqual([0, 0]);
 
-  await page.locator('#btn-stop').click();
+  await blendPage.clickTransportControl('btn-stop');
   await page.evaluate(() => {
     const state = window.Blend.state;
     state.playlist.splice(1);
@@ -574,7 +569,7 @@ test('layer order controls persist and random navigation uses per-layer history'
     state.runtime.historyPlaylist = [];
     state.runtime.historySlideshow = [];
   });
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expect.poll(() => page.evaluate(() => ({
     playlistIndex: window.Blend.state.runtime.playlistIndex,
     slideshowIndex: window.Blend.state.runtime.slideshowIndex,
@@ -603,7 +598,7 @@ test('random playback history remains bounded, announces trimming, and stays out
   await page.evaluate(() => window.Blend.saveStateNow());
   await blendPage.openConfig();
 
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expect.poll(() => page.evaluate(() => [
     window.Blend.state.runtime.historyPlaylist.length,
     window.Blend.state.runtime.historySlideshow.length

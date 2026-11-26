@@ -383,29 +383,46 @@ button {
   opacity: 1; transform: scale(1.06); background: rgba(255,255,255,0.14);
 }
 
-/* Playback controls in the configuration panel */
+/* Hover-revealed playback controls over the viewing experience */
 #transport {
-  position: relative; bottom: auto; left: auto; right: auto; z-index: auto;
-  width: 100%; box-sizing: border-box;
-  background: var(--bg-elev2); border-bottom: 1px solid var(--border);
-  padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  position: absolute; inset: auto 0 0; z-index: 22;
+  width: 100%; min-height: 84px; box-sizing: border-box;
+  padding: 22px max(16px, env(safe-area-inset-right)) calc(12px + var(--safe-bottom)) max(16px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.56) 42%, rgba(0, 0, 0, 0.9) 100%);
+  color: #fff;
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
   flex-wrap: wrap;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 180ms var(--trans), transform 180ms var(--trans);
+}
+#viewport:hover #transport,
+#viewport:focus-within #transport {
+  opacity: 1; transform: translateY(0); pointer-events: auto;
 }
 #transport button {
-  background: var(--bg-elev); border: 1px solid var(--border);
-  color: var(--text); width: var(--touch); height: var(--touch); border-radius: 8px;
+  background: rgba(18, 18, 18, 0.86); border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #fff; width: var(--touch); height: var(--touch); border-radius: 999px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 18px; transition: all var(--trans);
+  cursor: pointer; font-size: 18px; transition: background var(--trans), border-color var(--trans), transform var(--trans);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
 }
-#transport button:hover { background: var(--bg); }
-#transport .play-btn { width: 56px; height: 56px; font-size: 22px; margin: 0 4px; }
+#transport button:hover,
+#transport button:focus-visible { background: rgba(0, 0, 0, 0.96); border-color: rgba(255, 255, 255, 0.82); }
+#transport button:disabled { opacity: 0.52; cursor: not-allowed; }
+#transport .play-btn {
+  width: 56px; height: 56px; font-size: 22px; margin: 0 4px;
+  background: var(--accent-dim); border-color: rgba(255, 255, 255, 0.78); color: #fff;
+}
+#transport .play-btn:hover,
+#transport .play-btn:focus-visible { background: var(--accent-dim); }
+#transport .play-btn:hover { background: #8f0c54; }
 #transport #btn-share {
   border-color: rgba(255, 20, 147, 0.5);
-  background: rgba(255, 20, 147, 0.18);
+  background: rgba(42, 12, 31, 0.9);
 }
 #transport #btn-share:hover,
 #transport #btn-share:focus-visible {
-  background: rgba(255, 20, 147, 0.32);
+  background: rgba(78, 14, 50, 0.96);
   border-color: rgba(255, 20, 147, 0.85);
 }
 #transport #btn-share[data-ipfs-state="needs_setup"],
@@ -416,7 +433,7 @@ button {
 }
 #transport .blend-wrap {
   flex: 0 1 320px; max-width: min(42vw, 320px); display: flex; align-items: center; gap: 8px; margin: 0 12px;
-  font-size: 11px; color: #ccc;
+  font-size: 11px; color: #f8fafc; text-shadow: 0 1px 3px #000;
 }
 #transport .blend-wrap input[type="range"] {
   width: 100%; accent-color: var(--accent);
@@ -481,6 +498,11 @@ button {
   color: var(--text-muted);
 }
 
+/* Touch screens have no hover state, so keep the controls available. */
+@media (hover: none), (pointer: coarse) {
+  #transport { opacity: 1; transform: none; pointer-events: auto; }
+}
+
 /* === CONFIG PANEL (centered ~90vw × 90vh scrollable modal) === */
 #config-backdrop {
   position: fixed; inset: 0; z-index: 30;
@@ -528,11 +550,11 @@ button {
   line-height: 1.5;
 }
 .config-startup-notice[hidden] { display: none; }
-#config-panel.config-startup-locked #transport,
 #config-panel.config-startup-locked .experience-panel,
 #config-panel.config-startup-locked .config-body,
 #config-panel.config-startup-locked .global-settings,
 #config-panel.config-startup-locked #open-info { opacity: 0.56; }
+#viewport #transport[aria-disabled="true"] { opacity: 0.56; }
 
 .config-sticky-controls {
   position: sticky; top: 0; z-index: 6; flex: 0 0 auto;
@@ -1904,7 +1926,7 @@ dialog::backdrop { background: rgba(0,0,0,0.6); }
 }
 
 @media (max-width: 720px) {
-  #transport { gap: 6px; padding-inline: 8px; }
+  #transport { gap: 6px; padding-inline: 10px; }
   #transport .blend-wrap { order: 2; flex-basis: 100%; max-width: min(92vw, 420px); margin: 0; }
   #config-panel {
     width: 96vw; height: 94vh;
@@ -2691,12 +2713,13 @@ details[open] .url-share-diagnostics__summary::before { transform: rotate(90deg)
  * The config gear (#config-gear) stays available while #transport is frozen.
  */
 
-#transport[data-frozen="true"] {
+#viewport #transport[data-frozen="true"] {
   opacity: 0.38;
+  pointer-events: none;
 }
 
-#transport[data-frozen="true"] button,
-#transport[data-frozen="true"] input {
+#viewport #transport[data-frozen="true"] button,
+#viewport #transport[data-frozen="true"] input {
   cursor: not-allowed;
   pointer-events: none; /* belt-and-suspenders; JS disabled=true is primary */
 }

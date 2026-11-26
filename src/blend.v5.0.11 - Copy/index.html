@@ -26,8 +26,8 @@
   <title>Blend version 5.0.11</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest?v=20261125-v5.0.11-profile-sync">
-  <link rel="stylesheet" href="./styles.css?v=20261125-v5.0.11-profile-sync">
+  <link rel="manifest" href="./manifest.webmanifest?v=20261126-v5.0.11-experience-switch-recovery">
+  <link rel="stylesheet" href="./styles.css?v=20261126-v5.0.11-experience-switch-recovery">
   <script>
     (() => {
       const params = new URLSearchParams(window.location.hash.slice(1));
@@ -65,6 +65,28 @@
     <div id="viewport-nav-arrows" aria-label="Slideshow navigation">
       <button id="slideshow-prev" type="button" class="viewport-nav-arrow viewport-nav-arrow--prev" title="Previous slide (<<)" aria-label="Previous slideshow item"><<</button>
       <button id="slideshow-next" type="button" class="viewport-nav-arrow viewport-nav-arrow--next" title="Next slide (>>)" aria-label="Next slideshow item">>></button>
+    </div>
+    <div id="transport" role="toolbar" aria-label="Playback controls">
+      <button id="btn-prev" type="button" title="Previous (← or J)" aria-label="Previous item">⏮</button>
+      <button id="btn-play" type="button" class="play-btn" title="Play / Pause (Space or K)">▶</button>
+      <button id="btn-next" type="button" title="Next (→ or L)" aria-label="Next item">⏭</button>
+      <button id="btn-stop" type="button" title="Stop" aria-label="Stop playback">⏹</button>
+      <button id="btn-share" type="button" title="Share current experience" aria-label="Share current experience">🔗</button>
+
+      <div class="blend-wrap">
+        <span>Blend</span>
+        <input id="blend-slider" type="range" min="0" max="100" value="50" title="Opacity blend, [ / ] keys" aria-label="Blend opacity">
+        <span id="blend-value">50%</span>
+      </div>
+
+      <button id="btn-fullscreen" type="button" title="Fullscreen viewport (F)" aria-label="Toggle fullscreen viewport">⛶</button>
+      <div class="master-volume" id="master-volume-control" data-muted="false">
+        <button id="btn-mute" type="button" title="Mute master volume (M)" aria-label="Mute master volume">🔊</button>
+        <div class="master-volume__popover">
+          <span id="vol-master-val" class="master-volume__value">100%</span>
+          <input id="vol-master" type="range" min="0" max="1" step="0.05" value="1" title="Master volume" aria-label="Master volume">
+        </div>
+      </div>
     </div>
     <p id="playback-history-notice" class="playback-history-notice" role="status" aria-live="polite" aria-atomic="true" hidden>Earlier playback history was trimmed to keep this experience saveable. Previous still moves through the most recent items.</p>
     <div id="install-banner" class="install-banner hidden" role="status" aria-live="polite">
@@ -193,28 +215,6 @@
         <button id="close-config" type="button" class="close-btn" title="Close (Esc)" aria-label="Close configuration panel">✕</button>
       </div>
 
-      <div id="transport" role="toolbar" aria-label="Playback controls">
-        <button id="btn-prev" title="Previous (← or J)" aria-label="Previous item">⏮</button>
-        <button id="btn-play" class="play-btn" title="Play / Pause (Space or K)">▶</button>
-        <button id="btn-next" title="Next (→ or L)" aria-label="Next item">⏭</button>
-        <button id="btn-stop" title="Stop">⏹</button>
-        <button id="btn-share" title="Share current experience" aria-label="Share current experience">🔗</button>
-
-        <div class="blend-wrap">
-          <span>Blend</span>
-          <input id="blend-slider" type="range" min="0" max="100" value="50" title="Opacity blend, [ / ] keys" aria-label="Blend opacity">
-          <span id="blend-value">50%</span>
-        </div>
-
-        <button id="btn-fullscreen" type="button" title="Fullscreen viewport (F)" aria-label="Toggle fullscreen viewport">⛶</button>
-        <div class="master-volume" id="master-volume-control" data-muted="false">
-          <button id="btn-mute" type="button" title="Mute master volume (M)" aria-label="Mute master volume">🔊</button>
-          <div class="master-volume__popover">
-            <span id="vol-master-val" class="master-volume__value">100%</span>
-            <input id="vol-master" type="range" min="0" max="1" step="0.05" value="1" title="Master volume" aria-label="Master volume">
-          </div>
-        </div>
-      </div>
     </div>
 
     <p id="config-startup-notice" class="config-startup-notice" role="status" aria-live="polite" hidden></p>
@@ -727,11 +727,12 @@
   <dialog id="experience-switch-save-modal" class="experience-switch-save-modal" aria-labelledby="experience-switch-save-title" aria-describedby="experience-switch-save-message" aria-modal="true">
     <div class="modal-header" id="experience-switch-save-title">Save the current experience</div>
     <div class="modal-body">
-      <p id="experience-switch-save-message" role="alert" aria-live="assertive">Changes are not saved yet. Retry or export a backup before closing.</p>
+      <p id="experience-switch-save-message" role="alert" aria-live="assertive">Changes are not saved yet. Retry to save, export a backup, continue without saving, or cancel the switch.</p>
     </div>
     <div class="modal-footer">
       <button class="btn primary" id="experience-switch-save-retry" type="button" autofocus>Retry</button>
       <button class="btn" id="experience-switch-save-export" type="button">Export Backup</button>
+      <button class="btn" id="experience-switch-save-skip" type="button">Continue Without Saving</button>
       <button class="btn" id="experience-switch-save-cancel" type="button">Cancel Switch</button>
     </div>
   </dialog>
@@ -919,6 +920,6 @@
     <symbol id="icon-trash" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
     <symbol id="icon-gear" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
   </svg>
-  <script type="module" src="./app.js?v=20261125-v5.0.11-profile-sync"></script>
+  <script type="module" src="./app.js?v=20261126-v5.0.11-experience-switch-recovery"></script>
 </body>
 </html>

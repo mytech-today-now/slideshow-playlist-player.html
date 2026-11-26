@@ -965,7 +965,7 @@ test('reset removes saved runtime config and the Supabase session while host con
     text: `${publicImageUrl}\n`
   });
   await blendPage.openConfig();
-  await page.locator('#btn-play').click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 8000 });
   await page.waitForFunction(() => {
     const video = Array.from(document.querySelectorAll('#playlist-layer video'))

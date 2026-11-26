@@ -22,8 +22,6 @@ export class BlendAppPage {
     this.page = page;
     this.configPanel = page.locator('#config-panel');
     this.configGearButton = page.locator('#config-gear');
-    this.playButton = page.locator('#btn-play');
-    this.shareButton = page.locator('#btn-share');
     this.experienceSelect = page.locator('#experience-select');
     this.experienceInput = page.locator('#experience-modal-input');
     this.experienceModal = page.locator('#experience-modal');
@@ -67,6 +65,12 @@ export class BlendAppPage {
       await this.page.locator('#close-config').click();
       await expect(this.configPanel).not.toHaveClass(/open/);
     }
+  }
+
+  async clickTransportControl(controlId) {
+    await this.closeConfig();
+    await this.page.locator('#viewport').hover();
+    await this.page.locator(`#${controlId}`).click();
   }
 
   async createExperience(name) {
@@ -437,11 +441,11 @@ export class BlendAppPage {
       try { await onPhase(phase, this.page); } catch (_) {}
     };
     await this.dismissIpfsOperationModalIfPresent();
-    await reportPhase('Configuration open:before');
-    await this.openConfig();
-    await reportPhase('Configuration open:after');
+    await reportPhase('Playback stage controls:before');
+    await this.closeConfig();
+    await reportPhase('Playback stage controls:after');
     await reportPhase('Play click:before');
-    await this.playButton.click();
+    await this.clickTransportControl('btn-play');
     await reportPhase('Play click:after');
     await reportPhase('playback readiness:before');
     await this.page.waitForFunction(() => {
@@ -454,9 +458,9 @@ export class BlendAppPage {
         !!state.slideshow?.[state.runtime?.slideshowIndex ?? 0];
     }, null, { timeout: 5000 }).catch(() => {});
     await reportPhase('playback readiness:after');
-    await reportPhase('Configuration close:before');
+    await reportPhase('Playback stage cleanup:before');
     await this.closeConfig();
-    await reportPhase('Configuration close:after');
+    await reportPhase('Playback stage cleanup:after');
   }
 
   async playbackSummary({ onPhase = null } = {}) {
@@ -498,8 +502,7 @@ export class BlendAppPage {
   }
 
   async buildUrlShareLinkForCurrentExperience() {
-    await this.openConfig();
-    await this.shareButton.click();
+    await this.clickTransportControl('btn-share');
     const input = this.page.locator('#url-share-url-input');
     await expect(input).toBeVisible();
     const value = await input.inputValue();

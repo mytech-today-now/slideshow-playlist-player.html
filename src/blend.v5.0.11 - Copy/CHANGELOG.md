@@ -23,9 +23,12 @@ These changes are present in the current review checkout. The app version remain
 - Added focused Firefox and WebKit compatibility coverage and CI reporting that records engine versions without implying branded-browser or mobile-device certification.
 - Added sign-out coverage for active and in-flight private media, copied signed URLs, public/local playback, retry after sign-in, and peer tabs.
 - Added Chromium E2E coverage for partial missing-media relink at the 2,000-entry cutoff, including preservation of earlier saved rows and keyboard recovery through a smaller-folder scan.
+- Added Lighthouse CI checks for the production build's performance score and Web Vitals, with reports stored locally.
 
 ### Changed
 
+- Playback controls now overlay the viewing stage and reveal on hover or keyboard focus; touch screens keep them available without a hover state.
+- Experience switching now closes its save-recovery dialog after a choice. Users can retry, export a backup and continue, continue without saving, or cancel; exporting is optional.
 - Imported social share addresses now use HTTP(S) destinations only; unsafe imported values fall back to a generated local experience link, and the updated helper is included in the PWA cache generation.
 - Experience completion follows the selected Playlist or Slideshow end target, defaulting to Playlist for new and legacy experiences. If that layer has no playable items, the available companion layer defines completion.
 - Stop, Loop, and Go to Next Experience now run at the selected layer boundary after both playback layers and active transitions are stopped. Manual Next remains navigation and does not trigger automatic experience completion.

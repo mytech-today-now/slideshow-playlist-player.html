@@ -74,7 +74,7 @@ async function setupTwoLayerPlayback(page, testInfo, {
     return window.Blend.saveStateNow();
   }, { target: endTarget, duration: slideshowDuration, playbackMode, playlistOrder, slideshowOrder });
   expect(saved).toBe(true);
-  await blendPage.openConfig();
+  await blendPage.closeConfig();
   return blendPage;
 }
 
@@ -241,7 +241,7 @@ test('Playlist end target stops while Slideshow still has a current item', async
     slideshowDuration: 1
   });
   await addUnavailableBoundaryReferences(page, 'playlist');
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expect.poll(() => page.evaluate(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
@@ -312,7 +312,7 @@ test('Slideshow end target stops while Playlist has not ended', async ({ page },
     slideshowDuration: 1
   });
   await addMixedSlideshowBoundaryReferences(page);
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
@@ -373,7 +373,7 @@ test('sequential Playlist visits every playable index before completing past tra
   });
   expect(saved).toBe(true);
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => (
     window.Blend?.transport === 'playing' &&
     window.Blend.state.runtime.playlistIndex === 1 &&
@@ -421,14 +421,14 @@ test('manual Next at both layer boundaries does not trigger automatic completion
     endTarget: 'playlist',
     slideshowDuration: 60
   });
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
     return window.Blend?.transport === 'playing' && video && image?.complete && image.naturalWidth > 0;
   });
 
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expect.poll(() => page.evaluate(() => window.Blend.transport)).toBe('playing');
   await expect.poll(() => page.evaluate(() => ({
     playlistIndex: window.Blend.state.runtime.playlistIndex,
@@ -449,14 +449,14 @@ test('manual Stop resets playback without showing automatic completion', async (
     endTarget: 'playlist',
     slideshowDuration: 60
   });
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
     return window.Blend?.transport === 'playing' && video && image?.complete && image.naturalWidth > 0;
   });
 
-  await page.locator('#btn-stop').click();
+  await blendPage.clickTransportControl('btn-stop');
   await expect.poll(() => page.evaluate(() => window.Blend?.transport)).toBe('stopped');
   await expect(page.getByRole('status').filter({ hasText: 'Experience finished' })).toHaveCount(0);
   expect(await page.evaluate(() => ({
@@ -482,7 +482,7 @@ test('an empty selected layer uses the available companion layer boundary', asyn
   });
   expect(saved).toBe(true);
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => (
     window.Blend?.transport === 'playing' && document.querySelector('#playlist-layer video[src]')
   ));
@@ -505,7 +505,7 @@ test('Loop restarts from the beginning after the selected layer ends', async ({ 
     playbackMode: 'loop',
     slideshowDuration: 60
   });
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
@@ -571,7 +571,7 @@ test('Go to Next Experience starts the following experience at the selected laye
     window.Blend.saveStateNow();
   });
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video[src]');
     const image = document.querySelector('#slideshow-layer img[src]');
@@ -614,7 +614,7 @@ test('failed next-item load completes cleanly and a later Play can recover', asy
   });
   expect(saved).toBe(true);
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const activeVideo = Array.from(document.querySelectorAll('#playlist-layer video[src]'))
       .find(element => !element.paused && element.currentTime > 0.25);
@@ -629,7 +629,7 @@ test('failed next-item load completes cleanly and a later Play can recover', asy
   });
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 15000 });
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => (
     window.Blend?.transport === 'playing' &&
     window.Blend.state.runtime.playlistIndex === 0 &&
@@ -656,7 +656,7 @@ test('random Playlist end target stops after one cycle and leaves Slideshow visi
     if (requestUrl.pathname.includes('/storage/v1/object/sign/')) signedUrlRequests.push(requestUrl.pathname);
   });
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expectLayerVideoPlaying(page, 'playlist', 0);
   await expect.poll(() => page.evaluate(() => {
     const image = document.querySelector('#slideshow-layer img[src]');
@@ -695,7 +695,7 @@ test('random Slideshow end target stops after one cycle and leaves Playlist visi
   await duplicatePlayableLayerReferences(page, 'playlist');
   await duplicatePlayableLayerReferences(page, 'slideshow', 'playlist');
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expectLayerVideoPlaying(page, 'playlist', 0);
   await expectLayerVideoPlaying(page, 'slideshow', 0);
   await endActiveVideo(page, 'slideshow');
@@ -720,7 +720,7 @@ test('Loop restarts a fresh random cycle after the end-target cycle finishes', a
     playlistOrder: 'random'
   });
   await duplicatePlayableLayerReferences(page, 'playlist');
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expectLayerVideoPlaying(page, 'playlist', 0);
   await endActiveVideo(page, 'playlist');
   await expectLayerVideoPlaying(page, 'playlist', 1);
@@ -757,7 +757,7 @@ test('Go to Next Experience waits for a full random end-target cycle', async ({ 
   await blendPage.switchExperience(firstExperienceName);
   await duplicatePlayableLayerReferences(page, 'playlist');
 
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expectLayerVideoPlaying(page, 'playlist', 0);
   await endActiveVideo(page, 'playlist');
   await expectLayerVideoPlaying(page, 'playlist', 1);
@@ -780,12 +780,12 @@ test('manual Next at a random cycle boundary does not finish the experience', as
     playlistOrder: 'random'
   });
   await duplicatePlayableLayerReferences(page, 'playlist');
-  await blendPage.playButton.click();
+  await blendPage.clickTransportControl('btn-play');
   await expectLayerVideoPlaying(page, 'playlist', 0);
 
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expectLayerVideoPlaying(page, 'playlist', 1);
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 10000 });
   expect(await page.evaluate(() => [0, 1].includes(window.Blend.state.runtime.playlistIndex))).toBe(true);
   await expect(page.getByRole('status').filter({ hasText: RANDOM_CYCLE_COMPLETION_COPY })).toHaveCount(0);

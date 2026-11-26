@@ -25,7 +25,7 @@ import {
 import {
   TRUSTED_STORAGE_POLICY_SCOPE,
   hasVerifiedStoragePolicyScope
-} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
+} from './storage-policy-scope.js?v=20261126-v5.0.11-experience-switch-recovery';
 
 export const URL_SHARE_PARAM = 'experience';
 export const URL_SHARE_PARAM_ALIAS = 'data';

@@ -812,7 +812,7 @@ test('depth-limit scans report truncation and recover from a deeper folder witho
   await app.selectLibraryItemsByNames(['deep.mp4']);
   await app.addSelectedLibraryToList('playlist', 1);
   await app.openConfig();
-  await page.locator('#btn-play').click();
+  await app.clickTransportControl('btn-play');
   await page.waitForFunction(() => {
     const video = document.querySelector('#playlist-layer video');
     return !!video && video.readyState >= 2 && video.videoWidth > 0 && !video.paused;

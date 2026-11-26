@@ -88,7 +88,7 @@ You can play both at once, mix visibility using a blend slider, and control each
 - **Authoritative app entry:** `index.html`
 - **Compatibility redirect entry:** `slideshow-playlist-player.html`
 - **Runtime app version string in code/UI:** `5.0.11`
-- **Cache/app shell version key:** `20261125-v5.0.11-profile-sync`
+- **Cache/app shell version key:** `20261126-v5.0.11-experience-switch-recovery`
 - **Release and version history:** see [CHANGELOG.md](CHANGELOG.md) and [VERSIONS.md](VERSIONS.md).
 
 The web manifest and PWA icons are served from the app directory: publish `manifest.webmanifest`, `icon.svg`, and `icon-maskable.svg` alongside `index.html`. Their URLs use the shared asset version so an installed app refreshes stale manifest and icon entries after deployment.
@@ -116,7 +116,7 @@ Latest source location:
    - `Add Folder` for recursive folder scan
    - `Add URL` for direct `http(s)` media URLs, accessible HTML folder listings, YouTube/YouTube Music and Spotify playlists, public Internet Archive collections, configured Apple Music, Vimeo, Dailymotion, and SoundCloud playlists, `supabase://`, or legacy `ipfs://` references
 4. Select items in Media Library and add to Playlist/Slideshow.
-5. In the configuration panel, press `Play` and adjust `Blend`, volume, and transitions.
+5. Hover over the viewing stage to reveal the playback controls, then press `Play`. Use the controls for Blend, master volume, and fullscreen; use Configuration for library editing, per-layer volume, and transitions.
 
 ## Installation
 
@@ -355,7 +355,7 @@ Supported external reference forms:
 - Most edits are auto-saved to IndexedDB after a brief debounce. App-controlled experience changes wait for the current dirty revision to commit.
 - Experience changes are persisted automatically.
 - Active experience id is also stored in LocalStorage.
-- If saving fails, the accessible status says: “Changes are not saved yet. Retry or export a backup before closing.” Use **Retry** or **Export Backup** to recover the retained edit.
+- If saving fails during a switch, retry the save, export a backup and switch, continue without saving, or cancel the switch. Export is optional; continuing without saving discards unsaved edits to the outgoing experience.
 - Browser shutdown may interrupt a pending save. Any final `pagehide` flush is best effort; reopen Blend to confirm the latest state was saved.
 
 ### Exporting Data
@@ -451,9 +451,9 @@ To exercise a read-only GitHub token manually, scope a separate synthetic token 
 
 ### Playback Controls
 
-- Open the configuration panel with the gear or `C` to access the playback toolbar for both layers.
+- Hover over the viewing stage to reveal the playback toolbar for both layers. Keyboard focus also reveals it; touch screens keep it available because they do not have hover.
 - Blend slider adjusts slideshow opacity over playlist.
-- Volume controls include Playlist, Slideshow, and Master (+ mute).
+- Master volume and mute are on the playback toolbar; Playlist and Slideshow volume remain in Configuration.
 
 ### Best Practices
 
@@ -476,7 +476,7 @@ To exercise a read-only GitHub token manually, scope a separate synthetic token 
 
 ## Playback Controls
 
-Open the configuration panel with the gear or `C` to use the playback toolbar.
+Hover over the viewing stage to reveal the playback toolbar. Use the gear or `C` to open Configuration for library and experience settings.
 
 | Control | Description |
 |---|---|
@@ -1183,10 +1183,13 @@ npm run check
 npm run test:regression
 npm run test:regression:isolated
 npm run test:e2e
+npm run test:lighthouse
 npm run test
 ```
 
 `npm run test:regression` runs all Node tests serially in the current process and requires Node 22.8 or later. This avoids Node's default per-file child processes in restricted Windows runners. `npm run test:regression:isolated` keeps the default process isolation for environments that allow child processes and is used by CI. Playwright Test requires a worker process and launches browser processes. If `npm run test:e2e` reports `spawn EPERM`, classify it as a runner launch failure: tests were not executed, and it is neither an assertion failure nor a pass. Use a supported runner for the full suite. If assertions fail there, rerun the affected spec with `--trace on`, preserve that run's separate output folders, and record the assertion counts and report artifact. CI uploads the HTML report only after its safety check succeeds; a missing or rejected report is not uploaded. Limiting Playwright to one worker does not remove its worker process requirement.
+
+`npm run test:lighthouse` builds the production static files, runs three Lighthouse CI audits against the built app in Chrome, and checks the performance score, First Contentful Paint, Largest Contentful Paint, Speed Index, Total Blocking Time, and Cumulative Layout Shift. It requires Node.js 22.19 or later and an installed Chrome browser for Lighthouse CI. HTML and JSON reports stay local under `.lighthouseci/reports/`; the command does not upload them.
 
 ## Future Development and Recommended Improvements
 

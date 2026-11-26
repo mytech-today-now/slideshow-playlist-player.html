@@ -66,7 +66,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
   test.setTimeout(90000);
   const blendPage = await buildPlaybackExperience(page, testInfo);
 
-  await page.locator('#btn-play').click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 10000 });
 
   await openList(blendPage, 'playlist');
@@ -87,7 +87,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
   await expect(unavailableRow).not.toHaveAttribute('aria-current');
 
   await blendPage.openConfig();
-  await page.locator('#btn-next').click();
+  await blendPage.clickTransportControl('btn-next');
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.playlistIndex)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.slideshowIndex)).toBe(1);
   await openList(blendPage, 'playlist');
@@ -96,7 +96,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
   await expectCurrentRow(page, 'slideshow', 1);
 
   await blendPage.openConfig();
-  await page.locator('#btn-prev').click();
+  await blendPage.clickTransportControl('btn-prev');
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.playlistIndex)).toBe(0);
   await expect.poll(() => page.evaluate(() => window.Blend.state.runtime.slideshowIndex)).toBe(0);
   await openList(blendPage, 'playlist');
@@ -133,15 +133,15 @@ test('exposes one current playback row per layer through navigation, stop, selec
   await expectCurrentRow(page, 'playlist', 0);
 
   await blendPage.openConfig();
-  await page.locator('#btn-play').click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'paused', null, { timeout: 5000 });
   await openList(blendPage, 'playlist');
   await expectCurrentRow(page, 'playlist', 0);
   await blendPage.openConfig();
-  await page.locator('#btn-play').click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 5000 });
   await blendPage.openConfig();
-  await page.locator('#btn-stop').click();
+  await blendPage.clickTransportControl('btn-stop');
   await page.waitForFunction(() => window.Blend?.transport === 'stopped', null, { timeout: 5000 });
   await openList(blendPage, 'playlist');
   await expect(page.locator('#list-editor .list-item[aria-current="true"]')).toHaveCount(0);
@@ -152,7 +152,7 @@ test('exposes one current playback row per layer through navigation, stop, selec
 test('experience switch clears the old playback marker and leaves new rows unmarked', async ({ page }, testInfo) => {
   test.setTimeout(90000);
   const blendPage = await buildPlaybackExperience(page, testInfo);
-  await page.locator('#btn-play').click();
+  await blendPage.clickTransportControl('btn-play');
   await page.waitForFunction(() => window.Blend?.transport === 'playing', null, { timeout: 10000 });
   await openList(blendPage, 'playlist');
   await expectCurrentRow(page, 'playlist', 0);

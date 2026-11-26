@@ -4,7 +4,7 @@ import { BlendAppPage } from './support/blend-app-page.mjs';
 
 const SOURCE_NAME = 'Issue 06 Source';
 const TARGET_NAME = 'Issue 06 Target';
-const FAILURE_COPY = 'Changes are not saved yet. Retry or export a backup before closing.';
+const FAILURE_COPY = 'Changes are not saved yet. Retry to save, export a backup, continue without saving, or cancel the switch.';
 const VIEWPORTS = [
   { label: '4K desktop', width: 3840, height: 2160 },
   { label: 'HD desktop', width: 1920, height: 1080 },
@@ -70,6 +70,14 @@ async function setupSourceAndTarget(page, blendPage) {
     };
   });
   return { sourceId, targetId, sourceState };
+}
+
+async function setupSavedSourceAndTarget(blendPage) {
+  await blendPage.createExperience(SOURCE_NAME);
+  const sourceId = await blendPage.activeExperienceIdByName(SOURCE_NAME);
+  await blendPage.createExperience(TARGET_NAME);
+  const targetId = await blendPage.activeExperienceIdByName(TARGET_NAME);
+  return { sourceId, targetId };
 }
 
 async function getLiveState(page) {
@@ -149,7 +157,7 @@ async function readPersistedExperience(page, id) {
   }), id);
 }
 
-test('failed outgoing write keeps the source and offers export, retry, and cancel', async ({ page }) => {
+test('exporting each outgoing experience closes the dialog and switches in both directions', async ({ page }) => {
   const blendPage = new BlendAppPage(page);
   await blendPage.boot('/index.html');
   const { sourceId, targetId, sourceState } = await setupSourceAndTarget(page, blendPage);
@@ -158,6 +166,7 @@ test('failed outgoing write keeps the source and offers export, retry, and cance
   await expect(dialog).toContainText(FAILURE_COPY);
   await expect(dialog.getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Export Backup' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Continue Without Saving' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Cancel Switch' })).toBeVisible();
   expect(await dialog.getAttribute('aria-describedby')).toBe('experience-switch-save-message');
   expect(await getLiveState(page)).toEqual(sourceState);
@@ -176,15 +185,91 @@ test('failed outgoing write keeps the source and offers export, retry, and cance
   expect(exported.name).toBe(sourceState.projectName);
   expect(exported.playlist.order).toEqual(sourceState.playlistIds);
   expect(exported.slideshow.order).toEqual(sourceState.slideshowIds);
-  await expect(dialog).toBeVisible();
-  expect(await getLiveState(page)).toEqual(sourceState);
-
-  await dialog.getByRole('button', { name: 'Cancel Switch' }).click();
   await expect(dialog).not.toBeVisible();
-  expect(await getLiveState(page)).toEqual(sourceState);
+  await page.waitForFunction(expectedId => window.Blend?.state?.activeExperienceId === expectedId, targetId);
+  await expect(blendPage.experienceSelect).toHaveValue(targetId);
+  expect((await getLiveState(page)).projectName).toBe(TARGET_NAME);
+
+  await blendPage.flushSaveState();
+  const targetSwitch = await openFailedSwitch(page, blendPage, sourceId, 'DataCloneError');
+  const targetDownloadPromise = page.waitForEvent('download');
+  await targetSwitch.dialog.getByRole('button', { name: 'Export Backup' }).click();
+  const targetDownload = await targetDownloadPromise;
+  const exportedTarget = JSON.parse(await readFile(await targetDownload.path(), 'utf8'));
+  expect(exportedTarget.name).toBe(TARGET_NAME);
+  expect(exportedTarget.playlist.order).toEqual(['target-playlist-item']);
+  expect(exportedTarget.slideshow.order).toEqual(['target-slideshow-item']);
+  await expect(targetSwitch.dialog).not.toBeVisible();
+  await page.waitForFunction(expectedId => window.Blend?.state?.activeExperienceId === expectedId, sourceId);
   await expect(blendPage.experienceSelect).toHaveValue(sourceId);
+  expect((await getLiveState(page)).projectName).toBe(SOURCE_NAME);
+
   const storedSource = await readPersistedExperience(page, sourceId);
   expect(storedSource.payload.projectName).toBe(SOURCE_NAME);
+  await blendPage.switchExperience(TARGET_NAME);
+  await expect(blendPage.experienceSelect).toHaveValue(targetId);
+  await expect(page.locator('#experience-switch-save-modal')).not.toBeVisible();
+});
+
+test('continuing without export closes the dialog and alternates between two experiences', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  const { sourceId, targetId } = await setupSourceAndTarget(page, blendPage);
+
+  const sourceSwitch = await openFailedSwitch(page, blendPage, targetId);
+  await sourceSwitch.dialog.getByRole('button', { name: 'Continue Without Saving' }).click();
+  await expect(sourceSwitch.dialog).not.toBeVisible();
+  await page.waitForFunction(expectedId => window.Blend?.state?.activeExperienceId === expectedId, targetId);
+  await expect(blendPage.experienceSelect).toHaveValue(targetId);
+  expect((await getLiveState(page)).projectName).toBe(TARGET_NAME);
+  const sourceAfterSkip = await readPersistedExperience(page, sourceId);
+  expect(sourceAfterSkip.payload.projectName).toBe(SOURCE_NAME);
+
+  await blendPage.flushSaveState();
+  await page.evaluate(() => {
+    window.Blend.state.projectName = `${window.Blend.state.projectName} with unsaved edits`;
+    window.Blend.state.settings.opacity = 0.91;
+  });
+  const targetSwitch = await openFailedSwitch(page, blendPage, sourceId, 'DataCloneError');
+  await targetSwitch.dialog.getByRole('button', { name: 'Continue Without Saving' }).click();
+  await expect(targetSwitch.dialog).not.toBeVisible();
+  await page.waitForFunction(expectedId => window.Blend?.state?.activeExperienceId === expectedId, sourceId);
+  await expect(blendPage.experienceSelect).toHaveValue(sourceId);
+  expect((await getLiveState(page)).projectName).toBe(SOURCE_NAME);
+
+  await blendPage.switchExperience(TARGET_NAME);
+  await expect(blendPage.experienceSelect).toHaveValue(targetId);
+  expect(await blendPage.activeExperienceName()).toBe(TARGET_NAME);
+  expect((await readPersistedExperience(page, targetId)).payload.settings.opacity).toBe(0.31);
+});
+
+test('the dropdown alternates between two experiences without requiring a manual export', async ({ page }) => {
+  const blendPage = new BlendAppPage(page);
+  await blendPage.boot('/index.html');
+  const { sourceId, targetId } = await setupSavedSourceAndTarget(blendPage);
+
+  for (const [name, id] of [
+    [SOURCE_NAME, sourceId],
+    [TARGET_NAME, targetId],
+    [SOURCE_NAME, sourceId],
+    [TARGET_NAME, targetId]
+  ]) {
+    await blendPage.openConfig();
+    await blendPage.experienceSelect.selectOption(id);
+    await page.waitForFunction(({ expectedId, expectedName }) => (
+      window.Blend?.state?.activeExperienceId === expectedId
+      && window.Blend?.state?.projectName === expectedName
+    ), { expectedId: id, expectedName: name });
+    await expect(blendPage.experienceSelect).toHaveValue(id);
+    await expect(page.locator('#experience-switch-save-modal')).not.toBeVisible();
+    expect(await blendPage.activeExperienceName()).toBe(name);
+    await blendPage.flushSaveState();
+  }
+
+  const storedSource = await readPersistedExperience(page, sourceId);
+  const storedTarget = await readPersistedExperience(page, targetId);
+  expect(storedSource.payload.projectName).toBe(SOURCE_NAME);
+  expect(storedTarget.payload.projectName).toBe(TARGET_NAME);
 });
 
 test('save error classes stay distinct and the recovery dialog supports keyboard and viewport changes', async ({ page }) => {
@@ -260,7 +345,7 @@ test('save error classes stay distinct and the recovery dialog supports keyboard
   await page.keyboard.press('Tab');
   await expect(dialog.getByRole('button', { name: 'Export Backup' })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(dialog.getByRole('button', { name: 'Cancel Switch' })).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Continue Without Saving' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.getByRole('button', { name: 'Export Backup' })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -277,6 +362,7 @@ test('retry waits for the outgoing write, switches once, and reload retains both
   expect(await getLiveState(page)).toEqual(sourceState);
 
   await dialog.getByRole('button', { name: 'Retry' }).click();
+  await expect(dialog).not.toBeVisible();
   await page.waitForFunction(expectedId => window.Blend?.state?.activeExperienceId === expectedId, targetId);
   await expect(blendPage.experienceSelect).toHaveValue(targetId);
   await expect(blendPage.toastContainer).toContainText(`Switched to ${TARGET_NAME}`);

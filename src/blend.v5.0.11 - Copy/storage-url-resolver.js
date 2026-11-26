@@ -3,7 +3,7 @@ import {
   PRIVATE_STORAGE_SIGNING_UNAVAILABLE_MESSAGE,
   TRUSTED_STORAGE_POLICY_SCOPE,
   hasVerifiedStoragePolicyScope
-} from './storage-policy-scope.js?v=20261125-v5.0.11-profile-sync';
+} from './storage-policy-scope.js?v=20261126-v5.0.11-experience-switch-recovery';
 
 const HTTP_URL_RE = /^https?:\/\//i;
 const LEGACY_IPFS_URI_RE = /^ipfs:\/\//i;

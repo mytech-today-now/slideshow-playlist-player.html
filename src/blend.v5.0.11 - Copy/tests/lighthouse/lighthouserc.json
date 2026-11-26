@@ -1,0 +1,41 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "./dist",
+      "url": ["http://localhost/index.html"],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": [
+          "error",
+          { "minScore": 0.5, "aggregationMethod": "median-run" }
+        ],
+        "first-contentful-paint": [
+          "error",
+          { "maxNumericValue": 3500, "aggregationMethod": "median-run" }
+        ],
+        "largest-contentful-paint": [
+          "error",
+          { "maxNumericValue": 5000, "aggregationMethod": "median-run" }
+        ],
+        "speed-index": [
+          "error",
+          { "maxNumericValue": 6000, "aggregationMethod": "median-run" }
+        ],
+        "total-blocking-time": [
+          "error",
+          { "maxNumericValue": 2200, "aggregationMethod": "median-run" }
+        ],
+        "cumulative-layout-shift": [
+          "error",
+          { "maxNumericValue": 0.25, "aggregationMethod": "median-run" }
+        ]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "./.lighthouseci/reports"
+    }
+  }
+}
