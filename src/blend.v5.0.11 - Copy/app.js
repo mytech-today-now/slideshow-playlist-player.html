@@ -7833,8 +7833,10 @@ async function handleListDrop(ev, which, atIndex = null) {
       if (isListFile(name)) {
         const file = entry.file || await entry.handle.getFile();
         await importListFromFile(file, { which });
-      } else if (getMediaType(name) && entry.handle) {
-        const result = await addHandles([entry.handle]);
+      } else {
+        const handle = fileHandleFromDropEntry(entry);
+        if (!handle || !getMediaType(name)) continue;
+        const result = await addHandles([handle]);
         mediaIds.push(...result.ids);
       }
     }
@@ -7851,14 +7853,20 @@ async function collectDropEntries(dataTransfer) {
   const items = Array.from(dataTransfer.items || []);
   for (const it of items) {
     if (it.kind !== 'file') continue;
+    let handle = null;
     try {
       if (it.getAsFileSystemHandle) {
-        const handle = await it.getAsFileSystemHandle();
-        if (handle?.kind === 'directory') out.push({ kind: 'directory', handle });
-        else if (handle?.kind === 'file') out.push({ kind: 'file', handle });
-        continue;
+        handle = await it.getAsFileSystemHandle();
       }
     } catch (_) {}
+    if (handle?.kind === 'directory') {
+      out.push({ kind: 'directory', handle });
+      continue;
+    }
+    if (handle?.kind === 'file') {
+      out.push({ kind: 'file', handle });
+      continue;
+    }
     const file = it.getAsFile?.();
     if (file) out.push({ kind: 'file', file });
   }
@@ -7868,6 +7876,12 @@ async function collectDropEntries(dataTransfer) {
     }
   }
   return out;
+}
+
+function fileHandleFromDropEntry(entry) {
+  if (entry?.kind !== 'file') return null;
+  if (entry.handle) return entry.handle;
+  return entry.file ? transientHandleFromFile(entry.file) : null;
 }
 
 function ensureListVirtualList() {
@@ -13248,8 +13262,9 @@ function wireConfig({ spotifyCallbackOutcome = null, providerOAuthCallbackOutcom
     for (const entry of entries) {
       if (entry.kind === 'directory') {
         await scanAndImportDirectory(entry.handle);
-      } else if (entry.kind === 'file' && entry.handle && getMediaType(entry.handle.name)) {
-        handles.push(entry.handle);
+      } else if (entry.kind === 'file') {
+        const handle = fileHandleFromDropEntry(entry);
+        if (handle && getMediaType(handle.name)) handles.push(handle);
       }
     }
     if (handles.length) await addHandles(handles);
